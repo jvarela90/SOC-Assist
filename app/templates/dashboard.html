@@ -1,0 +1,266 @@
+{% extends "base.html" %}
+{% block title %}Dashboard Ejecutivo{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center mb-4">
+  <h4 class="mb-0"><i class="bi bi-bar-chart-fill text-danger me-2"></i>Dashboard Ejecutivo</h4>
+  <span class="ms-auto text-muted small">Datos en tiempo real</span>
+</div>
+
+<!-- KPI Cards -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="card border-secondary h-100">
+      <div class="card-body text-center">
+        <div class="text-muted small mb-1">TOTAL EVALUACIONES</div>
+        <div class="fs-2 fw-bold">{{ total }}</div>
+        <div class="text-muted small"><i class="bi bi-database me-1"></i>Histórico total</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card border-secondary h-100">
+      <div class="card-body text-center">
+        <div class="text-muted small mb-1">HOY</div>
+        <div class="fs-2 fw-bold text-primary">{{ today_count }}</div>
+        <div class="text-muted small"><i class="bi bi-calendar-today me-1"></i>Evaluaciones hoy</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card border-secondary h-100">
+      <div class="card-body text-center">
+        <div class="text-muted small mb-1">CRÍTICOS / BRECHAS</div>
+        <div class="fs-2 fw-bold text-danger">{{ critical_count }}</div>
+        <div class="text-muted small"><i class="bi bi-exclamation-triangle me-1"></i>Requirieron escalamiento</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card border-secondary h-100">
+      <div class="card-body text-center">
+        <div class="text-muted small mb-1">SCORE PROMEDIO</div>
+        <div class="fs-2 fw-bold text-warning">{{ avg_score }}</div>
+        <div class="text-muted small"><i class="bi bi-graph-up me-1"></i>Riesgo organizacional</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Charts row 1 -->
+<div class="row g-3 mb-4">
+  <!-- Classification donut -->
+  <div class="col-md-4">
+    <div class="card border-secondary h-100">
+      <div class="card-header"><i class="bi bi-pie-chart-fill me-2"></i>Distribución por Severidad</div>
+      <div class="card-body d-flex align-items-center justify-content-center" style="min-height:250px;">
+        {% if total > 0 %}
+        <canvas id="donutChart" style="max-height:220px;"></canvas>
+        {% else %}
+        <p class="text-muted text-center">Sin datos aún.<br><a href="/evaluar">Realizar primera evaluación</a></p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Score trend -->
+  <div class="col-md-8">
+    <div class="card border-secondary h-100">
+      <div class="card-header"><i class="bi bi-graph-up me-2"></i>Tendencia de Score (últimos 30 días)</div>
+      <div class="card-body" style="min-height:250px;">
+        {% if total > 0 %}
+        <canvas id="trendChart" style="max-height:220px;"></canvas>
+        {% else %}
+        <p class="text-muted text-center mt-5">Sin datos aún.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Charts row 2 -->
+<div class="row g-3 mb-4">
+  <!-- Top risk factors -->
+  <div class="col-md-6">
+    <div class="card border-secondary h-100">
+      <div class="card-header"><i class="bi bi-fire me-2"></i>Top Factores de Riesgo</div>
+      <div class="card-body" style="min-height:250px;">
+        {% if total > 0 %}
+        <canvas id="factorChart" style="max-height:220px;"></canvas>
+        {% else %}
+        <p class="text-muted text-center mt-5">Sin datos aún.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Module contribution -->
+  <div class="col-md-6">
+    <div class="card border-secondary h-100">
+      <div class="card-header"><i class="bi bi-layers me-2"></i>Contribución Promedio por Módulo</div>
+      <div class="card-body" style="min-height:250px;">
+        {% if total > 0 %}
+        <canvas id="moduleChart" style="max-height:220px;"></canvas>
+        {% else %}
+        <p class="text-muted text-center mt-5">Sin datos aún.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Recent incidents table -->
+<div class="card border-secondary mb-3">
+  <div class="card-header d-flex align-items-center">
+    <i class="bi bi-clock-history me-2"></i>Últimas Evaluaciones
+    <a href="/incidentes" class="ms-auto btn btn-sm btn-outline-secondary">Ver Todas</a>
+  </div>
+  {% if recent_incidents %}
+  <div class="table-responsive">
+    <table class="table table-dark table-hover mb-0">
+      <thead>
+        <tr>
+          <th>#ID</th>
+          <th>Fecha/Hora</th>
+          <th>Clasificación</th>
+          <th>Score</th>
+          <th>Analista</th>
+          <th>Estado</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for inc in recent_incidents %}
+        {% set t = thresholds[inc.classification] %}
+        <tr>
+          <td class="text-muted">#{{ inc.id }}</td>
+          <td class="small">{{ inc.timestamp.strftime('%d/%m/%Y %H:%M') }}</td>
+          <td>
+            <span class="badge badge-cls-{{ inc.classification }}">
+              {{ t.emoji }} {{ t.label }}
+            </span>
+          </td>
+          <td class="fw-bold {% if inc.final_score >= 281 %}text-danger{% elif inc.final_score >= 111 %}text-warning{% else %}text-muted{% endif %}">
+            {{ inc.final_score | int }}
+          </td>
+          <td class="small text-muted">{{ inc.analyst_name or '—' }}</td>
+          <td>
+            {% if inc.resolution == 'fp' %}
+            <span class="badge bg-secondary">FP</span>
+            {% elif inc.resolution in ['tp_resolved', 'tp_escalated'] %}
+            <span class="badge bg-success">Resuelto</span>
+            {% elif inc.resolution == 'ongoing' %}
+            <span class="badge bg-warning text-dark">En curso</span>
+            {% else %}
+            <span class="badge bg-dark border border-secondary">Pendiente</span>
+            {% endif %}
+          </td>
+          <td>
+            <a href="/incidentes/{{ inc.id }}" class="btn btn-sm btn-outline-secondary">Ver</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="card-body text-center text-muted py-5">
+    <i class="bi bi-inbox fs-1 mb-3 d-block"></i>
+    No hay evaluaciones aún. <a href="/evaluar">Realizar primera evaluación</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if total > 0 %}
+<script>
+const chartDefaults = {
+  responsive: true,
+  plugins: { legend: { labels: { color: '#adb5bd' } } },
+};
+
+// Donut chart
+new Chart(document.getElementById('donutChart'), {
+  type: 'doughnut',
+  data: {
+    labels: {{ classification_labels | tojson }},
+    datasets: [{
+      data: {{ classification_data | tojson }},
+      backgroundColor: {{ classification_colors | tojson }},
+      borderColor: '#212529',
+      borderWidth: 2,
+    }]
+  },
+  options: { ...chartDefaults, cutout: '65%' }
+});
+
+// Trend line chart
+new Chart(document.getElementById('trendChart'), {
+  type: 'line',
+  data: {
+    labels: {{ trend_labels | tojson }},
+    datasets: [{
+      label: 'Score Promedio',
+      data: {{ trend_data | tojson }},
+      borderColor: '#dc3545',
+      backgroundColor: 'rgba(220,53,69,0.1)',
+      tension: 0.4,
+      fill: true,
+      pointRadius: 2,
+    }]
+  },
+  options: {
+    ...chartDefaults,
+    scales: {
+      x: { ticks: { color: '#6c757d', maxTicksLimit: 10 }, grid: { color: '#2d2d2d' } },
+      y: { ticks: { color: '#6c757d' }, grid: { color: '#2d2d2d' }, min: 0 }
+    }
+  }
+});
+
+// Top factors bar chart (horizontal)
+new Chart(document.getElementById('factorChart'), {
+  type: 'bar',
+  data: {
+    labels: {{ factor_bar_labels | tojson }},
+    datasets: [{
+      label: 'Contribución Total',
+      data: {{ factor_bar_data | tojson }},
+      backgroundColor: 'rgba(220,53,69,0.7)',
+      borderRadius: 4,
+    }]
+  },
+  options: {
+    ...chartDefaults,
+    indexAxis: 'y',
+    scales: {
+      x: { ticks: { color: '#6c757d' }, grid: { color: '#2d2d2d' } },
+      y: { ticks: { color: '#adb5bd', font: { size: 10 } }, grid: { color: '#2d2d2d' } }
+    }
+  }
+});
+
+// Module avg bar chart
+new Chart(document.getElementById('moduleChart'), {
+  type: 'bar',
+  data: {
+    labels: {{ module_avg_labels | tojson }},
+    datasets: [{
+      label: 'Contribución Promedio',
+      data: {{ module_avg_data | tojson }},
+      backgroundColor: 'rgba(253,126,20,0.7)',
+      borderRadius: 4,
+    }]
+  },
+  options: {
+    ...chartDefaults,
+    scales: {
+      x: { ticks: { color: '#6c757d', font: { size: 10 }, maxRotation: 45 }, grid: { color: '#2d2d2d' } },
+      y: { ticks: { color: '#6c757d' }, grid: { color: '#2d2d2d' } }
+    }
+  }
+});
+</script>
+{% endif %}
+{% endblock %}

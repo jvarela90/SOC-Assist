@@ -1,0 +1,323 @@
+{% extends "base.html" %}
+{% block title %}Nueva Evaluación{% endblock %}
+
+{% block content %}
+<div class="row">
+
+  <!-- Left: Wizard form -->
+  <div class="col-lg-8">
+    <h4 class="mb-1"><i class="bi bi-search-heart-fill text-danger me-2"></i>Evaluación de Evento</h4>
+    <p class="text-muted small mb-3">Responde las preguntas basándote en lo que observas. Usa "No sé" si no tienes la información.</p>
+
+    <!-- Progress bar -->
+    <div class="mb-3">
+      <div class="d-flex justify-content-between small text-muted mb-1">
+        <span id="step-label">Módulo 1 de {{ modules|length }}</span>
+        <span id="step-pct">0%</span>
+      </div>
+      <div class="progress" style="height:8px;">
+        <div id="progress-bar" class="progress-bar bg-danger" style="width:0%; transition: width 0.3s;"></div>
+      </div>
+    </div>
+
+    <!-- Module nav tabs -->
+    <div class="d-flex flex-wrap gap-1 mb-3" id="module-tabs">
+      {% for mod in modules %}
+      <button type="button"
+              class="btn btn-sm btn-outline-secondary module-tab"
+              data-module-index="{{ loop.index0 }}"
+              onclick="goToModule({{ loop.index0 }})">
+        <i class="bi {{ mod.icon }} me-1"></i>{{ loop.index }}
+      </button>
+      {% endfor %}
+    </div>
+
+    <form id="eval-form" method="post" action="/evaluar">
+
+      <!-- Module sections -->
+      {% for mod in modules %}
+      <div class="module-section card border-secondary mb-3" id="module-{{ loop.index0 }}" style="display:none;">
+        <div class="card-header d-flex align-items-center gap-2">
+          <i class="bi {{ mod.icon }} text-danger fs-5"></i>
+          <div>
+            <h6 class="mb-0">{{ mod.label }}</h6>
+            <small class="text-muted">{{ mod.description }}</small>
+          </div>
+          <span class="ms-auto badge bg-secondary">{{ questions_by_module[mod.id]|length }} preguntas</span>
+        </div>
+        <div class="card-body">
+          {% for q in questions_by_module[mod.id] %}
+          <div class="question-block mb-4 pb-3 border-bottom border-secondary">
+            <label class="form-label fw-semibold">
+              <span class="badge bg-secondary me-1 small">{{ loop.index }}</span>
+              {{ q.text }}
+            </label>
+            {% if q.help %}
+            <div class="text-muted small mb-2">
+              <i class="bi bi-info-circle me-1"></i>{{ q.help }}
+            </div>
+            {% endif %}
+            <div class="d-flex flex-wrap gap-2">
+              {% for opt in questions_with_scores[q.id] %}
+              <div class="form-check form-check-option">
+                <input class="form-check-input answer-radio"
+                       type="radio"
+                       name="{{ q.id }}"
+                       id="{{ q.id }}_{{ opt.value }}"
+                       value="{{ opt.value }}"
+                       data-score="{{ opt.weighted_score }}"
+                       onchange="updateIndicator()">
+                <label class="form-check-label option-label {% if opt.weighted_score == 0 %}opt-safe{% elif opt.weighted_score <= 5 %}opt-low{% elif opt.weighted_score <= 10 %}opt-med{% elif opt.weighted_score <= 15 %}opt-high{% else %}opt-critical{% endif %}"
+                       for="{{ q.id }}_{{ opt.value }}">
+                  {{ opt.label }}
+                  {% if opt.weighted_score > 0 %}
+                  <span class="score-badge">+{{ "%.1f"|format(opt.weighted_score) }}</span>
+                  {% endif %}
+                </label>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endfor %}
+
+      <!-- Analyst info -->
+      <div class="module-section card border-secondary mb-3" id="module-{{ modules|length }}" style="display:none;">
+        <div class="card-header">
+          <h6 class="mb-0"><i class="bi bi-person-fill me-2"></i>Información del Analista</h6>
+        </div>
+        <div class="card-body">
+          <div class="mb-3">
+            <label class="form-label">Nombre del analista (opcional)</label>
+            <input type="text" class="form-control bg-dark text-light border-secondary" name="analyst_name" placeholder="Tu nombre...">
+          </div>
+          <div class="alert alert-warning">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+            <strong>Revisión Final:</strong> Al enviar, el sistema calculará el puntaje de riesgo y generará la clasificación del evento.
+          </div>
+          <div id="summary-preview" class="mt-3"></div>
+        </div>
+      </div>
+
+      <!-- Navigation buttons -->
+      <div class="d-flex justify-content-between mt-3">
+        <button type="button" class="btn btn-outline-secondary" id="btn-prev" onclick="prevModule()" style="display:none;">
+          <i class="bi bi-arrow-left me-1"></i>Anterior
+        </button>
+        <div class="ms-auto d-flex gap-2">
+          <button type="button" class="btn btn-outline-primary" id="btn-next" onclick="nextModule()">
+            Siguiente <i class="bi bi-arrow-right ms-1"></i>
+          </button>
+          <button type="submit" class="btn btn-danger" id="btn-submit" style="display:none;">
+            <i class="bi bi-play-fill me-1"></i>Evaluar Evento
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <!-- Right: Risk indicator sidebar -->
+  <div class="col-lg-4">
+    <div class="sticky-top" style="top: 80px;">
+
+      <!-- Risk meter -->
+      <div class="card border-secondary mb-3">
+        <div class="card-header text-center">
+          <small class="text-muted">INDICADOR DE RIESGO EN TIEMPO REAL</small>
+        </div>
+        <div class="card-body text-center py-4">
+          <div id="risk-emoji" style="font-size: 3.5rem; line-height:1;">🟢</div>
+          <div id="risk-label" class="fw-bold fs-5 mt-2">Informativo</div>
+          <div class="mt-2">
+            <span class="text-muted small">Score estimado:</span>
+            <span id="risk-score" class="fs-4 fw-bold ms-2">0</span>
+          </div>
+          <div class="progress mt-3" style="height: 12px;">
+            <div id="risk-progress" class="progress-bar" style="width: 0%; transition: width 0.4s; background: #198754;"></div>
+          </div>
+          <div class="d-flex justify-content-between small text-muted mt-1">
+            <span>0</span><span>100</span><span>200+</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Module checklist -->
+      <div class="card border-secondary">
+        <div class="card-header">
+          <small class="text-muted">MÓDULOS</small>
+        </div>
+        <div class="list-group list-group-flush" id="module-checklist">
+          {% for mod in modules %}
+          <div class="list-group-item list-group-item-action bg-dark border-secondary d-flex align-items-center gap-2"
+               id="check-{{ loop.index0 }}"
+               onclick="goToModule({{ loop.index0 }})"
+               style="cursor:pointer;">
+            <i class="bi bi-circle text-secondary fs-5" id="check-icon-{{ loop.index0 }}"></i>
+            <div>
+              <div class="small fw-semibold">{{ mod.label }}</div>
+              <div class="text-muted" style="font-size:0.7rem;">{{ questions_by_module[mod.id]|length }} preguntas</div>
+            </div>
+          </div>
+          {% endfor %}
+          <div class="list-group-item bg-dark border-secondary d-flex align-items-center gap-2"
+               id="check-{{ modules|length }}"
+               onclick="goToModule({{ modules|length }})"
+               style="cursor:pointer;">
+            <i class="bi bi-circle text-secondary fs-5" id="check-icon-{{ modules|length }}"></i>
+            <div class="small fw-semibold">Resumen y Envío</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const TOTAL_MODULES = {{ modules|length }};
+let currentModule = 0;
+
+// Score thresholds for indicator
+const THRESHOLDS = {
+  informativo: { max: 30,  emoji: "🟢", label: "Informativo",      color: "#198754", cls: "success" },
+  sospechoso:  { max: 70,  emoji: "🟡", label: "Sospechoso",        color: "#ffc107", cls: "warning" },
+  incidente:   { max: 130, emoji: "🟠", label: "Incidente",         color: "#fd7e14", cls: "orange"  },
+  critico:     { max: 200, emoji: "🔴", label: "Incidente Crítico", color: "#dc3545", cls: "danger"  },
+  brecha:      { max: 9999,emoji: "🚨", label: "Brecha Confirmada", color: "#6f1a1a", cls: "breach"  },
+};
+
+function getClassification(score) {
+  if (score <= 40)  return THRESHOLDS.informativo;
+  if (score <= 110)  return THRESHOLDS.sospechoso;
+  if (score <= 280) return THRESHOLDS.incidente;
+  if (score <= 600) return THRESHOLDS.critico;
+  return THRESHOLDS.brecha;
+}
+
+function updateIndicator() {
+  let total = 0;
+  document.querySelectorAll('.answer-radio:checked').forEach(el => {
+    total += parseFloat(el.dataset.score || 0);
+  });
+
+  const cls = getClassification(total);
+  document.getElementById('risk-emoji').textContent = cls.emoji;
+  document.getElementById('risk-label').textContent = cls.label;
+  document.getElementById('risk-score').textContent = Math.round(total);
+  document.getElementById('risk-label').style.color = cls.color;
+
+  const pct = Math.min(100, (total / 201) * 100);
+  const bar = document.getElementById('risk-progress');
+  bar.style.width = pct + '%';
+  bar.style.background = cls.color;
+}
+
+function goToModule(index) {
+  // Hide all
+  document.querySelectorAll('.module-section').forEach(el => el.style.display = 'none');
+  // Show target
+  const target = document.getElementById('module-' + index);
+  if (target) target.style.display = 'block';
+
+  currentModule = index;
+  updateProgress();
+  updateNav();
+  updateChecklist();
+  updateTabHighlight();
+
+  if (index === TOTAL_MODULES) buildSummary();
+}
+
+function nextModule() {
+  if (currentModule < TOTAL_MODULES) {
+    goToModule(currentModule + 1);
+  }
+}
+
+function prevModule() {
+  if (currentModule > 0) {
+    goToModule(currentModule - 1);
+  }
+}
+
+function updateProgress() {
+  const pct = Math.round((currentModule / TOTAL_MODULES) * 100);
+  document.getElementById('progress-bar').style.width = pct + '%';
+  document.getElementById('step-pct').textContent = pct + '%';
+  document.getElementById('step-label').textContent =
+    currentModule < TOTAL_MODULES
+      ? `Módulo ${currentModule + 1} de ${TOTAL_MODULES}`
+      : 'Revisión y Envío';
+}
+
+function updateNav() {
+  document.getElementById('btn-prev').style.display = currentModule > 0 ? 'inline-block' : 'none';
+  document.getElementById('btn-next').style.display = currentModule < TOTAL_MODULES ? 'inline-block' : 'none';
+  document.getElementById('btn-submit').style.display = currentModule === TOTAL_MODULES ? 'inline-block' : 'none';
+}
+
+function updateChecklist() {
+  for (let i = 0; i <= TOTAL_MODULES; i++) {
+    const icon = document.getElementById('check-icon-' + i);
+    const item = document.getElementById('check-' + i);
+    if (!icon) continue;
+
+    if (i === currentModule) {
+      icon.className = 'bi bi-record-circle-fill text-danger fs-5';
+      item.classList.add('active');
+    } else if (i < currentModule) {
+      icon.className = 'bi bi-check-circle-fill text-success fs-5';
+      item.classList.remove('active');
+    } else {
+      icon.className = 'bi bi-circle text-secondary fs-5';
+      item.classList.remove('active');
+    }
+  }
+}
+
+function updateTabHighlight() {
+  document.querySelectorAll('.module-tab').forEach((btn, i) => {
+    btn.classList.toggle('active', i === currentModule);
+    btn.classList.toggle('btn-danger', i === currentModule);
+    btn.classList.toggle('btn-outline-secondary', i !== currentModule);
+  });
+}
+
+function buildSummary() {
+  const answered = document.querySelectorAll('.answer-radio:checked').length;
+  const total = document.querySelectorAll('.answer-radio').length;
+  const risky = [];
+
+  document.querySelectorAll('.answer-radio:checked').forEach(el => {
+    const score = parseFloat(el.dataset.score || 0);
+    if (score >= 8) {
+      const label = document.querySelector(`label[for="${el.id}"]`);
+      const qLabel = el.closest('.question-block').querySelector('.form-label').textContent.trim();
+      risky.push({ q: qLabel.substring(0, 60), s: score });
+    }
+  });
+
+  risky.sort((a, b) => b.s - a.s);
+
+  let html = `<p class="small text-muted">Preguntas respondidas: <strong>${answered}</strong> de ${total}</p>`;
+  if (risky.length > 0) {
+    html += `<div class="alert alert-warning py-2"><i class="bi bi-exclamation-triangle-fill me-2"></i><strong>Factores de alto riesgo detectados:</strong><ul class="mb-0 mt-2 small">`;
+    risky.slice(0, 5).forEach(r => {
+      html += `<li>${r.q}... <span class="text-danger fw-bold">+${r.s.toFixed(1)}</span></li>`;
+    });
+    html += `</ul></div>`;
+  } else {
+    html += `<div class="alert alert-success py-2"><i class="bi bi-check-circle-fill me-2"></i>No se detectaron factores de alto riesgo en las respuestas.</div>`;
+  }
+
+  document.getElementById('summary-preview').innerHTML = html;
+}
+
+// Initialize
+goToModule(0);
+</script>
+{% endblock %}

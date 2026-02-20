@@ -1,0 +1,1056 @@
+{
+  "modules": [
+    {
+      "id": "naturaleza",
+      "label": "Naturaleza del Evento",
+      "description": "Analiza el tipo de evento detectado y su potencial malicioso.",
+      "icon": "bi-binoculars-fill",
+      "order": 1
+    },
+    {
+      "id": "alcance",
+      "label": "Alcance y Propagación",
+      "description": "Evalúa cuántos sistemas y usuarios están involucrados.",
+      "icon": "bi-diagram-3-fill",
+      "order": 2
+    },
+    {
+      "id": "activo",
+      "label": "Identificación del Activo",
+      "description": "Determina qué tipo de equipo o sistema está involucrado.",
+      "icon": "bi-pc-display-horizontal",
+      "order": 3
+    },
+    {
+      "id": "usuario",
+      "label": "Contexto del Usuario",
+      "description": "Evalúa el perfil y privilegios del usuario involucrado.",
+      "icon": "bi-person-fill-lock",
+      "order": 4
+    },
+    {
+      "id": "temporal",
+      "label": "Contexto Temporal",
+      "description": "Analiza cuándo ocurrió el evento y si es inusual.",
+      "icon": "bi-clock-history",
+      "order": 5
+    },
+    {
+      "id": "evidencia",
+      "label": "Evidencia Técnica",
+      "description": "Busca indicadores técnicos de compromiso (IOC/IOA).",
+      "icon": "bi-bug-fill",
+      "order": 6
+    },
+    {
+      "id": "proteccion",
+      "label": "Medidas de Protección",
+      "description": "Evalúa los controles de seguridad presentes.",
+      "icon": "bi-shield-fill-check",
+      "order": 7
+    },
+    {
+      "id": "social",
+      "label": "Canal Social / Humano",
+      "description": "Detecta componentes de ingeniería social.",
+      "icon": "bi-people-fill",
+      "order": 8
+    },
+    {
+      "id": "identificadores",
+      "label": "Identificadores Técnicos",
+      "description": "Recopila información técnica de red e identidad.",
+      "icon": "bi-ethernet",
+      "order": 9
+    }
+  ],
+
+  "questions": [
+
+    // =============================================
+    // MÓDULO A: NATURALEZA DEL EVENTO (10 preguntas)
+    // =============================================
+    {
+      "id": "q_001",
+      "module": "naturaleza",
+      "order": 1,
+      "text": "¿El evento puede ser potencialmente malicioso?",
+      "help": "Basándote en lo que ves, ¿hay algo que te genere sospecha? Aunque no estés seguro, responde con tu intuición.",
+      "type": "multichoice",
+      "weight": 1.0,
+      "options": [
+        { "value": "no",      "label": "No, parece normal",              "score": 0  },
+        { "value": "unknown", "label": "No estoy seguro",                "score": 3  },
+        { "value": "maybe",   "label": "Sí, algo no parece bien",        "score": 6  },
+        { "value": "yes",     "label": "Sí, claramente sospechoso",      "score": 10 }
+      ]
+    },
+    {
+      "id": "q_002",
+      "module": "naturaleza",
+      "order": 2,
+      "text": "¿Cuál es la fuente o tipo de alerta detectada?",
+      "help": "¿Cómo te enteraste del evento? Una alerta de antivirus pesa más que una observación manual.",
+      "type": "multichoice",
+      "weight": 1.0,
+      "options": [
+        { "value": "manual",         "label": "Observación manual del usuario",   "score": 2  },
+        { "value": "siem_low",       "label": "Alerta SIEM / correlación baja",   "score": 4  },
+        { "value": "ids_ips",        "label": "Alerta IDS / IPS",                 "score": 6  },
+        { "value": "edr_alert",      "label": "Alerta EDR / Antivirus",           "score": 8  },
+        { "value": "siem_high",      "label": "Alerta SIEM alta severidad",       "score": 10 },
+        { "value": "confirmed",      "label": "Incidente confirmado por herramienta", "score": 14}
+      ]
+    },
+    {
+      "id": "q_003",
+      "module": "naturaleza",
+      "order": 3,
+      "text": "¿El evento coincide con un IOC (Indicador de Compromiso) conocido?",
+      "help": "Un IOC puede ser una IP maliciosa, un hash de archivo, un dominio en lista negra, etc.",
+      "type": "multichoice",
+      "weight": 1.0,
+      "options": [
+        { "value": "no",      "label": "No coincide con ningún IOC",       "score": 0  },
+        { "value": "unknown", "label": "No verifiqué / no tengo acceso",    "score": 3  },
+        { "value": "partial", "label": "Coincide parcialmente",            "score": 6  },
+        { "value": "yes",     "label": "Sí, coincide con IOC confirmado",  "score": 12 }
+      ]
+    },
+    {
+      "id": "q_004",
+      "module": "naturaleza",
+      "order": 4,
+      "text": "¿Alguna herramienta de seguridad marcó este evento como malicioso?",
+      "help": "Antivirus, EDR, firewall, SIEM — ¿alguno levantó una alerta?",
+      "type": "multichoice",
+      "weight": 1.0,
+      "options": [
+        { "value": "no",      "label": "No hay alertas de herramientas",   "score": 0  },
+        { "value": "unknown", "label": "No tengo acceso a esa información","score": 2  },
+        { "value": "warning", "label": "Marcado como advertencia/sospecha","score": 5  },
+        { "value": "yes",     "label": "Marcado como malicioso / bloqueado","score": 10}
+      ]
+    },
+    {
+      "id": "q_005",
+      "module": "naturaleza",
+      "order": 5,
+      "text": "¿El archivo o proceso involucrado es desconocido o sospechoso?",
+      "help": "¿El nombre del archivo, el proceso o la aplicación involucrada es inusual o no reconocida?",
+      "type": "multichoice",
+      "weight": 1.0,
+      "options": [
+        { "value": "na",      "label": "No hay archivo/proceso involucrado","score": 0  },
+        { "value": "no",      "label": "Es un proceso/archivo conocido",    "score": 0  },
+        { "value": "unknown", "label": "No reconozco el nombre",            "score": 4  },
+        { "value": "yes",     "label": "Claramente inusual o sospechoso",   "score": 7  }
+      ]
+    },
+    {
+      "id": "q_006",
+      "module": "naturaleza",
+      "order": 6,
+      "text": "¿Cuál es la reputación de la IP o dominio externo involucrado?",
+      "help": "Puedes verificar en VirusTotal, AbuseIPDB u otras plataformas de threat intelligence.",
+      "type": "multichoice",
+      "weight": 1.2,
+      "options": [
+        { "value": "na",         "label": "No hay IP/dominio externo",          "score": 0  },
+        { "value": "clean",      "label": "Reputación limpia verificada",        "score": 0  },
+        { "value": "unknown",    "label": "No verifiqué / sin información",       "score": 3  },
+        { "value": "suspicious", "label": "Reportada como sospechosa",           "score": 7  },
+        { "value": "malicious",  "label": "Confirmada como maliciosa",           "score": 12 }
+      ]
+    },
+    {
+      "id": "q_007",
+      "module": "naturaleza",
+      "order": 7,
+      "text": "¿El dominio externo involucrado fue registrado recientemente (menos de 30 días)?",
+      "help": "Los atacantes frecuentemente usan dominios recién creados. Puedes verificar con WHOIS.",
+      "type": "multichoice",
+      "weight": 0.8,
+      "options": [
+        { "value": "na",      "label": "No hay dominio externo",                "score": 0  },
+        { "value": "no",      "label": "No, tiene antigüedad normal",           "score": 0  },
+        { "value": "unknown", "label": "No verifiqué",                          "score": 2  },
+        { "value": "yes",     "label": "Sí, dominio muy reciente",              "score": 7  }
+      ]
+    },
+    {
+      "id": "q_008",
+      "module": "naturaleza",
+      "order": 8,
+      "text": "¿Se detectó malware confirmado (virus, troyano, ransomware, etc.)?",
+      "help": "¿El antivirus u otra herramienta identificó y nombró una amenaza específica?",
+      "type": "multichoice",
+      "weight": 1.5,
+      "options": [
+        { "value": "no",      "label": "No se detectó malware",               "score": 0  },
+        { "value": "unknown", "label": "No se pudo determinar",               "score": 2  },
+        { "value": "maybe",   "label": "Comportamiento malicioso, sin nombre","score": 6  },
+        { "value": "yes",     "label": "Sí, malware confirmado e identificado","score": 14}
+      ]
+    },
+    {
+      "id": "q_009",
+      "module": "naturaleza",
+      "order": 9,
+      "text": "¿El hash del archivo involucrado aparece en alguna lista negra?",
+      "help": "Puedes verificar el hash MD5/SHA256 del archivo en VirusTotal o plataformas similares.",
+      "type": "multichoice",
+      "weight": 1.0,
+      "options": [
+        { "value": "na",      "label": "No hay archivo involucrado",         "score": 0  },
+        { "value": "no",      "label": "Hash limpio en todas las plataformas","score": 0  },
+        { "value": "unknown", "label": "No verifiqué el hash",               "score": 2  },
+        { "value": "partial", "label": "Marcado por algunos motores",        "score": 5  },
+        { "value": "yes",     "label": "Confirmado malicioso por múltiples",  "score": 12 }
+      ]
+    },
+    {
+      "id": "q_010",
+      "module": "naturaleza",
+      "order": 10,
+      "text": "¿El sistema detectó una anomalía de comportamiento inusual (UEBA)?",
+      "help": "¿El usuario o equipo está haciendo algo fuera de lo normal, aunque no sea malware conocido?",
+      "type": "multichoice",
+      "weight": 0.9,
+      "options": [
+        { "value": "no",      "label": "Comportamiento completamente normal","score": 0  },
+        { "value": "unknown", "label": "No tengo baseline de comportamiento","score": 2  },
+        { "value": "maybe",   "label": "Algo inusual pero puede ser legítimo","score": 4  },
+        { "value": "yes",     "label": "Claramente fuera del patrón habitual","score": 8  }
+      ]
+    },
+
+    // =============================================
+    // MÓDULO B: ALCANCE Y PROPAGACIÓN (8 preguntas)
+    // =============================================
+    {
+      "id": "q_011",
+      "module": "alcance",
+      "order": 1,
+      "text": "¿Cuántos equipos o sistemas están involucrados o afectados?",
+      "help": "Cuenta todos los equipos que ves en los logs o alertas, aunque sea de forma indirecta.",
+      "type": "multichoice",
+      "weight": 1.0,
+      "options": [
+        { "value": "one",     "label": "Solo 1 equipo",                    "score": 2  },
+        { "value": "few",     "label": "Entre 2 y 10 equipos",             "score": 6  },
+        { "value": "many",    "label": "Entre 11 y 50 equipos",            "score": 10 },
+        { "value": "lots",    "label": "Entre 51 y 100 equipos",           "score": 14 },
+        { "value": "massive", "label": "Más de 100 equipos",               "score": 18 }
+      ]
+    },
+    {
+      "id": "q_012",
+      "module": "alcance",
+      "order": 2,
+      "text": "¿Cuántos usuarios están afectados o involucrados?",
+      "help": "Incluye usuarios que recibieron phishing, cuyos equipos generaron alertas, etc.",
+      "type": "multichoice",
+      "weight": 0.9,
+      "options": [
+        { "value": "one",    "label": "Solo 1 usuario",                   "score": 1  },
+        { "value": "few",    "label": "Entre 2 y 5 usuarios",             "score": 3  },
+        { "value": "many",   "label": "Entre 6 y 20 usuarios",            "score": 6  },
+        { "value": "lots",   "label": "Más de 20 usuarios",               "score": 10 }
+      ]
+    },
+    {
+      "id": "q_013",
+      "module": "alcance",
+      "order": 3,
+      "text": "¿El evento se repite en múltiples segmentos de red o subredes?",
+      "help": "¿Las alertas provienen de diferentes partes de la red (oficina, servidores, VPN, etc.)?",
+      "type": "multichoice",
+      "weight": 1.1,
+      "options": [
+        { "value": "no",      "label": "No, solo en un segmento",          "score": 0  },
+        { "value": "unknown", "label": "No sé / no tengo visibilidad",      "score": 3  },
+        { "value": "yes",     "label": "Sí, en múltiples segmentos",        "score": 9  }
+      ]
+    },
+    {
+      "id": "q_014",
+      "module": "alcance",
+      "order": 4,
+      "text": "¿Cuál es la dirección del tráfico involucrado?",
+      "help": "Externo→Interno es más peligroso que Interno→Interno. Bidireccional puede indicar canal de comunicación activo.",
+      "type": "multichoice",
+      "weight": 1.2,
+      "options": [
+        { "value": "int_int",  "label": "Interno → Interno (solo red interna)",  "score": 2  },
+        { "value": "int_ext",  "label": "Interno → Externo (salida)",             "score": 5  },
+        { "value": "ext_int",  "label": "Externo → Interno (entrada)",            "score": 7  },
+        { "value": "bidir",    "label": "Bidireccional (entrada y salida)",        "score": 9  },
+        { "value": "unknown",  "label": "No tengo información de tráfico",         "score": 3  }
+      ]
+    },
+    {
+      "id": "q_015",
+      "module": "alcance",
+      "order": 5,
+      "text": "¿Se observa movimiento lateral visible (el evento salta de equipo en equipo)?",
+      "help": "Movimiento lateral: el atacante se mueve de un equipo a otro dentro de la red.",
+      "type": "multichoice",
+      "weight": 1.3,
+      "options": [
+        { "value": "no",      "label": "No, el evento está contenido",     "score": 0  },
+        { "value": "unknown", "label": "No tengo visibilidad suficiente",  "score": 4  },
+        { "value": "yes",     "label": "Sí, visible movimiento entre equipos","score": 11}
+      ]
+    },
+    {
+      "id": "q_016",
+      "module": "alcance",
+      "order": 6,
+      "text": "¿Se observa salida masiva, inusual o no autorizada de datos?",
+      "help": "Grandes volúmenes de datos saliendo de la red, especialmente a destinos externos desconocidos.",
+      "type": "multichoice",
+      "weight": 1.2,
+      "options": [
+        { "value": "no",      "label": "No se observa salida inusual",      "score": 0  },
+        { "value": "unknown", "label": "No puedo verificarlo",              "score": 3  },
+        { "value": "maybe",   "label": "Tráfico elevado, no confirmado",    "score": 5  },
+        { "value": "yes",     "label": "Sí, salida masiva de datos",        "score": 12 }
+      ]
+    },
+    {
+      "id": "q_017",
+      "module": "alcance",
+      "order": 7,
+      "text": "¿Se observa un patrón repetitivo o automatizado (beaconing, escaneos, intentos en bucle)?",
+      "help": "El malware frecuentemente genera tráfico muy regular (cada X segundos/minutos).",
+      "type": "multichoice",
+      "weight": 1.0,
+      "options": [
+        { "value": "no",      "label": "No, el evento es puntual",          "score": 0  },
+        { "value": "unknown", "label": "No puedo determinarlo",             "score": 2  },
+        { "value": "yes",     "label": "Sí, patrón repetitivo claro",       "score": 8  }
+      ]
+    },
+    {
+      "id": "q_018",
+      "module": "alcance",
+      "order": 8,
+      "text": "¿El evento involucra o apunta a servidores críticos o al Controlador de Dominio?",
+      "help": "Servidores de dominio, bases de datos principales, servidores de correo, etc.",
+      "type": "multichoice",
+      "weight": 1.3,
+      "options": [
+        { "value": "no",      "label": "No, solo afecta estaciones de trabajo","score": 0  },
+        { "value": "unknown", "label": "No sé qué equipos están afectados","score": 3  },
+        { "value": "server",  "label": "Sí, afecta servidores de aplicación","score": 7  },
+        { "value": "dc",      "label": "Sí, involucra Controlador de Dominio","score": 14 }
+      ]
+    },
+
+    // =============================================
+    // MÓDULO C: IDENTIFICACIÓN DEL ACTIVO (8 preguntas)
+    // =============================================
+    {
+      "id": "q_019",
+      "module": "activo",
+      "order": 1,
+      "text": "¿Qué tipo de equipo es el origen o el más afectado?",
+      "help": "Un Controlador de Dominio comprometido es el escenario más crítico posible en una red Windows.",
+      "type": "multichoice",
+      "weight": 1.2,
+      "options": [
+        { "value": "workstation", "label": "PC / Estación de trabajo de usuario",  "score": 3  },
+        { "value": "laptop",      "label": "Laptop corporativa",                   "score": 3  },
+        { "value": "server",      "label": "Servidor de aplicaciones",             "score": 6  },
+        { "value": "db",          "label": "Servidor de base de datos",            "score": 9  },
+        { "value": "dc",          "label": "Controlador de Dominio (AD)",          "score": 14 },
+        { "value": "network",     "label": "Equipo de red (switch, router, FW)",   "score": 10 },
+        { "value": "iot",         "label": "Dispositivo IoT / OT",                "score": 7  },
+        { "value": "byod",        "label": "Dispositivo personal (BYOD)",          "score": 6  },
+        { "value": "unknown",     "label": "Desconocido / No identificado",        "score": 8  }
+      ]
+    },
+    {
+      "id": "q_020",
+      "module": "activo",
+      "order": 2,
+      "text": "¿El equipo está registrado en el inventario oficial (CMDB)?",
+      "help": "Un equipo no inventariado podría ser un activo no autorizado (rogue device).",
+      "type": "multichoice",
+      "weight": 0.8,
+      "options": [
+        { "value": "yes",     "label": "Sí, está en el inventario oficial","score": 0  },
+        { "value": "no",      "label": "No, no está inventariado",          "score": 8  },
+        { "value": "unknown", "label": "No tengo acceso al inventario",     "score": 4  }
+      ]
+    },
+    {
+      "id": "q_021",
+      "module": "activo",
+      "order": 3,
+      "text": "¿El equipo pertenece al dominio corporativo de la empresa?",
+      "help": "Los equipos fuera del dominio pueden no tener las políticas de seguridad corporativas.",
+      "type": "multichoice",
+      "weight": 0.9,
+      "options": [
+        { "value": "yes",     "label": "Sí, está unido al dominio",        "score": 0  },
+        { "value": "no",      "label": "No, es equipo fuera del dominio",   "score": 7  },
+        { "value": "unknown", "label": "No lo sé",                         "score": 3  }
+      ]
+    },
+    {
+      "id": "q_022",
+      "module": "activo",
+      "order": 4,
+      "text": "¿El equipo se encuentra en la DMZ (zona desmilitarizada)?",
+      "help": "Los equipos en DMZ son accesibles desde internet, por lo que tienen mayor exposición.",
+      "type": "multichoice",
+      "weight": 0.9,
+      "options": [
+        { "value": "no",      "label": "No, está en red interna",          "score": 0  },
+        { "value": "yes",     "label": "Sí, está en la DMZ",               "score": 6  },
+        { "value": "unknown", "label": "No conozco la topología",           "score": 3  }
+      ]
+    },
+    {
+      "id": "q_023",
+      "module": "activo",
+      "order": 5,
+      "text": "¿El equipo maneja información financiera, regulada o confidencial?",
+      "help": "Sistemas de pagos, datos de clientes, información de salud, datos regulados por ley.",
+      "type": "multichoice",
+      "weight": 1.1,
+      "options": [
+        { "value": "no",      "label": "No maneja información sensible",    "score": 0  },
+        { "value": "unknown", "label": "No lo sé con certeza",              "score": 4  },
+        { "value": "yes",     "label": "Sí, maneja datos sensibles/regulados","score": 10}
+      ]
+    },
+    {
+      "id": "q_024",
+      "module": "activo",
+      "order": 6,
+      "text": "¿Es un activo crítico de la organización (Crown Jewel)?",
+      "help": "¿Es un sistema cuya caída o compromiso causaría daño severo al negocio? (ej. ERP, AD, core banking)",
+      "type": "multichoice",
+      "weight": 1.5,
+      "options": [
+        { "value": "no",      "label": "No es un activo crítico",          "score": 0  },
+        { "value": "unknown", "label": "No sé si es crítico",              "score": 5  },
+        { "value": "yes",     "label": "Sí, es un activo crítico / Crown Jewel","score": 16}
+      ]
+    },
+    {
+      "id": "q_025",
+      "module": "activo",
+      "order": 7,
+      "text": "¿Se conoce la dirección MAC del equipo involucrado?",
+      "help": "Si no se conoce la MAC, el equipo puede ser un intruso en la red.",
+      "type": "multichoice",
+      "weight": 0.6,
+      "options": [
+        { "value": "yes",     "label": "Sí, MAC identificada y reconocida","score": 0  },
+        { "value": "no",      "label": "No, MAC desconocida",              "score": 5  },
+        { "value": "unknown", "label": "No tengo acceso a esa información","score": 2  }
+      ]
+    },
+    {
+      "id": "q_026",
+      "module": "activo",
+      "order": 8,
+      "text": "¿El hostname (nombre del equipo) está registrado oficialmente?",
+      "help": "Un hostname no registrado o con nombre aleatorio puede indicar un equipo no autorizado.",
+      "type": "multichoice",
+      "weight": 0.6,
+      "options": [
+        { "value": "yes",     "label": "Sí, hostname registrado y reconocido","score": 0  },
+        { "value": "no",      "label": "No está registrado o tiene nombre raro","score": 5 },
+        { "value": "unknown", "label": "No puedo verificarlo",             "score": 2  }
+      ]
+    },
+
+    // =============================================
+    // MÓDULO D: CONTEXTO DEL USUARIO (7 preguntas)
+    // =============================================
+    {
+      "id": "q_027",
+      "module": "usuario",
+      "order": 1,
+      "text": "¿Cuál es el nivel de privilegio del usuario involucrado?",
+      "help": "Cuanto más altos los privilegios, mayor el daño potencial si la cuenta está comprometida.",
+      "type": "multichoice",
+      "weight": 1.3,
+      "options": [
+        { "value": "none",         "label": "Sin usuario asociado / sistema",     "score": 0  },
+        { "value": "restricted",   "label": "Usuario restringido / kiosko",       "score": 1  },
+        { "value": "standard",     "label": "Usuario estándar",                   "score": 3  },
+        { "value": "local_admin",  "label": "Administrador local",                "score": 7  },
+        { "value": "domain_admin", "label": "Administrador de dominio",           "score": 12 },
+        { "value": "service",      "label": "Cuenta de servicio / sistema",       "score": 8  },
+        { "value": "full",         "label": "Privilegios totales / root / Enterprise Admin","score": 15}
+      ]
+    },
+    {
+      "id": "q_028",
+      "module": "usuario",
+      "order": 2,
+      "text": "¿La actividad proviene de una cuenta de servicio o sistema?",
+      "help": "Las cuentas de servicio no deben usarse interactivamente. Si alguien lo está haciendo, es sospechoso.",
+      "type": "multichoice",
+      "weight": 0.9,
+      "options": [
+        { "value": "no",      "label": "No, es cuenta de usuario humano",  "score": 0  },
+        { "value": "yes_ok",  "label": "Sí, y el comportamiento es normal","score": 1  },
+        { "value": "yes_bad", "label": "Sí, y el comportamiento es inusual","score": 8  },
+        { "value": "unknown", "label": "No sé",                            "score": 2  }
+      ]
+    },
+    {
+      "id": "q_029",
+      "module": "usuario",
+      "order": 3,
+      "text": "¿La cuenta involucrada estaba inactiva o deshabilitada?",
+      "help": "Una cuenta deshabilitada que de repente está activa es una señal de alerta crítica.",
+      "type": "multichoice",
+      "weight": 1.2,
+      "options": [
+        { "value": "no",      "label": "No, la cuenta estaba activa y es válida","score": 0 },
+        { "value": "inactive","label": "Cuenta existente pero inactiva mucho tiempo","score": 7},
+        { "value": "yes",     "label": "Cuenta deshabilitada que aparece activa","score": 14},
+        { "value": "unknown", "label": "No pude verificar el estado de la cuenta","score": 3}
+      ]
+    },
+    {
+      "id": "q_030",
+      "module": "usuario",
+      "order": 4,
+      "text": "¿La cuenta fue creada recientemente (menos de 7 días)?",
+      "help": "Las cuentas muy nuevas usadas en actividades sospechosas pueden ser cuentas creadas por atacantes.",
+      "type": "multichoice",
+      "weight": 1.0,
+      "options": [
+        { "value": "no",      "label": "No, es una cuenta establecida",    "score": 0  },
+        { "value": "recent",  "label": "Creada hace 7-30 días",            "score": 3  },
+        { "value": "yes",     "label": "Creada hace menos de 7 días",      "score": 9  },
+        { "value": "unknown", "label": "No puedo verificarlo",             "score": 2  }
+      ]
+    },
+    {
+      "id": "q_031",
+      "module": "usuario",
+      "order": 5,
+      "text": "¿Se registraron múltiples intentos fallidos de autenticación para esta cuenta?",
+      "help": "Muchos intentos fallidos pueden indicar un ataque de fuerza bruta o password spraying.",
+      "type": "multichoice",
+      "weight": 1.0,
+      "options": [
+        { "value": "no",      "label": "No, acceso normal",                "score": 0  },
+        { "value": "few",     "label": "Algunos intentos fallidos (3-10)", "score": 3  },
+        { "value": "many",    "label": "Muchos intentos fallidos (+10)",   "score": 7  },
+        { "value": "unknown", "label": "No tengo acceso a logs de auth",   "score": 2  }
+      ]
+    },
+    {
+      "id": "q_032",
+      "module": "usuario",
+      "order": 6,
+      "text": "¿El usuario cambió su contraseña recientemente (menos de 48 horas)?",
+      "help": "Un cambio de contraseña seguido de actividad inusual puede indicar que la cuenta fue tomada.",
+      "type": "multichoice",
+      "weight": 0.8,
+      "options": [
+        { "value": "no",      "label": "No, la contraseña no cambió recientemente","score": 0},
+        { "value": "yes",     "label": "Sí, cambió en las últimas 48 horas","score": 5  },
+        { "value": "forced",  "label": "Cambio forzado por sistema/admin",  "score": 2  },
+        { "value": "unknown", "label": "No tengo acceso a esa información","score": 1  }
+      ]
+    },
+    {
+      "id": "q_033",
+      "module": "usuario",
+      "order": 7,
+      "text": "¿El usuario está operando de una manera completamente inusual para su perfil?",
+      "help": "¿Está accediendo a sistemas que normalmente no usa, o a horas que no coinciden con su patrón?",
+      "type": "multichoice",
+      "weight": 1.0,
+      "options": [
+        { "value": "no",      "label": "No, comportamiento normal para este usuario","score": 0},
+        { "value": "slight",  "label": "Algo diferente pero podría ser legítimo","score": 3  },
+        { "value": "yes",     "label": "Completamente fuera de su patrón habitual","score": 8},
+        { "value": "unknown", "label": "No tengo baseline de este usuario", "score": 3  }
+      ]
+    },
+
+    // =============================================
+    // MÓDULO E: CONTEXTO TEMPORAL (5 preguntas)
+    // =============================================
+    {
+      "id": "q_034",
+      "module": "temporal",
+      "order": 1,
+      "text": "¿El evento ocurrió fuera del horario laboral normal?",
+      "help": "Horario laboral normal: lunes a viernes, 8:00-18:00. La actividad nocturna o madrugada es más sospechosa.",
+      "type": "multichoice",
+      "weight": 1.0,
+      "options": [
+        { "value": "business",    "label": "Horario laboral normal",          "score": 0  },
+        { "value": "evening",     "label": "Tarde/noche (18:00-23:00)",       "score": 3  },
+        { "value": "dawn",        "label": "Madrugada (23:00-06:00)",         "score": 8  },
+        { "value": "morning",     "label": "Madrugada/mañana temprano (06:00-08:00)","score": 5},
+        { "value": "unknown",     "label": "No sé el horario exacto",        "score": 2  }
+      ]
+    },
+    {
+      "id": "q_035",
+      "module": "temporal",
+      "order": 2,
+      "text": "¿El evento ocurrió durante un fin de semana o día festivo?",
+      "help": "Los atacantes prefieren operar cuando el personal de seguridad no está disponible.",
+      "type": "multichoice",
+      "weight": 0.9,
+      "options": [
+        { "value": "no",      "label": "No, fue un día laborable normal",   "score": 0  },
+        { "value": "weekend", "label": "Sí, fue fin de semana",             "score": 6  },
+        { "value": "holiday", "label": "Sí, fue día festivo/feriado",       "score": 8  },
+        { "value": "unknown", "label": "No lo sé",                         "score": 1  }
+      ]
+    },
+    {
+      "id": "q_036",
+      "module": "temporal",
+      "order": 3,
+      "text": "¿Es un patrón de eventos que se repite en el tiempo?",
+      "help": "El malware frecuentemente genera eventos periódicos (beaconing). Eventos que se repiten cada X minutos son sospechosos.",
+      "type": "multichoice",
+      "weight": 0.9,
+      "options": [
+        { "value": "no",      "label": "No, es un evento puntual",          "score": 0  },
+        { "value": "irregular","label": "Se repite pero de forma irregular","score": 4  },
+        { "value": "regular", "label": "Patrón muy regular (cada X minutos)","score": 8  },
+        { "value": "unknown", "label": "No tengo suficiente histórico",     "score": 2  }
+      ]
+    },
+    {
+      "id": "q_037",
+      "module": "temporal",
+      "order": 4,
+      "text": "¿Este comportamiento es completamente inusual para ese equipo o usuario en este horario?",
+      "help": "¿El servidor de producción normalmente tiene tráfico a las 3am? ¿El contador accede al servidor de RRHH?",
+      "type": "multichoice",
+      "weight": 1.0,
+      "options": [
+        { "value": "normal",  "label": "Es comportamiento normal y esperado","score": 0  },
+        { "value": "slight",  "label": "Algo inusual, podría tener explicación","score": 3},
+        { "value": "yes",     "label": "Completamente inusual para este contexto","score": 7},
+        { "value": "unknown", "label": "No tengo datos históricos",         "score": 2  }
+      ]
+    },
+    {
+      "id": "q_038",
+      "module": "temporal",
+      "order": 5,
+      "text": "¿La frecuencia de eventos es inusualmente alta?",
+      "help": "¿Se generaron decenas o cientos de eventos en un corto período? Esto puede indicar automatización maliciosa.",
+      "type": "multichoice",
+      "weight": 0.9,
+      "options": [
+        { "value": "normal",  "label": "Frecuencia normal / baja",          "score": 0  },
+        { "value": "high",    "label": "Alta, pero podría ser legítima",    "score": 3  },
+        { "value": "very_high","label": "Inusualmente alta (decenas/hora)", "score": 7  },
+        { "value": "burst",   "label": "Ráfaga masiva (cientos en minutos)","score": 10 }
+      ]
+    },
+
+    // =============================================
+    // MÓDULO F: EVIDENCIA TÉCNICA (10 preguntas)
+    // =============================================
+    {
+      "id": "q_039",
+      "module": "evidencia",
+      "order": 1,
+      "text": "¿Se detectó persistencia? (tareas programadas, servicios nuevos, claves de registro, etc.)",
+      "help": "La persistencia significa que el malware se está asegurando de sobrevivir a reinicios del sistema.",
+      "type": "multichoice",
+      "weight": 1.2,
+      "options": [
+        { "value": "no",      "label": "No se detectó persistencia",       "score": 0  },
+        { "value": "unknown", "label": "No puedo verificarlo",             "score": 3  },
+        { "value": "yes",     "label": "Sí, se detectó mecanismo de persistencia","score": 14}
+      ]
+    },
+    {
+      "id": "q_040",
+      "module": "evidencia",
+      "order": 2,
+      "text": "¿Se detectó movimiento lateral confirmado (de un equipo a otro internamente)?",
+      "help": "El atacante se mueve lateralmente usando credenciales robadas o exploits para comprometer más sistemas.",
+      "type": "multichoice",
+      "weight": 1.3,
+      "options": [
+        { "value": "no",      "label": "No hay evidencia de movimiento lateral","score": 0},
+        { "value": "unknown", "label": "No tengo visibilidad suficiente",  "score": 3  },
+        { "value": "yes",     "label": "Sí, movimiento lateral confirmado","score": 14 }
+      ]
+    },
+    {
+      "id": "q_041",
+      "module": "evidencia",
+      "order": 3,
+      "text": "¿Se detectó elevación de privilegios no autorizada?",
+      "help": "Un usuario normal que de repente tiene permisos de administrador sin autorización.",
+      "type": "multichoice",
+      "weight": 1.2,
+      "options": [
+        { "value": "no",      "label": "No, sin elevación de privilegios", "score": 0  },
+        { "value": "unknown", "label": "No puedo verificarlo",             "score": 2  },
+        { "value": "yes",     "label": "Sí, elevación de privilegios detectada","score": 12}
+      ]
+    },
+    {
+      "id": "q_042",
+      "module": "evidencia",
+      "order": 4,
+      "text": "¿Se detectó desactivación o manipulación del antivirus o EDR?",
+      "help": "El malware avanzado intenta deshabilitar las herramientas de seguridad antes de actuar.",
+      "type": "multichoice",
+      "weight": 1.3,
+      "options": [
+        { "value": "no",      "label": "Las herramientas de seguridad están activas","score": 0},
+        { "value": "unknown", "label": "No puedo verificar el estado del AV","score": 3  },
+        { "value": "partial", "label": "AV parcialmente desactivado o modificado","score": 8},
+        { "value": "yes",     "label": "AV/EDR completamente deshabilitado","score": 14 }
+      ]
+    },
+    {
+      "id": "q_043",
+      "module": "evidencia",
+      "order": 5,
+      "text": "¿Se detectó modificación de políticas de seguridad del sistema?",
+      "help": "Cambios en GPO, políticas de firewall, reglas de acceso, etc. que no fueron autorizados.",
+      "type": "multichoice",
+      "weight": 1.1,
+      "options": [
+        { "value": "no",      "label": "No se detectaron cambios de política","score": 0 },
+        { "value": "unknown", "label": "No puedo verificarlo",             "score": 2  },
+        { "value": "yes",     "label": "Sí, políticas modificadas sin autorización","score": 10}
+      ]
+    },
+    {
+      "id": "q_044",
+      "module": "evidencia",
+      "order": 6,
+      "text": "¿Se creó una cuenta de administrador no autorizada?",
+      "help": "Los atacantes crean backdoors creando nuevas cuentas de administrador ocultas.",
+      "type": "multichoice",
+      "weight": 1.3,
+      "options": [
+        { "value": "no",      "label": "No se crearon cuentas no autorizadas","score": 0 },
+        { "value": "unknown", "label": "No puedo verificarlo",             "score": 3  },
+        { "value": "yes",     "label": "Sí, cuenta admin creada sin autorización","score": 14}
+      ]
+    },
+    {
+      "id": "q_045",
+      "module": "evidencia",
+      "order": 7,
+      "text": "¿Se ejecutaron comandos sospechosos? (PowerShell codificado, cmd con parámetros raros, etc.)",
+      "help": "PowerShell -enc, wscript, mshta, certutil para descargar archivos son señales de alerta.",
+      "type": "multichoice",
+      "weight": 1.1,
+      "options": [
+        { "value": "no",      "label": "No se detectaron comandos sospechosos","score": 0},
+        { "value": "unknown", "label": "No tengo acceso a los logs de comandos","score": 2},
+        { "value": "maybe",   "label": "Comandos inusuales pero podrían ser legítimos","score": 5},
+        { "value": "yes",     "label": "Sí, comandos claramente sospechosos","score": 10 }
+      ]
+    },
+    {
+      "id": "q_046",
+      "module": "evidencia",
+      "order": 8,
+      "text": "¿Se detectó comunicación con infraestructura de C2 (Command & Control)?",
+      "help": "El C2 es el servidor del atacante que controla el malware. DNS inusual, tráfico cifrado a IPs raras.",
+      "type": "multichoice",
+      "weight": 1.5,
+      "options": [
+        { "value": "no",      "label": "No hay indicios de comunicación C2","score": 0  },
+        { "value": "unknown", "label": "No puedo determinarlo",             "score": 4  },
+        { "value": "suspected","label": "Tráfico sospechoso a destino desconocido","score": 8},
+        { "value": "yes",     "label": "Comunicación C2 confirmada",        "score": 16 }
+      ]
+    },
+    {
+      "id": "q_047",
+      "module": "evidencia",
+      "order": 9,
+      "text": "¿Se confirmó exfiltración de datos hacia el exterior?",
+      "help": "Datos de la empresa saliendo hacia servidores externos sin autorización.",
+      "type": "multichoice",
+      "weight": 1.5,
+      "options": [
+        { "value": "no",      "label": "No hay exfiltración detectada",    "score": 0  },
+        { "value": "unknown", "label": "No puedo determinarlo",            "score": 4  },
+        { "value": "suspected","label": "Posible exfiltración, no confirmada","score": 8},
+        { "value": "yes",     "label": "Exfiltración de datos confirmada", "score": 18 }
+      ]
+    },
+    {
+      "id": "q_048",
+      "module": "evidencia",
+      "order": 10,
+      "text": "¿Se detectó cifrado masivo de archivos? (posible Ransomware)",
+      "help": "Archivos renombrados con extensiones extrañas, notas de rescate, carpetas inaccesibles.",
+      "type": "multichoice",
+      "weight": 1.8,
+      "options": [
+        { "value": "no",      "label": "No hay cifrado de archivos",       "score": 0  },
+        { "value": "unknown", "label": "No puedo verificarlo",             "score": 3  },
+        { "value": "maybe",   "label": "Algunos archivos inaccesibles, no confirmado","score": 8},
+        { "value": "yes",     "label": "Sí, cifrado masivo confirmado / Ransomware","score": 22}
+      ]
+    },
+
+    // =============================================
+    // MÓDULO G: MEDIDAS DE PROTECCIÓN (5 preguntas)
+    // =============================================
+    {
+      "id": "q_049",
+      "module": "proteccion",
+      "order": 1,
+      "text": "¿Qué tipo de solución de seguridad tiene el equipo afectado?",
+      "help": "Un equipo sin protección es mucho más vulnerable. EDR/XDR da mejor visibilidad y contención.",
+      "type": "multichoice",
+      "weight": 1.2,
+      "options": [
+        { "value": "none",       "label": "Sin ninguna solución de seguridad",  "score": 10 },
+        { "value": "av_free",    "label": "Antivirus gratuito (ej. Windows Defender básico)","score": 7},
+        { "value": "av_corp",    "label": "Antivirus corporativo gestionado",    "score": 4  },
+        { "value": "edr",        "label": "EDR (CrowdStrike, SentinelOne, etc.)","score": 1  },
+        { "value": "xdr",        "label": "XDR (plataforma extendida)",          "score": 0  },
+        { "value": "unknown",    "label": "No sé qué protección tiene",          "score": 6  }
+      ]
+    },
+    {
+      "id": "q_050",
+      "module": "proteccion",
+      "order": 2,
+      "text": "¿El antivirus/EDR tiene definiciones/firmas actualizadas (menos de 24 horas)?",
+      "help": "Un AV desactualizado puede no detectar amenazas recientes.",
+      "type": "multichoice",
+      "weight": 0.7,
+      "options": [
+        { "value": "yes",     "label": "Sí, actualizado en las últimas 24 horas","score": 0},
+        { "value": "old",     "label": "Desactualizado (más de 24-72 horas)",   "score": 4  },
+        { "value": "very_old","label": "Muy desactualizado (+72 horas)",         "score": 7  },
+        { "value": "na",      "label": "No aplica / sin AV",                    "score": 0  },
+        { "value": "unknown", "label": "No sé el estado de actualización",      "score": 2  }
+      ]
+    },
+    {
+      "id": "q_051",
+      "module": "proteccion",
+      "order": 3,
+      "text": "¿El firewall del equipo y de red están activos y con reglas actualizadas?",
+      "help": "Firewall desactivado significa que el tráfico no está filtrado.",
+      "type": "multichoice",
+      "weight": 0.8,
+      "options": [
+        { "value": "yes",     "label": "Sí, firewall activo y configurado", "score": 0  },
+        { "value": "partial", "label": "Parcialmente activo o con reglas básicas","score": 4},
+        { "value": "no",      "label": "Firewall desactivado",              "score": 8  },
+        { "value": "unknown", "label": "No sé el estado del firewall",      "score": 3  }
+      ]
+    },
+    {
+      "id": "q_052",
+      "module": "proteccion",
+      "order": 4,
+      "text": "¿Los logs del sistema están disponibles y son completos?",
+      "help": "Sin logs completos, la investigación forense es muy difícil. Logs borrados = señal de alerta.",
+      "type": "multichoice",
+      "weight": 1.0,
+      "options": [
+        { "value": "complete","label": "Logs completos y disponibles",      "score": 0  },
+        { "value": "partial", "label": "Logs parciales o con gaps",         "score": 5  },
+        { "value": "deleted", "label": "Logs borrados o manipulados",       "score": 12 },
+        { "value": "none",    "label": "Sin logs disponibles",              "score": 8  },
+        { "value": "unknown", "label": "No sé el estado de los logs",       "score": 3  }
+      ]
+    },
+    {
+      "id": "q_053",
+      "module": "proteccion",
+      "order": 5,
+      "text": "¿El usuario o sistema tiene MFA (autenticación de múltiples factores) habilitado?",
+      "help": "MFA activo dificulta enormemente el acceso con credenciales robadas.",
+      "type": "multichoice",
+      "weight": 0.9,
+      "options": [
+        { "value": "yes",     "label": "Sí, MFA activo y funcionando",     "score": 0  },
+        { "value": "partial", "label": "MFA existe pero no es obligatorio","score": 3  },
+        { "value": "no",      "label": "Sin MFA",                          "score": 7  },
+        { "value": "unknown", "label": "No sé",                            "score": 2  }
+      ]
+    },
+
+    // =============================================
+    // MÓDULO H: CANAL SOCIAL / HUMANO (5 preguntas)
+    // =============================================
+    {
+      "id": "q_054",
+      "module": "social",
+      "order": 1,
+      "text": "¿Se reportó alguna llamada o contacto telefónico sospechoso previo al evento?",
+      "help": "Los atacantes frecuentemente llaman haciéndose pasar por soporte técnico para obtener credenciales.",
+      "type": "multichoice",
+      "weight": 1.0,
+      "options": [
+        { "value": "no",      "label": "No, sin contacto telefónico",       "score": 0  },
+        { "value": "unknown", "label": "No se reportó / no lo sé",          "score": 1  },
+        { "value": "yes",     "label": "Sí, llamada sospechosa reportada",  "score": 8  }
+      ]
+    },
+    {
+      "id": "q_055",
+      "module": "social",
+      "order": 2,
+      "text": "¿Se detectó una solicitud urgente e inusual de credenciales, accesos o transferencias?",
+      "help": "Emails o mensajes urgentes pidiendo contraseñas, accesos VPN o transferencias bancarias.",
+      "type": "multichoice",
+      "weight": 1.0,
+      "options": [
+        { "value": "no",      "label": "No hay solicitudes inusuales",      "score": 0  },
+        { "value": "unknown", "label": "No se reportó",                     "score": 1  },
+        { "value": "yes",     "label": "Sí, solicitud urgente detectada",   "score": 9  }
+      ]
+    },
+    {
+      "id": "q_056",
+      "module": "social",
+      "order": 3,
+      "text": "¿Se detectó MFA Fatigue? (múltiples solicitudes de aprobación MFA enviadas al usuario)",
+      "help": "El atacante envía muchas solicitudes de MFA esperando que el usuario haga clic en 'Aprobar' por cansancio.",
+      "type": "multichoice",
+      "weight": 1.1,
+      "options": [
+        { "value": "no",      "label": "No, sin solicitudes MFA inusuales", "score": 0  },
+        { "value": "few",     "label": "Algunas notificaciones MFA raras",  "score": 4  },
+        { "value": "yes",     "label": "Sí, múltiples solicitudes MFA seguidas","score": 10}
+      ]
+    },
+    {
+      "id": "q_057",
+      "module": "social",
+      "order": 4,
+      "text": "¿Se confirmó un correo de phishing relacionado con el evento?",
+      "help": "Un email falso que lleva a una página de login falsa o descarga malware.",
+      "type": "multichoice",
+      "weight": 1.0,
+      "options": [
+        { "value": "no",      "label": "Sin phishing detectado",            "score": 0  },
+        { "value": "suspected","label": "Email sospechoso pero no confirmado","score": 4 },
+        { "value": "yes",     "label": "Phishing confirmado",               "score": 9  }
+      ]
+    },
+    {
+      "id": "q_058",
+      "module": "social",
+      "order": 5,
+      "text": "¿El usuario reportó haber sido víctima de ingeniería social?",
+      "help": "El usuario compartió información, entregó credenciales o instaló algo por pedido de alguien externo.",
+      "type": "multichoice",
+      "weight": 1.1,
+      "options": [
+        { "value": "no",      "label": "No reportó nada inusual",           "score": 0  },
+        { "value": "unknown", "label": "No se pudo contactar al usuario",   "score": 2  },
+        { "value": "suspected","label": "El usuario tiene dudas sobre algo","score": 5  },
+        { "value": "yes",     "label": "Sí, confirma que fue víctima de engaño","score": 11}
+      ]
+    },
+
+    // =============================================
+    // MÓDULO I: IDENTIFICADORES TÉCNICOS (5 preguntas)
+    // =============================================
+    {
+      "id": "q_059",
+      "module": "identificadores",
+      "order": 1,
+      "text": "¿Se conoce y puede identificar la IP de origen del evento?",
+      "help": "IP de origen desconocida dificulta la investigación y puede indicar ofuscación del atacante.",
+      "type": "multichoice",
+      "weight": 0.8,
+      "options": [
+        { "value": "yes_internal","label": "Sí, IP interna identificada y conocida","score": 0},
+        { "value": "yes_external","label": "Sí, IP externa identificada",     "score": 2  },
+        { "value": "proxy",       "label": "Proxy / Tor / VPN anónima",       "score": 8  },
+        { "value": "no",          "label": "IP de origen desconocida",        "score": 6  }
+      ]
+    },
+    {
+      "id": "q_060",
+      "module": "identificadores",
+      "order": 2,
+      "text": "¿Se conoce y puede identificar la IP de destino del evento?",
+      "help": "Si el destino es desconocido y externo, puede ser infraestructura del atacante.",
+      "type": "multichoice",
+      "weight": 0.8,
+      "options": [
+        { "value": "yes_internal","label": "Sí, IP interna conocida y válida", "score": 0 },
+        { "value": "yes_known",  "label": "IP externa conocida y legítima",    "score": 0  },
+        { "value": "unknown",    "label": "IP externa desconocida",            "score": 5  },
+        { "value": "malicious",  "label": "IP confirmada maliciosa",           "score": 10 }
+      ]
+    },
+    {
+      "id": "q_061",
+      "module": "identificadores",
+      "order": 3,
+      "text": "¿El equipo se conecta a través de VPN o acceso remoto (RDP, Citrix, etc.)?",
+      "help": "El acceso remoto mal configurado es uno de los vectores de entrada más comunes.",
+      "type": "multichoice",
+      "weight": 0.9,
+      "options": [
+        { "value": "no",       "label": "No, acceso local directo",           "score": 0  },
+        { "value": "vpn_ok",   "label": "VPN corporativa y acceso autorizado","score": 1  },
+        { "value": "vpn_anon", "label": "VPN no corporativa / anónima",       "score": 7  },
+        { "value": "rdp",      "label": "RDP / acceso remoto expuesto",       "score": 8  },
+        { "value": "unknown",  "label": "No sé cómo se conecta",              "score": 3  }
+      ]
+    },
+    {
+      "id": "q_062",
+      "module": "identificadores",
+      "order": 4,
+      "text": "¿La IP/dominio externo está asociado a alguna categoría de amenaza conocida?",
+      "help": "Puedes verificar en VirusTotal, Shodan, AbuseIPDB, Threat Intelligence feeds.",
+      "type": "multichoice",
+      "weight": 1.2,
+      "options": [
+        { "value": "none",        "label": "Sin asociación a amenazas",       "score": 0  },
+        { "value": "unknown",     "label": "No verifiqué / sin info",          "score": 3  },
+        { "value": "cryptominer", "label": "Cryptomining",                    "score": 6  },
+        { "value": "phishing",    "label": "Phishing / Fraude",               "score": 8  },
+        { "value": "botnet",      "label": "Botnet",                          "score": 10 },
+        { "value": "c2",          "label": "Command & Control",               "score": 14 },
+        { "value": "ransomware",  "label": "Ransomware / APT",               "score": 16 }
+      ]
+    },
+    {
+      "id": "q_063",
+      "module": "identificadores",
+      "order": 5,
+      "text": "¿Cuántos equipos internos se comunican o han comunicado con esa IP/dominio externo?",
+      "help": "Si muchos equipos internos contactan el mismo destino sospechoso, puede ser una infección amplia.",
+      "type": "multichoice",
+      "weight": 1.0,
+      "options": [
+        { "value": "na",     "label": "No hay IP/dominio externo involucrado","score": 0  },
+        { "value": "one",    "label": "Solo 1 equipo",                       "score": 2  },
+        { "value": "few",    "label": "Menos de 10 equipos",                 "score": 5  },
+        { "value": "many",   "label": "10 a 50 equipos",                    "score": 9  },
+        { "value": "lots",   "label": "Más de 50 equipos",                  "score": 14 }
+      ]
+    }
+  ]
+}

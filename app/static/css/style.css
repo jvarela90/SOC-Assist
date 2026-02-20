@@ -1,0 +1,219 @@
+/* =====================================================
+   SOC Assist — Custom Styles
+   Dark cybersecurity theme
+   ===================================================== */
+
+:root {
+  --color-breach: #6f1a1a;
+  --color-critico: #dc3545;
+  --color-incidente: #fd7e14;
+  --color-sospechoso: #ffc107;
+  --color-informativo: #198754;
+}
+
+body {
+  background-color: #0d1117;
+  color: #c9d1d9;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+/* ---- Navbar ---- */
+.navbar {
+  background-color: #161b22 !important;
+}
+
+.navbar-brand {
+  font-size: 1.1rem;
+  letter-spacing: 0.05em;
+}
+
+/* ---- Cards ---- */
+.card {
+  background-color: #161b22;
+  border-color: #30363d !important;
+}
+
+.card-header {
+  background-color: #1c2128;
+  border-bottom-color: #30363d;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+/* ---- Tables ---- */
+.table-dark {
+  --bs-table-bg: #161b22;
+  --bs-table-hover-bg: #1c2128;
+  --bs-table-border-color: #30363d;
+  color: #c9d1d9;
+}
+
+/* ---- Result classification cards ---- */
+.classification-card {
+  border-radius: 12px;
+  border: none;
+}
+
+.classification-card.informativo {
+  background: linear-gradient(135deg, #0d2f1e, #198754);
+  color: white;
+}
+
+.classification-card.sospechoso {
+  background: linear-gradient(135deg, #2d2206, #856404);
+  color: white;
+}
+
+.classification-card.incidente {
+  background: linear-gradient(135deg, #2d1800, #6c3400);
+  color: white;
+}
+
+.classification-card.critico {
+  background: linear-gradient(135deg, #2d0a0a, #6b1111);
+  color: white;
+}
+
+.classification-card.brecha {
+  background: linear-gradient(135deg, #1a0000, #6f1a1a);
+  color: white;
+  animation: breach-pulse 2s infinite;
+}
+
+@keyframes breach-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(111, 26, 26, 0.7); }
+  50% { box-shadow: 0 0 0 15px rgba(111, 26, 26, 0); }
+}
+
+.result-emoji {
+  font-size: 4rem;
+  line-height: 1;
+}
+
+/* ---- Classification badges ---- */
+.badge-cls-informativo { background-color: var(--color-informativo) !important; }
+.badge-cls-sospechoso  { background-color: #856404 !important; color: white !important; }
+.badge-cls-incidente   { background-color: var(--color-incidente) !important; color: white !important; }
+.badge-cls-critico     { background-color: var(--color-critico) !important; }
+.badge-cls-brecha      { background-color: var(--color-breach) !important; }
+
+/* ---- Form wizard ---- */
+.module-section {
+  animation: fadeIn 0.25s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.question-block:last-child {
+  border-bottom: none !important;
+}
+
+/* Option labels — styled radio buttons */
+.form-check-option {
+  display: inline-block;
+  margin: 0;
+}
+
+.form-check-option .form-check-input {
+  display: none;
+}
+
+.option-label {
+  display: inline-block;
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: 1.5px solid #30363d;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: all 0.15s ease;
+  background: #1c2128;
+  color: #c9d1d9;
+  user-select: none;
+}
+
+.option-label:hover {
+  border-color: #58a6ff;
+  background: #21262d;
+}
+
+.form-check-option .form-check-input:checked + .option-label {
+  font-weight: 600;
+  color: white;
+}
+
+/* Option color tiers */
+.opt-safe     { border-color: #198754; }
+.opt-low      { border-color: #20c997; }
+.opt-med      { border-color: #ffc107; }
+.opt-high     { border-color: #fd7e14; }
+.opt-critical { border-color: #dc3545; }
+
+.form-check-input:checked + .opt-safe     { background: #0d3321; border-color: #198754; }
+.form-check-input:checked + .opt-low      { background: #0a2b24; border-color: #20c997; }
+.form-check-input:checked + .opt-med      { background: #2d2206; border-color: #ffc107; }
+.form-check-input:checked + .opt-high     { background: #2d1800; border-color: #fd7e14; }
+.form-check-input:checked + .opt-critical { background: #2d0a0a; border-color: #dc3545; }
+
+/* Score badge inside option */
+.score-badge {
+  display: inline-block;
+  font-size: 0.7rem;
+  background: rgba(255,255,255,0.15);
+  border-radius: 10px;
+  padding: 1px 6px;
+  margin-left: 4px;
+  font-weight: bold;
+  color: #ffc107;
+}
+
+/* ---- Sidebar risk indicator ---- */
+#risk-emoji {
+  transition: all 0.3s ease;
+}
+
+#risk-label {
+  transition: color 0.3s ease;
+}
+
+/* ---- Module tabs ---- */
+.module-tab {
+  font-size: 0.78rem;
+  padding: 4px 10px;
+}
+
+/* ---- Admin panel ---- */
+.accordion-button:not(.collapsed) {
+  background-color: #1c2128;
+  color: #c9d1d9;
+}
+
+.accordion-button:focus {
+  box-shadow: none;
+}
+
+/* ---- Progress bar override ---- */
+.progress {
+  background-color: #21262d;
+}
+
+/* ---- Scrollbars ---- */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #0d1117; }
+::-webkit-scrollbar-thumb { background: #30363d; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #58a6ff; }
+
+/* ---- Print styles ---- */
+@media print {
+  .navbar, footer, .btn, .no-print { display: none !important; }
+  .card { border: 1px solid #ccc !important; }
+  body { background: white; color: black; }
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 768px) {
+  .display-6 { font-size: 1.8rem; }
+  .result-emoji { font-size: 2.5rem; }
+}

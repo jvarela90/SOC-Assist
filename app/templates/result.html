@@ -1,0 +1,227 @@
+{% extends "base.html" %}
+{% block title %}Resultado — Incidente #{{ incident_id }}{% endblock %}
+
+{% block content %}
+{% set cls = result.classification %}
+{% set tinfo = result.threshold_info %}
+
+<div class="row justify-content-center">
+  <div class="col-lg-9">
+
+    <!-- Header result card -->
+    <div class="card mb-4 border-0 shadow classification-card {{ cls }}">
+      <div class="card-body text-center py-5">
+        <div class="result-emoji mb-2">{{ tinfo.emoji }}</div>
+        <h1 class="display-6 fw-bold">{{ tinfo.label }}</h1>
+        <p class="lead mb-1">Score de Riesgo: <strong class="fs-3">{{ result.final_score | int }}</strong></p>
+        {% if result.multiplier > 1.0 %}
+        <p class="text-muted small">
+          Score base: {{ result.base_score | int }} &times; Multiplicador {{ result.multiplier }}x = {{ result.final_score | int }}
+        </p>
+        {% endif %}
+        <hr class="my-3 border-light opacity-25">
+        <p class="mb-0 fs-5">{{ result.recommendation }}</p>
+
+        {% if result.override_msg %}
+        <div class="alert alert-danger mt-3 mb-0">
+          <i class="bi bi-exclamation-octagon-fill me-2"></i>
+          {{ result.override_msg }}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Actions row -->
+    <div class="row g-3 mb-4">
+      <div class="col-md-4">
+        <a href="/evaluar" class="btn btn-outline-primary w-100">
+          <i class="bi bi-plus-circle me-2"></i>Nueva Evaluación
+        </a>
+      </div>
+      <div class="col-md-4">
+        <a href="/incidentes/{{ incident_id }}" class="btn btn-outline-secondary w-100">
+          <i class="bi bi-file-text me-2"></i>Ver Detalle Completo
+        </a>
+      </div>
+      <div class="col-md-4">
+        <button onclick="window.print()" class="btn btn-outline-light w-100">
+          <i class="bi bi-printer me-2"></i>Imprimir / PDF
+        </button>
+      </div>
+    </div>
+
+    <!-- Quick resolution -->
+    {% if cls in ['incidente', 'critico', 'brecha'] %}
+    <div class="card border-danger mb-4">
+      <div class="card-header bg-danger text-white">
+        <i class="bi bi-bell-fill me-2"></i><strong>Acción Requerida — Marcar Resolución</strong>
+      </div>
+      <div class="card-body">
+        <form method="post" action="/incident/{{ incident_id }}/resolve" class="row g-3">
+          <div class="col-md-5">
+            <label class="form-label small text-muted">Resultado del Caso</label>
+            <select name="resolution" class="form-select bg-dark text-light border-secondary">
+              <option value="">— Seleccionar —</option>
+              <option value="tp_escalated">✅ Verdadero Positivo — Escalado</option>
+              <option value="tp_resolved">✅ Verdadero Positivo — Resuelto</option>
+              <option value="fp">❌ Falso Positivo</option>
+              <option value="ongoing">⏳ En curso / Monitoreando</option>
+            </select>
+          </div>
+          <div class="col-md-5">
+            <label class="form-label small text-muted">Notas del Analista</label>
+            <input type="text" name="notes" class="form-control bg-dark text-light border-secondary" placeholder="Observaciones...">
+          </div>
+          <div class="col-md-2 d-flex align-items-end">
+            <button type="submit" class="btn btn-danger w-100">Guardar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Score breakdown -->
+    <div class="row g-3 mb-4">
+      <!-- Module scores -->
+      <div class="col-md-6">
+        <div class="card h-100 border-secondary">
+          <div class="card-header"><i class="bi bi-bar-chart me-2"></i>Score por Módulo</div>
+          <div class="card-body">
+            {% set max_mod = result.module_scores.values()|max if result.module_scores else 1 %}
+            {% for mod, score in result.module_scores.items() | sort(attribute=1, reverse=True) %}
+            <div class="mb-2">
+              <div class="d-flex justify-content-between small mb-1">
+                <span>{{ mod_labels.get(mod, mod) }}</span>
+                <strong>{{ score | int }}</strong>
+              </div>
+              <div class="progress" style="height: 6px;">
+                <div class="progress-bar bg-danger" style="width: {{ [(score / max_mod * 100), 100]|min | int }}%;"></div>
+              </div>
+            </div>
+            {% else %}
+            <p class="text-muted small">Sin datos de módulos.</p>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Active multipliers and hard rules -->
+      <div class="col-md-6">
+        <div class="card h-100 border-secondary">
+          <div class="card-header"><i class="bi bi-lightning-fill text-warning me-2"></i>Factores Especiales</div>
+          <div class="card-body">
+            {% if result.active_multipliers %}
+            <h6 class="text-warning small mb-2">Multiplicadores Activados:</h6>
+            {% for m in result.active_multipliers %}
+            <div class="alert alert-warning py-2 mb-2 small">
+              <i class="bi bi-x-diamond-fill me-1"></i>
+              <strong>×{{ m.multiplier }}</strong> — {{ m.description }}
+            </div>
+            {% endfor %}
+            {% endif %}
+
+            {% if result.hard_rule %}
+            <h6 class="text-danger small mb-2">Regla de Corte Activada:</h6>
+            <div class="alert alert-danger py-2 mb-2 small">
+              <i class="bi bi-exclamation-octagon-fill me-1"></i>
+              {{ result.hard_rule.description }}
+            </div>
+            {% endif %}
+
+            {% if not result.active_multipliers and not result.hard_rule %}
+            <p class="text-muted small">No se activaron multiplicadores ni reglas de corte.</p>
+            {% endif %}
+
+            <!-- Score reference -->
+            <hr class="border-secondary">
+            <div class="small text-muted">
+              <div class="d-flex justify-content-between"><span>🟢 Informativo</span><span>0–40</span></div>
+              <div class="d-flex justify-content-between"><span>🟡 Sospechoso</span><span>41–110</span></div>
+              <div class="d-flex justify-content-between"><span>🟠 Incidente</span><span>111–280</span></div>
+              <div class="d-flex justify-content-between"><span>🔴 Crítico</span><span>281–600</span></div>
+              <div class="d-flex justify-content-between"><span>🚨 Brecha</span><span>601+</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Top contributing factors -->
+    {% if result.answer_details %}
+    <div class="card border-secondary mb-4">
+      <div class="card-header">
+        <i class="bi bi-list-check me-2"></i>Factores Determinantes
+        <span class="badge bg-secondary ms-2">Top {{ [result.answer_details|length, 15]|min }}</span>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-dark table-hover mb-0">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Módulo</th>
+                <th>Pregunta</th>
+                <th>Respuesta</th>
+                <th class="text-end">Aporte</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for d in result.answer_details[:15] %}
+              <tr>
+                <td class="text-muted small">{{ loop.index }}</td>
+                <td><span class="badge bg-secondary small">{{ mod_labels.get(d.module, d.module) }}</span></td>
+                <td class="small">{{ d.question_text[:70] }}{% if d.question_text|length > 70 %}...{% endif %}</td>
+                <td class="small text-info">{{ d.value_label }}</td>
+                <td class="text-end fw-bold {% if d.contribution >= 15 %}text-danger{% elif d.contribution >= 8 %}text-warning{% else %}text-muted{% endif %}">
+                  +{{ d.contribution }}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Explainability summary -->
+    <div class="card border-secondary mb-4">
+      <div class="card-header"><i class="bi bi-lightbulb-fill text-warning me-2"></i>Explicación del Resultado</div>
+      <div class="card-body">
+        <p class="small text-muted mb-3">Este es el análisis detallado de por qué el evento fue clasificado como <strong>{{ tinfo.label }}</strong>:</p>
+
+        {% set top3 = result.answer_details[:3] %}
+        {% if top3 %}
+        <ul class="list-unstyled">
+          {% for d in top3 %}
+          <li class="mb-2 d-flex align-items-start gap-2">
+            <i class="bi bi-arrow-right-circle-fill text-danger mt-1"></i>
+            <div>
+              <strong>{{ d.question_text[:70] }}</strong>
+              <span class="text-muted"> — respondido: </span>
+              <span class="text-info">{{ d.value_label }}</span>
+              <span class="text-danger fw-bold"> (+{{ d.contribution }} pts)</span>
+            </div>
+          </li>
+          {% endfor %}
+        </ul>
+
+        {% if result.active_multipliers %}
+        <p class="small text-warning">
+          <i class="bi bi-lightning-fill me-1"></i>
+          El score fue amplificado por {{ result.active_multipliers|length }} multiplicador(es) (factor total: ×{{ result.multiplier }}).
+        </p>
+        {% endif %}
+        {% endif %}
+
+        <div class="alert alert-secondary mt-3 mb-0 small">
+          <strong>Analista:</strong> {{ analyst_name or "Anónimo" }} &nbsp;|&nbsp;
+          <strong>ID Incidente:</strong> #{{ incident_id }} &nbsp;|&nbsp;
+          <strong>Score Final:</strong> {{ result.final_score | int }} pts
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,203 @@
+{% extends "base.html" %}
+{% block title %}Panel de Administración{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center mb-4">
+  <h4 class="mb-0"><i class="bi bi-sliders text-danger me-2"></i>Panel de Administración</h4>
+  <span class="ms-auto badge bg-warning text-dark">Administrador</span>
+</div>
+
+<div class="row g-3">
+
+  <!-- Left column: weights and thresholds -->
+  <div class="col-lg-7">
+
+    <!-- Module weights -->
+    <div class="card border-secondary mb-3">
+      <div class="card-header">
+        <i class="bi bi-speedometer me-2"></i>Pesos de Módulos
+        <small class="text-muted ms-2">Multiplican el score de todas las preguntas del módulo</small>
+      </div>
+      <div class="card-body">
+        <form method="post" action="/admin/module-weights">
+          <div class="row g-3">
+            {% for mod in modules %}
+            <div class="col-6 col-md-4">
+              <label class="form-label small text-muted">{{ mod.label }}</label>
+              <input type="number" step="0.1" min="0.1" max="5.0"
+                     class="form-control bg-dark text-light border-secondary form-control-sm"
+                     name="weight_{{ mod.id }}"
+                     value="{{ config.module_weights[mod.id] }}">
+            </div>
+            {% endfor %}
+          </div>
+          <button type="submit" class="btn btn-primary btn-sm mt-3">
+            <i class="bi bi-save me-1"></i>Guardar Pesos de Módulos
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Thresholds -->
+    <div class="card border-secondary mb-3">
+      <div class="card-header">
+        <i class="bi bi-sliders2 me-2"></i>Umbrales de Clasificación
+      </div>
+      <div class="card-body">
+        <form method="post" action="/admin/thresholds">
+          <div class="table-responsive">
+            <table class="table table-dark table-sm">
+              <thead><tr><th>Nivel</th><th>Min</th><th>Max</th></tr></thead>
+              <tbody>
+                {% for key, t in config.thresholds.items() %}
+                <tr>
+                  <td>
+                    <span class="badge badge-cls-{{ key }}">{{ t.emoji }} {{ t.label }}</span>
+                  </td>
+                  <td>
+                    <input type="number" class="form-control form-control-sm bg-dark text-light border-secondary"
+                           name="thresh_{{ key }}_min" value="{{ t.min }}" style="width:80px;">
+                  </td>
+                  <td>
+                    <input type="number" class="form-control form-control-sm bg-dark text-light border-secondary"
+                           name="thresh_{{ key }}_max" value="{{ t.max }}" style="width:80px;">
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          <button type="submit" class="btn btn-primary btn-sm">
+            <i class="bi bi-save me-1"></i>Guardar Umbrales
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Question weights -->
+    <div class="card border-secondary mb-3">
+      <div class="card-header d-flex align-items-center">
+        <i class="bi bi-question-circle me-2"></i>Pesos por Pregunta
+        <button class="btn btn-sm btn-outline-secondary ms-auto" type="button"
+                data-bs-toggle="collapse" data-bs-target="#questionsTable">
+          Expandir / Colapsar
+        </button>
+      </div>
+      <div class="collapse" id="questionsTable">
+        <div class="card-body p-0">
+          <div class="table-responsive" style="max-height: 500px; overflow-y:auto;">
+            <table class="table table-dark table-sm table-hover mb-0">
+              <thead class="sticky-top table-secondary">
+                <tr>
+                  <th>ID</th>
+                  <th>Módulo</th>
+                  <th>Pregunta</th>
+                  <th>Peso</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for q in questions %}
+                <tr>
+                  <td class="text-muted small">{{ q.id }}</td>
+                  <td><span class="badge bg-secondary small">{{ q.module }}</span></td>
+                  <td class="small">{{ q.text[:60] }}...</td>
+                  <td>
+                    <form method="post" action="/admin/question-weight/{{ q.id }}" class="d-flex gap-1">
+                      <input type="number" step="0.1" min="0.1" max="5.0"
+                             class="form-control form-control-sm bg-dark text-light border-secondary"
+                             name="weight" value="{{ q.weight }}" style="width: 70px;">
+                      <button type="submit" class="btn btn-sm btn-outline-primary">OK</button>
+                    </form>
+                  </td>
+                  <td></td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Right column: calibration -->
+  <div class="col-lg-5">
+
+    <!-- Calibration -->
+    <div class="card border-warning mb-3">
+      <div class="card-header text-warning">
+        <i class="bi bi-cpu me-2"></i>Calibración Automática
+      </div>
+      <div class="card-body">
+        <p class="small text-muted">
+          El sistema analiza los incidentes marcados como resueltos y ajusta automáticamente
+          los pesos de las preguntas para reducir falsos positivos y mejorar la precisión.
+        </p>
+        <p class="small text-muted">
+          <strong>Mínimo requerido:</strong> 5 incidentes resueltos.
+        </p>
+        <form method="post" action="/admin/calibrate">
+          <button type="submit" class="btn btn-warning w-100">
+            <i class="bi bi-arrow-repeat me-2"></i>Ejecutar Calibración Ahora
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Calibration history -->
+    <div class="card border-secondary mb-3">
+      <div class="card-header"><i class="bi bi-clock-history me-2"></i>Historial de Calibración</div>
+      <div class="card-body p-0">
+        {% if cal_logs %}
+        <div class="list-group list-group-flush">
+          {% for log in cal_logs %}
+          <div class="list-group-item bg-dark border-secondary">
+            <div class="d-flex justify-content-between">
+              <small class="text-muted">{{ log.run_at.strftime('%d/%m/%Y %H:%M') }}</small>
+              <span class="badge bg-secondary">{{ log.adjustments_made }} ajustes</span>
+            </div>
+            <small>
+              Incidentes: {{ log.total_incidents }} |
+              TP: {{ log.true_positives }} |
+              FP: {{ log.false_positives }}
+            </small>
+            {% if log.notes %}<div class="text-muted" style="font-size:0.7rem;">{{ log.notes }}</div>{% endif %}
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-center text-muted py-3 small">Sin registros de calibración aún.</div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Weight adjustment history -->
+    <div class="card border-secondary">
+      <div class="card-header"><i class="bi bi-journal-text me-2"></i>Últimos Cambios de Pesos</div>
+      <div class="card-body p-0">
+        {% if weight_history %}
+        <div class="list-group list-group-flush" style="max-height:300px; overflow-y:auto;">
+          {% for wh in weight_history %}
+          <div class="list-group-item bg-dark border-secondary small">
+            <div class="d-flex justify-content-between">
+              <span>{{ wh.change_type }}</span>
+              <span class="text-muted">{{ wh.adjusted_at.strftime('%d/%m %H:%M') }}</span>
+            </div>
+            {% if wh.question_id %}<span class="text-muted">{{ wh.question_id }}</span>{% endif %}
+            {% if wh.module %}<span class="badge bg-dark border-secondary">{{ wh.module }}</span>{% endif %}
+            <span class="text-warning">{{ wh.old_value }}</span> →
+            <span class="text-success">{{ wh.new_value }}</span>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-center text-muted py-3 small">Sin cambios registrados aún.</div>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

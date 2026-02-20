@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block title %}Incidente #{{ incident.id }}{% endblock %}
+
+{% block content %}
+{% set t = thresholds[incident.classification] %}
+
+<div class="d-flex align-items-center mb-3">
+  <a href="/incidentes" class="btn btn-sm btn-outline-secondary me-3">
+    <i class="bi bi-arrow-left"></i>
+  </a>
+  <h4 class="mb-0">Incidente #{{ incident.id }}</h4>
+  <span class="ms-3 badge badge-cls-{{ incident.classification }} fs-6">
+    {{ t.emoji }} {{ t.label }}
+  </span>
+</div>
+
+<div class="row g-3 mb-4">
+  <!-- Info card -->
+  <div class="col-md-4">
+    <div class="card border-secondary h-100">
+      <div class="card-header"><i class="bi bi-info-circle me-2"></i>Detalles</div>
+      <div class="card-body">
+        <table class="table table-sm table-dark mb-0">
+          <tr><th class="text-muted">ID</th><td>#{{ incident.id }}</td></tr>
+          <tr><th class="text-muted">Fecha</th><td>{{ incident.timestamp.strftime('%d/%m/%Y %H:%M') }}</td></tr>
+          <tr><th class="text-muted">Score base</th><td>{{ incident.base_score | int }}</td></tr>
+          <tr><th class="text-muted">Multiplicador</th><td>×{{ incident.multiplier }}</td></tr>
+          <tr><th class="text-muted">Score final</th><td class="fw-bold">{{ incident.final_score | int }}</td></tr>
+          <tr><th class="text-muted">Escalado</th><td>{% if incident.escalated %}<span class="text-danger">Sí</span>{% else %}No{% endif %}</td></tr>
+          <tr><th class="text-muted">Analista</th><td>{{ incident.analyst_name or '—' }}</td></tr>
+          {% if incident.resolution %}
+          <tr><th class="text-muted">Resolución</th><td>{{ incident.resolution }}</td></tr>
+          {% endif %}
+          {% if incident.analyst_notes %}
+          <tr><th class="text-muted">Notas</th><td class="small">{{ incident.analyst_notes }}</td></tr>
+          {% endif %}
+          {% if incident.hard_rule_id %}
+          <tr><th class="text-muted">Regla corte</th><td class="text-danger small">{{ incident.hard_rule_id }}</td></tr>
+          {% endif %}
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Resolution card -->
+  <div class="col-md-8">
+    <div class="card border-secondary h-100">
+      <div class="card-header"><i class="bi bi-pencil-square me-2"></i>Actualizar Resolución</div>
+      <div class="card-body">
+        <form method="post" action="/incident/{{ incident.id }}/resolve" class="row g-3">
+          <div class="col-md-5">
+            <label class="form-label small">Resultado del Caso</label>
+            <select name="resolution" class="form-select bg-dark text-light border-secondary">
+              <option value="">— Seleccionar —</option>
+              <option value="tp_escalated" {% if incident.resolution == 'tp_escalated' %}selected{% endif %}>✅ Verdadero Positivo — Escalado</option>
+              <option value="tp_resolved"  {% if incident.resolution == 'tp_resolved' %}selected{% endif %}>✅ Verdadero Positivo — Resuelto</option>
+              <option value="fp"           {% if incident.resolution == 'fp' %}selected{% endif %}>❌ Falso Positivo</option>
+              <option value="ongoing"      {% if incident.resolution == 'ongoing' %}selected{% endif %}>⏳ En curso</option>
+            </select>
+          </div>
+          <div class="col-md-5">
+            <label class="form-label small">Notas del Analista</label>
+            <input type="text" name="notes" class="form-control bg-dark text-light border-secondary"
+                   value="{{ incident.analyst_notes or '' }}" placeholder="Observaciones...">
+          </div>
+          <div class="col-md-2 d-flex align-items-end">
+            <button type="submit" class="btn btn-primary w-100">Guardar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Answers by module -->
+<div class="card border-secondary">
+  <div class="card-header"><i class="bi bi-list-check me-2"></i>Respuestas por Módulo</div>
+  <div class="card-body p-0">
+    <div class="accordion accordion-flush" id="answersAccordion">
+      {% for mod, answers in answers_by_module.items() %}
+      <div class="accordion-item bg-dark border-secondary">
+        <h2 class="accordion-header">
+          <button class="accordion-button collapsed bg-dark text-light" type="button"
+                  data-bs-toggle="collapse" data-bs-target="#mod-{{ mod }}">
+            <span class="me-2">{{ mod_labels.get(mod, mod) }}</span>
+            <span class="badge bg-secondary ms-auto me-3">{{ answers|length }} respuestas</span>
+          </button>
+        </h2>
+        <div id="mod-{{ mod }}" class="accordion-collapse collapse">
+          <div class="accordion-body p-0">
+            <table class="table table-dark table-sm mb-0">
+              <thead><tr>
+                <th>Pregunta</th>
+                <th>Respuesta</th>
+                <th class="text-end">Aporte</th>
+              </tr></thead>
+              <tbody>
+                {% for ans in answers %}
+                <tr>
+                  <td class="small">
+                    {% if ans.question_id in questions_map %}
+                    {{ questions_map[ans.question_id]['text'][:80] }}
+                    {% else %}{{ ans.question_id }}{% endif %}
+                  </td>
+                  <td class="small text-info">{{ ans.value }}</td>
+                  <td class="text-end fw-bold {% if ans.contribution >= 10 %}text-danger{% elif ans.contribution > 0 %}text-warning{% else %}text-muted{% endif %}">
+                    {% if ans.contribution > 0 %}+{{ ans.contribution }}{% else %}—{% endif %}
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

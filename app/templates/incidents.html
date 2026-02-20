@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}Historial de Incidentes{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center mb-3">
+  <h4 class="mb-0"><i class="bi bi-list-ul text-danger me-2"></i>Historial de Evaluaciones</h4>
+  <span class="badge bg-secondary ms-2">{{ total }}</span>
+  <a href="/evaluar" class="ms-auto btn btn-danger btn-sm">
+    <i class="bi bi-plus-circle me-1"></i>Nueva Evaluación
+  </a>
+</div>
+
+{% if incidents %}
+<div class="table-responsive">
+  <table class="table table-dark table-hover align-middle">
+    <thead class="table-secondary">
+      <tr>
+        <th>#ID</th>
+        <th>Fecha/Hora (UTC)</th>
+        <th>Clasificación</th>
+        <th>Score</th>
+        <th>Multiplicador</th>
+        <th>Analista</th>
+        <th>Resolución</th>
+        <th>Escalado</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for inc in incidents %}
+      {% set t = thresholds[inc.classification] %}
+      <tr>
+        <td class="text-muted">#{{ inc.id }}</td>
+        <td class="small">{{ inc.timestamp.strftime('%d/%m/%Y %H:%M') }}</td>
+        <td>
+          <span class="badge badge-cls-{{ inc.classification }}">
+            {{ t.emoji }} {{ t.label }}
+          </span>
+        </td>
+        <td class="fw-bold {% if inc.final_score >= 281 %}text-danger{% elif inc.final_score >= 111 %}text-warning{% else %}text-muted{% endif %}">
+          {{ inc.final_score | int }}
+        </td>
+        <td class="small {% if inc.multiplier > 1 %}text-warning{% else %}text-muted{% endif %}">
+          {% if inc.multiplier > 1 %}×{{ inc.multiplier }}{% else %}—{% endif %}
+        </td>
+        <td class="small text-muted">{{ inc.analyst_name or '—' }}</td>
+        <td>
+          {% if inc.resolution == 'fp' %}
+          <span class="badge bg-secondary">❌ Falso Positivo</span>
+          {% elif inc.resolution == 'tp_resolved' %}
+          <span class="badge bg-success">✅ TP Resuelto</span>
+          {% elif inc.resolution == 'tp_escalated' %}
+          <span class="badge bg-success">✅ TP Escalado</span>
+          {% elif inc.resolution == 'ongoing' %}
+          <span class="badge bg-warning text-dark">⏳ En curso</span>
+          {% else %}
+          <span class="badge bg-dark border border-secondary text-muted">Pendiente</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if inc.escalated %}
+          <span class="badge bg-danger">Sí</span>
+          {% else %}
+          <span class="text-muted">—</span>
+          {% endif %}
+        </td>
+        <td>
+          <a href="/incidentes/{{ inc.id }}" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-eye"></i>
+          </a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="text-center py-5 text-muted">
+  <i class="bi bi-inbox fs-1 mb-3 d-block"></i>
+  <h5>No hay evaluaciones registradas</h5>
+  <a href="/evaluar" class="btn btn-danger mt-3">Realizar Primera Evaluación</a>
+</div>
+{% endif %}
+{% endblock %}

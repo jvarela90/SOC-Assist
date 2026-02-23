@@ -2,12 +2,14 @@
 SOC Assist — Rutas del formulario de evaluación
 Navegación por bloques temáticos (no por módulos).
 """
+import asyncio
 from fastapi import APIRouter, Request, Depends
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from app.models.database import get_db, Incident, IncidentAnswer
 from app.core.engine import engine_instance
+from app.services.notifications import notify_incident
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -120,6 +122,18 @@ async def evaluar_submit(request: Request, db: Session = Depends(get_db)):
 
     db.commit()
     db.refresh(incident)
+
+    # Fire-and-forget webhook notification (non-blocking)
+    hard_rule_id = result["hard_rule"]["id"] if result["hard_rule"] else None
+    base_url = str(request.base_url).rstrip("/")
+    asyncio.create_task(notify_incident(
+        incident_id=incident.id,
+        classification=result["classification"],
+        final_score=result["final_score"],
+        analyst_name=analyst_name,
+        hard_rule=hard_rule_id,
+        base_url=base_url,
+    ))
 
     mod_labels = {m["id"]: m["label"] for m in engine_instance.modules}
 

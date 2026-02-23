@@ -67,6 +67,19 @@ async def admin_home(request: Request, db: Session = Depends(get_db)):
         },
     }
 
+    # Webhook config for display
+    wh_raw = ti_config.get("webhooks", {})
+    webhooks = {
+        "teams": {
+            "url":     wh_raw.get("teams", {}).get("url", ""),
+            "enabled": wh_raw.get("teams", {}).get("enabled", False),
+        },
+        "slack": {
+            "url":     wh_raw.get("slack", {}).get("url", ""),
+            "enabled": wh_raw.get("slack", {}).get("enabled", False),
+        },
+    }
+
     return templates.TemplateResponse("admin.html", {
         "request": request,
         "config": config,
@@ -76,6 +89,7 @@ async def admin_home(request: Request, db: Session = Depends(get_db)):
         "weight_history": weight_history,
         "thresholds": engine_instance.thresholds,
         "ti_display": ti_display,
+        "webhooks": webhooks,
     })
 
 
@@ -217,3 +231,27 @@ async def clear_ti_keys(request: Request):
 
     save_ti_config(config)
     return RedirectResponse(url="/admin?msg=ti_keys_cleared", status_code=303)
+
+
+@router.post("/webhooks")
+async def save_webhooks(request: Request):
+    """Save webhook notification settings."""
+    form = await request.form()
+    config = load_ti_config()
+
+    teams_url = form.get("teams_url", "").strip()
+    teams_enabled = "teams_enabled" in form  # checkbox
+
+    slack_url = form.get("slack_url", "").strip()
+    slack_enabled = "slack_enabled" in form
+
+    config.setdefault("webhooks", {})
+    config["webhooks"]["teams"] = {"url": teams_url, "enabled": teams_enabled}
+    config["webhooks"]["slack"] = {"url": slack_url, "enabled": slack_enabled}
+
+    # Keep existing min_classification if set
+    if "min_classification" not in config["webhooks"]:
+        config["webhooks"]["min_classification"] = "critico"
+
+    save_ti_config(config)
+    return RedirectResponse(url="/admin?msg=webhooks_saved", status_code=303)

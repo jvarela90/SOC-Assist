@@ -259,6 +259,82 @@
       </div>
     </div>
 
+    <!-- ═══ Webhook Notifications ══════════════════════════════════════ -->
+    {% set wh = webhooks if webhooks is defined else {} %}
+    <div class="card border-secondary mb-3">
+      <div class="card-header">
+        <i class="bi bi-bell-fill me-2"></i>Notificaciones Webhook
+        <small class="text-muted ms-2">Alerta automática en Crítico / Brecha</small>
+      </div>
+      <div class="card-body">
+        {% if request.query_params.get('msg') == 'webhooks_saved' %}
+        <div class="alert alert-success py-2 small"><i class="bi bi-check-circle me-1"></i>Webhooks guardados.</div>
+        {% endif %}
+
+        <form method="post" action="/admin/webhooks">
+          <!-- Teams -->
+          <div class="mb-3">
+            <label class="form-label small d-flex align-items-center gap-2">
+              <span class="fw-semibold text-light">Microsoft Teams</span>
+              {% if wh.teams is defined and wh.teams.enabled %}
+              <span class="badge bg-success" style="font-size:0.65rem;">ACTIVO</span>
+              {% else %}
+              <span class="badge bg-secondary" style="font-size:0.65rem;">INACTIVO</span>
+              {% endif %}
+              <div class="form-check form-switch ms-auto mb-0">
+                <input class="form-check-input" type="checkbox" name="teams_enabled" id="teams-toggle"
+                       {% if wh.teams is defined and wh.teams.enabled %}checked{% endif %}>
+              </div>
+            </label>
+            <div class="input-group input-group-sm">
+              <span class="input-group-text bg-dark border-secondary text-muted">
+                <i class="bi bi-link-45deg"></i>
+              </span>
+              <input type="url" name="teams_url"
+                     class="form-control bg-dark text-light border-secondary"
+                     placeholder="https://outlook.office.com/webhook/..."
+                     value="{% if wh.teams is defined and wh.teams.url %}{{ wh.teams.url }}{% endif %}">
+            </div>
+            <div class="form-text text-muted" style="font-size:0.7rem;">
+              Teams → Canal → Connectores → Webhook entrante
+            </div>
+          </div>
+
+          <!-- Slack -->
+          <div class="mb-3">
+            <label class="form-label small d-flex align-items-center gap-2">
+              <span class="fw-semibold text-light">Slack</span>
+              {% if wh.slack is defined and wh.slack.enabled %}
+              <span class="badge bg-success" style="font-size:0.65rem;">ACTIVO</span>
+              {% else %}
+              <span class="badge bg-secondary" style="font-size:0.65rem;">INACTIVO</span>
+              {% endif %}
+              <div class="form-check form-switch ms-auto mb-0">
+                <input class="form-check-input" type="checkbox" name="slack_enabled" id="slack-toggle"
+                       {% if wh.slack is defined and wh.slack.enabled %}checked{% endif %}>
+              </div>
+            </label>
+            <div class="input-group input-group-sm">
+              <span class="input-group-text bg-dark border-secondary text-muted">
+                <i class="bi bi-link-45deg"></i>
+              </span>
+              <input type="url" name="slack_url"
+                     class="form-control bg-dark text-light border-secondary"
+                     placeholder="https://hooks.slack.com/services/..."
+                     value="{% if wh.slack is defined and wh.slack.url %}{{ wh.slack.url }}{% endif %}">
+            </div>
+            <div class="form-text text-muted" style="font-size:0.7rem;">
+              Slack → App → Incoming Webhooks → Add New
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-outline-secondary btn-sm w-100">
+            <i class="bi bi-save me-1"></i>Guardar Webhooks
+          </button>
+        </form>
+      </div>
+    </div>
+
     <!-- ═══ TI Lookup Widget ═══════════════════════════════════════════ -->
     <div class="card border-secondary mb-3">
       <div class="card-header">
@@ -384,126 +460,14 @@
 
 {% block scripts %}
 <script>
-// ── TI Lookup Widget ────────────────────────────────────────────────────────
-async function runTiLookup() {
-  const indicator = document.getElementById('ti-indicator-input').value.trim();
-  const type = document.getElementById('ti-type-select').value;
-  const resultEl = document.getElementById('ti-result');
-  const loadingEl = document.getElementById('ti-loading');
-  if (!indicator) return;
-
-  resultEl.style.display = 'none';
-  loadingEl.style.display = 'block';
-
-  try {
-    const resp = await fetch('/api/ti/lookup', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({indicator, type, sources: ['virustotal','abuseipdb','xforce']})
-    });
-    const data = await resp.json();
-    resultEl.innerHTML = renderTiResult(data);
-  } catch (e) {
-    resultEl.innerHTML = `<div class="alert alert-danger py-2 small">Error: ${e.message}</div>`;
-  } finally {
-    loadingEl.style.display = 'none';
-    resultEl.style.display = 'block';
-  }
-}
-
-async function runMacLookup() {
-  const mac = document.getElementById('mac-input').value.trim();
-  const resultEl = document.getElementById('ti-result');
-  if (!mac) return;
-
-  try {
-    const resp = await fetch(`/api/mac/lookup?mac=${encodeURIComponent(mac)}`);
-    const data = await resp.json();
-    resultEl.innerHTML = renderMacResult(data);
-    resultEl.style.display = 'block';
-  } catch (e) {
-    resultEl.innerHTML = `<div class="alert alert-danger py-2 small">Error: ${e.message}</div>`;
-    resultEl.style.display = 'block';
-  }
-}
-
-function verdictBadge(v) {
-  const map = {
-    'MALICIOSO':     'bg-danger',
-    'SOSPECHOSO':    'bg-warning text-dark',
-    'LIMPIO':        'bg-success',
-    'BLOQUEADO':     'bg-secondary',
-    'SIN_RESULTADOS':'bg-secondary',
-    'ERROR':         'bg-danger',
-  };
-  return `<span class="badge ${map[v] || 'bg-secondary'}">${v}</span>`;
-}
-
-function renderTiResult(data) {
-  if (data.blocked) {
-    return `<div class="alert alert-secondary py-2 small">
-      <i class="bi bi-shield-slash me-1"></i><strong>IP Bloqueada:</strong> ${data.block_reason}
-    </div>`;
-  }
-
-  let html = `<div class="mb-2 d-flex align-items-center gap-2">
-    <strong class="small">${data.indicator}</strong>
-    ${verdictBadge(data.summary_verdict)}
-  </div>`;
-
-  for (const r of (data.results || [])) {
-    html += `<div class="border border-secondary rounded p-2 mb-1" style="font-size:0.75rem;">
-      <div class="d-flex justify-content-between">
-        <strong>${r.source}</strong>${verdictBadge(r.verdict)}
-      </div>`;
-    if (r.source === 'VirusTotal') {
-      html += `<div>Detecciones: <span class="text-danger">${r.malicious_votes}</span>/${r.total_engines} motores</div>`;
-      if (r.country) html += `<div class="text-muted">País: ${r.country} | AS: ${r.as_owner || 'N/A'}</div>`;
-    } else if (r.source === 'AbuseIPDB') {
-      html += `<div>Score abuso: <span class="text-warning">${r.abuse_score}%</span> (${r.total_reports} reportes)</div>`;
-      html += `<div class="text-muted">País: ${r.country} | ISP: ${r.isp}</div>`;
-      if (r.is_tor) html += `<span class="badge bg-danger">TOR EXIT NODE</span>`;
-    } else if (r.source === 'IBM X-Force') {
-      html += `<div>Risk Score: <span class="text-warning">${r.risk_score}/10</span></div>`;
-      if (r.categories && r.categories.length > 0) html += `<div class="text-muted">${r.categories.join(', ')}</div>`;
-    }
-    if (r.raw_url) html += `<a href="${r.raw_url}" target="_blank" class="small text-info">Ver en fuente</a>`;
-    html += `</div>`;
-  }
-
-  for (const e of (data.errors || [])) {
-    html += `<div class="alert alert-secondary py-1 small mb-1">
-      <strong>${e.source}:</strong> ${e.error}
-    </div>`;
-  }
-
-  return html;
-}
-
-function renderMacResult(data) {
-  if (data.error) {
-    return `<div class="alert alert-warning py-2 small">${data.error}</div>`;
-  }
-  const found = data.found;
-  return `<div class="border border-secondary rounded p-2" style="font-size:0.8rem;">
-    <div class="d-flex align-items-center gap-2 mb-1">
-      <i class="bi ${data.icon || 'bi-question-circle'} text-info"></i>
-      <strong>${data.vendor}</strong>
-      <span class="badge bg-dark border border-secondary">${data.category}</span>
-      ${found ? '<span class="badge bg-success">Encontrado</span>' : '<span class="badge bg-secondary">No encontrado</span>'}
-    </div>
-    <div class="text-muted">OUI: <code>${data.oui}</code> | MAC: <code>${data.mac_normalized}</code></div>
-  </div>`;
-}
-
-// Enter key support
+// Admin TI widget — delegates to shared TIWidget in main.js
 document.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('ti-indicator-input').addEventListener('keydown', e => {
-    if (e.key === 'Enter') runTiLookup();
-  });
-  document.getElementById('mac-input').addEventListener('keydown', e => {
-    if (e.key === 'Enter') runMacLookup();
-  });
+  const tiInput  = document.getElementById('ti-indicator-input');
+  const macInput = document.getElementById('mac-input');
+  if (tiInput)  tiInput.addEventListener('keydown',  e => { if (e.key === 'Enter') TIWidget.lookupTI('ti-indicator-input','ti-type-select','ti-result','ti-loading'); });
+  if (macInput) macInput.addEventListener('keydown', e => { if (e.key === 'Enter') TIWidget.lookupMAC('mac-input','ti-result'); });
 });
+function runTiLookup()  { TIWidget.lookupTI('ti-indicator-input','ti-type-select','ti-result','ti-loading'); }
+function runMacLookup() { TIWidget.lookupMAC('mac-input','ti-result'); }
 </script>
 {% endblock %}

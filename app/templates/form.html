@@ -219,6 +219,66 @@
         </div>
       </div>
 
+      <!-- TI Assistant -->
+      <div class="card border-secondary mt-3">
+        <div class="card-header py-2 d-flex align-items-center">
+          <i class="bi bi-shield-lock-fill text-info me-2"></i>
+          <small class="text-muted text-uppercase fw-semibold">Asistente TI</small>
+          <button class="btn btn-link btn-sm ms-auto p-0 text-muted"
+                  data-bs-toggle="collapse" data-bs-target="#ti-assistant-body"
+                  style="font-size:0.7rem; text-decoration:none;">▾</button>
+        </div>
+        <div class="collapse" id="ti-assistant-body">
+          <div class="card-body pb-2">
+
+            <!-- IP / Domain lookup -->
+            <div class="mb-2">
+              <div class="input-group input-group-sm">
+                <input type="text" id="form-ti-input"
+                       class="form-control bg-dark text-light border-secondary"
+                       placeholder="IP o dominio...">
+                <select id="form-ti-type"
+                        class="form-select form-select-sm bg-dark text-light border-secondary"
+                        style="max-width:75px;">
+                  <option value="auto">Auto</option>
+                  <option value="ip">IP</option>
+                  <option value="domain">Dom.</option>
+                </select>
+                <button class="btn btn-outline-info btn-sm"
+                        onclick="TIWidget.lookupTI('form-ti-input','form-ti-type','form-ti-result','form-ti-loading')">
+                  <i class="bi bi-search"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- MAC OUI lookup -->
+            <div class="mb-2">
+              <div class="input-group input-group-sm">
+                <span class="input-group-text bg-dark border-secondary text-muted">
+                  <i class="bi bi-hdd-network"></i>
+                </span>
+                <input type="text" id="form-mac-input"
+                       class="form-control bg-dark text-light border-secondary"
+                       placeholder="MAC address...">
+                <button class="btn btn-outline-secondary btn-sm"
+                        onclick="TIWidget.lookupMAC('form-mac-input','form-ti-result')">
+                  OUI
+                </button>
+              </div>
+            </div>
+
+            <div id="form-ti-loading" class="text-center py-1 text-muted small" style="display:none;">
+              <span class="spinner-border spinner-border-sm me-1"></span>Consultando...
+            </div>
+            <div id="form-ti-result" style="display:none;"></div>
+
+            <div class="text-muted mt-2" style="font-size:0.65rem;">
+              <i class="bi bi-shield-slash me-1"></i>IPs privadas no se consultan externamente.
+            </div>
+          </div>
+        </div>
+      </div>
+
     </div><!-- /.sticky-top -->
   </div><!-- /.col-lg-4 -->
 
@@ -355,6 +415,12 @@ document.addEventListener('DOMContentLoaded', () => {
     new bootstrap.Tooltip(el);
   });
   goToBlock(0);
+
+  // TI assistant — Enter key support
+  const tiIn  = document.getElementById('form-ti-input');
+  const macIn = document.getElementById('form-mac-input');
+  if (tiIn)  tiIn.addEventListener('keydown',  e => { if (e.key === 'Enter') TIWidget.lookupTI('form-ti-input','form-ti-type','form-ti-result','form-ti-loading'); });
+  if (macIn) macIn.addEventListener('keydown', e => { if (e.key === 'Enter') TIWidget.lookupMAC('form-mac-input','form-ti-result'); });
 });
 </script>
 {% endblock %}

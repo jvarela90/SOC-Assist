@@ -66,16 +66,16 @@
 | 26 | Lookup de IP en AbuseIPDB (abuse score, total reports, country) | ✅ |
 | 27 | Lookup de dominio / URL en IBM X-Force Exchange | ✅ |
 | 28 | Base de datos OUI local para identificar fabricante/dispositivo por MAC | ✅ |
-| 29 | Widget de consulta TI en formulario (campo IP origen/destino) | ⬜ Pendiente |
+| 29 | Widget de consulta TI en formulario (campo IP origen/destino) | ✅ |
 
-### 3.2 — Notificaciones (Pendiente)
+### 3.2 — Notificaciones (Parcialmente completado)
 
 | # | Feature | Estado |
 |---|---------|--------|
-| 30 | Webhook a Microsoft Teams al clasificar como Crítico o Brecha | ⬜ |
-| 31 | Webhook a Slack con resumen del incidente | ⬜ |
+| 30 | Webhook a Microsoft Teams al clasificar como Crítico o Brecha | ✅ |
+| 31 | Webhook a Slack con resumen del incidente | ✅ |
 | 32 | Notificación por email (SMTP configurable) | ⬜ |
-| 33 | Configuración de webhooks desde panel admin | ⬜ |
+| 33 | Configuración de webhooks desde panel admin | ✅ |
 
 ### 3.3 — Autenticación básica (Pendiente)
 
@@ -146,7 +146,8 @@ SOC-Assist/
     │   └── ti.py             # API de Threat Intelligence y MAC OUI lookup
     ├── services/
     │   ├── threat_intel.py   # VirusTotal / AbuseIPDB / IBM X-Force + validación IP privada
-    │   └── mac_oui.py        # Lookup fabricante por prefijo MAC (OUI database local)
+    │   ├── mac_oui.py        # Lookup fabricante por prefijo MAC (OUI database local)
+    │   └── notifications.py  # Webhooks Teams / Slack — dispatch fire-and-forget
     ├── templates/            # Jinja2 + Bootstrap 5 (tema oscuro)
     └── static/               # CSS + JS
 ```

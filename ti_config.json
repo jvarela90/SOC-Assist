@@ -1,0 +1,15 @@
+{
+  "virustotal": {
+    "api_key": "",
+    "note": "Free tier: 4 req/min, 500 req/day. https://www.virustotal.com/gui/sign-in"
+  },
+  "abuseipdb": {
+    "api_key": "",
+    "note": "Free tier: 1000 req/day. https://www.abuseipdb.com/register"
+  },
+  "xforce": {
+    "api_key": "",
+    "api_password": "",
+    "note": "Free account: https://exchange.xforce.ibmcloud.com/login"
+  }
+}

@@ -1,6 +1,6 @@
 """
 SOC Assist — Panel de Administración
-Edición de pesos, umbrales y calibración manual.
+Edición de pesos, umbrales, calibración manual y claves de TI.
 """
 import json
 import re
@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from app.models.database import get_db, CalibrationLog, WeightHistory
 from app.core.engine import engine_instance
 from app.core.calibration import run_calibration
+from app.services.threat_intel import load_ti_config, save_ti_config
 
 router = APIRouter(prefix="/admin")
 templates = Jinja2Templates(directory="app/templates")
@@ -36,9 +37,35 @@ def _save_json(path: Path, data: dict):
 async def admin_home(request: Request, db: Session = Depends(get_db)):
     config = _load_json(CONFIG_PATH)
     q_data = _load_json(QUESTIONS_PATH)
+    ti_config = load_ti_config()
 
     cal_logs = db.query(CalibrationLog).order_by(CalibrationLog.run_at.desc()).limit(5).all()
     weight_history = db.query(WeightHistory).order_by(WeightHistory.adjusted_at.desc()).limit(20).all()
+
+    # Mask API keys for display (show only last 4 chars)
+    def _mask(key: str) -> str:
+        if not key or len(key) < 5:
+            return "" if not key else "****"
+        return "*" * (len(key) - 4) + key[-4:]
+
+    ti_display = {
+        "virustotal": {
+            "api_key_masked": _mask(ti_config.get("virustotal", {}).get("api_key", "")),
+            "configured": bool(ti_config.get("virustotal", {}).get("api_key", "")),
+        },
+        "abuseipdb": {
+            "api_key_masked": _mask(ti_config.get("abuseipdb", {}).get("api_key", "")),
+            "configured": bool(ti_config.get("abuseipdb", {}).get("api_key", "")),
+        },
+        "xforce": {
+            "api_key_masked": _mask(ti_config.get("xforce", {}).get("api_key", "")),
+            "api_password_masked": _mask(ti_config.get("xforce", {}).get("api_password", "")),
+            "configured": bool(
+                ti_config.get("xforce", {}).get("api_key", "") and
+                ti_config.get("xforce", {}).get("api_password", "")
+            ),
+        },
+    }
 
     return templates.TemplateResponse("admin.html", {
         "request": request,
@@ -48,6 +75,7 @@ async def admin_home(request: Request, db: Session = Depends(get_db)):
         "cal_logs": cal_logs,
         "weight_history": weight_history,
         "thresholds": engine_instance.thresholds,
+        "ti_display": ti_display,
     })
 
 
@@ -142,3 +170,50 @@ async def manual_calibration(request: Request, db: Session = Depends(get_db)):
     engine_instance.reload()
     status = result.get("status", "unknown")
     return RedirectResponse(url=f"/admin?msg=calibration_{status}", status_code=303)
+
+
+@router.post("/ti-keys")
+async def save_ti_keys(request: Request):
+    """Save Threat Intelligence API keys to ti_config.json."""
+    form = await request.form()
+    config = load_ti_config()
+
+    # VirusTotal
+    vt_key = form.get("vt_api_key", "").strip()
+    if vt_key and not vt_key.startswith("*"):
+        config.setdefault("virustotal", {})["api_key"] = vt_key
+
+    # AbuseIPDB
+    abuse_key = form.get("abuse_api_key", "").strip()
+    if abuse_key and not abuse_key.startswith("*"):
+        config.setdefault("abuseipdb", {})["api_key"] = abuse_key
+
+    # IBM X-Force
+    xf_key = form.get("xforce_api_key", "").strip()
+    xf_pwd = form.get("xforce_api_password", "").strip()
+    if xf_key and not xf_key.startswith("*"):
+        config.setdefault("xforce", {})["api_key"] = xf_key
+    if xf_pwd and not xf_pwd.startswith("*"):
+        config.setdefault("xforce", {})["api_password"] = xf_pwd
+
+    save_ti_config(config)
+    return RedirectResponse(url="/admin?msg=ti_keys_saved", status_code=303)
+
+
+@router.post("/ti-keys/clear")
+async def clear_ti_keys(request: Request):
+    """Clear all Threat Intelligence API keys."""
+    form = await request.form()
+    source = form.get("source", "all")
+    config = load_ti_config()
+
+    if source == "all" or source == "virustotal":
+        config.setdefault("virustotal", {})["api_key"] = ""
+    if source == "all" or source == "abuseipdb":
+        config.setdefault("abuseipdb", {})["api_key"] = ""
+    if source == "all" or source == "xforce":
+        config.setdefault("xforce", {})["api_key"] = ""
+        config.setdefault("xforce", {})["api_password"] = ""
+
+    save_ti_config(config)
+    return RedirectResponse(url="/admin?msg=ti_keys_cleared", status_code=303)

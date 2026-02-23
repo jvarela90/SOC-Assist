@@ -1,6 +1,6 @@
 # SOC Assist — Guía de Desarrollo y Roadmap
 
-> **Estado actual:** v1.2 — Motor ponderado + UI neutral por bloques + Threat Intelligence + OUI Database
+> **Estado actual:** v1.3 — Motor ponderado + TI + OUI + Webhooks + Autenticación por roles
 > **Repositorio:** https://github.com/jvarela90/SOC-Assist
 > **Última actualización:** 2026-02
 
@@ -12,7 +12,7 @@
 |------|--------|--------|
 | 1 | Core — Motor + Formulario | ✅ Completado |
 | 2 | UX — Bloques temáticos + sesgo neutral | ✅ Completado |
-| 3 | Integraciones externas | 🔄 En progreso |
+| 3 | Integraciones externas | ✅ Completado |
 | 4 | Analítica avanzada + Colaboración | ⬜ Pendiente |
 | 5 | Producción + Seguridad | ⬜ Pendiente |
 
@@ -54,7 +54,7 @@
 
 ---
 
-## Fase 3 — Integraciones Externas (🔄 En Progreso)
+## Fase 3 — Integraciones Externas (Completado ✅)
 
 ### 3.1 — Threat Intelligence (implementado en esta versión)
 
@@ -77,13 +77,13 @@
 | 32 | Notificación por email (SMTP configurable) | ⬜ |
 | 33 | Configuración de webhooks desde panel admin | ✅ |
 
-### 3.3 — Autenticación básica (Pendiente)
+### 3.3 — Autenticación básica (Completado ✅)
 
 | # | Feature | Estado |
 |---|---------|--------|
-| 34 | Login con usuario + contraseña (sesión local) | ⬜ |
-| 35 | Roles: Analista (solo evaluar/ver) / Admin (todo) | ⬜ |
-| 36 | Protección de /admin con rol Admin | ⬜ |
+| 34 | Login con usuario + contraseña (sesión local, bcrypt) | ✅ |
+| 35 | Roles: Analista (solo evaluar/ver) / Admin (todo) | ✅ |
+| 36 | Protección de /admin con rol Admin | ✅ |
 
 ---
 
@@ -140,10 +140,15 @@ SOC-Assist/
     ├── models/
     │   └── database.py       # SQLAlchemy + SQLite (tablas: Incident, IncidentAnswer…)
     ├── routes/
+    │   ├── auth.py           # Login / logout (sesión con cookies firmadas)
     │   ├── form.py           # Formulario wizard por bloques
     │   ├── dashboard.py      # Dashboard + historial de incidentes
-    │   ├── admin.py          # Panel admin (pesos, umbrales, calibración, TI keys)
+    │   ├── admin.py          # Panel admin (pesos, umbrales, calibración, TI keys, usuarios)
     │   └── ti.py             # API de Threat Intelligence y MAC OUI lookup
+    ├── core/
+    │   ├── engine.py         # Motor de scoring ponderado
+    │   ├── calibration.py    # Auto-calibración basada en TP/FP
+    │   └── auth.py           # Hashing bcrypt + dependencias require_auth / require_admin
     ├── services/
     │   ├── threat_intel.py   # VirusTotal / AbuseIPDB / IBM X-Force + validación IP privada
     │   ├── mac_oui.py        # Lookup fabricante por prefijo MAC (OUI database local)

@@ -9,6 +9,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from app.models.database import get_db, Incident, IncidentAnswer
 from app.core.engine import engine_instance
+from app.core.auth import require_auth
 from app.services.notifications import notify_incident
 
 router = APIRouter()
@@ -68,12 +69,12 @@ def _build_weighted_options(questions_by_block: dict) -> dict:
 
 
 @router.get("/", response_class=HTMLResponse)
-async def index(request: Request):
+async def index(request: Request, _user: dict = Depends(require_auth)):
     return templates.TemplateResponse("index.html", {"request": request})
 
 
 @router.get("/evaluar", response_class=HTMLResponse)
-async def evaluar_form(request: Request):
+async def evaluar_form(request: Request, _user: dict = Depends(require_auth)):
     blocks_ordered, questions_by_block = _build_blocks_data()
     weighted_options = _build_weighted_options(questions_by_block)
     total_questions = sum(len(qs) for qs in questions_by_block.values())
@@ -89,7 +90,7 @@ async def evaluar_form(request: Request):
 
 
 @router.post("/evaluar", response_class=HTMLResponse)
-async def evaluar_submit(request: Request, db: Session = Depends(get_db)):
+async def evaluar_submit(request: Request, db: Session = Depends(get_db), _user: dict = Depends(require_auth)):
     form_data = await request.form()
     all_data = dict(form_data)
     analyst_name = all_data.get("analyst_name", "Anónimo") or "Anónimo"
@@ -147,7 +148,7 @@ async def evaluar_submit(request: Request, db: Session = Depends(get_db)):
 
 
 @router.post("/api/score-preview", response_class=JSONResponse)
-async def score_preview(request: Request):
+async def score_preview(request: Request, _user: dict = Depends(require_auth)):
     body = await request.json()
     answers = body.get("answers", {})
     result = engine_instance.evaluate(answers)
@@ -159,7 +160,7 @@ async def score_preview(request: Request):
 
 
 @router.post("/incident/{incident_id}/resolve")
-async def resolve_incident(incident_id: int, request: Request, db: Session = Depends(get_db)):
+async def resolve_incident(incident_id: int, request: Request, db: Session = Depends(get_db), _user: dict = Depends(require_auth)):
     form_data = await request.form()
     incident = db.query(Incident).filter(Incident.id == incident_id).first()
     if incident:

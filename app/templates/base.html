@@ -20,7 +20,7 @@
     <a class="navbar-brand d-flex align-items-center gap-2" href="/">
       <i class="bi bi-shield-shaded text-danger fs-4"></i>
       <span class="fw-bold">SOC<span class="text-danger">Assist</span></span>
-      <small class="text-muted fs-6 ms-1">v1.0</small>
+      <small class="text-muted fs-6 ms-1">v1.3</small>
     </a>
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu">
@@ -49,18 +49,30 @@
             <i class="bi bi-list-ul"></i> Historial
           </a>
         </li>
+        {% set _u = request.session.get("user") %}
+        {% if _u and _u.role == "admin" %}
         <li class="nav-item">
           <a class="nav-link {% if '/admin' in request.url.path %}active{% endif %}" href="/admin">
             <i class="bi bi-sliders"></i> Admin
           </a>
         </li>
+        {% endif %}
       </ul>
 
-      <!-- Status indicator -->
-      <div class="d-flex align-items-center gap-2">
+      <!-- Status indicator + user info -->
+      <div class="d-flex align-items-center gap-3">
         <span class="badge bg-success rounded-pill px-3 py-2">
           <i class="bi bi-activity"></i> Sistema Activo
         </span>
+        {% if _u %}
+        <span class="text-muted small d-none d-md-inline">
+          <i class="bi bi-person-circle me-1"></i>{{ _u.username }}
+          {% if _u.role == "admin" %}<span class="badge bg-danger ms-1" style="font-size:0.65rem;">Admin</span>{% endif %}
+        </span>
+        <a href="/logout" class="btn btn-sm btn-outline-secondary" title="Cerrar sesión">
+          <i class="bi bi-box-arrow-right"></i>
+        </a>
+        {% endif %}
       </div>
     </div>
   </div>
@@ -68,9 +80,10 @@
 
 <!-- Flash messages from URL params -->
 {% if request.query_params.get('msg') %}
-<div class="alert alert-success alert-dismissible fade show m-3 py-2" role="alert">
-  <i class="bi bi-check-circle-fill me-2"></i>
-  {% set msg = request.query_params.get('msg') %}
+{% set msg = request.query_params.get('msg') %}
+{% set is_error = msg in ('user_error', 'user_exists', 'user_self_delete') %}
+<div class="alert {% if is_error %}alert-warning{% else %}alert-success{% endif %} alert-dismissible fade show m-3 py-2" role="alert">
+  <i class="bi {% if is_error %}bi-exclamation-triangle-fill{% else %}bi-check-circle-fill{% endif %} me-2"></i>
   {% if msg == 'module_weights_saved' %}Pesos de módulos guardados correctamente.
   {% elif msg == 'thresholds_saved' %}Umbrales actualizados correctamente.
   {% elif msg == 'question_saved' %}Peso de pregunta guardado.
@@ -79,6 +92,12 @@
   {% elif msg == 'ti_keys_saved' %}Claves de Threat Intelligence guardadas correctamente.
   {% elif msg == 'ti_keys_cleared' %}Claves de Threat Intelligence eliminadas.
   {% elif msg == 'webhooks_saved' %}Configuración de webhooks guardada correctamente.
+  {% elif msg == 'user_added' %}Usuario creado correctamente.
+  {% elif msg == 'user_deleted' %}Usuario eliminado.
+  {% elif msg == 'password_changed' %}Contraseña actualizada correctamente.
+  {% elif msg == 'user_error' %}Error: nombre de usuario o contraseña vacíos.
+  {% elif msg == 'user_exists' %}Error: ese nombre de usuario ya existe.
+  {% elif msg == 'user_self_delete' %}No puedes eliminar tu propia cuenta.
   {% else %}Operación completada.{% endif %}
   <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
 </div>
@@ -94,7 +113,7 @@
   <small>
     <i class="bi bi-shield-shaded text-danger"></i>
     <strong>SOC Assist</strong> — Plataforma de Alerta Temprana en Ciberseguridad
-    &nbsp;|&nbsp; Motor v1.0 &nbsp;|&nbsp; Para uso interno
+    &nbsp;|&nbsp; Motor v1.3 &nbsp;|&nbsp; Para uso interno
   </small>
 </footer>
 

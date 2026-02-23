@@ -8,6 +8,7 @@ from sqlalchemy import (
     DateTime, Boolean, Text, ForeignKey
 )
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship
+import bcrypt as _bcrypt
 
 DATABASE_URL = "sqlite:///./soc_assist.db"
 
@@ -78,6 +79,18 @@ class CalibrationLog(Base):
     notes            = Column(Text, nullable=True)
 
 
+class User(Base):
+    __tablename__ = "users"
+
+    id            = Column(Integer, primary_key=True, index=True)
+    username      = Column(String(50), unique=True, nullable=False, index=True)
+    password_hash = Column(String(200), nullable=False)
+    role          = Column(String(20), nullable=False, default="analyst")  # analyst | admin
+    is_active     = Column(Boolean, default=True)
+    created_at    = Column(DateTime, default=datetime.utcnow)
+    last_login    = Column(DateTime, nullable=True)
+
+
 def get_db():
     db = SessionLocal()
     try:
@@ -88,3 +101,19 @@ def get_db():
 
 def init_db():
     Base.metadata.create_all(bind=engine)
+    _ensure_default_admin()
+
+
+def _ensure_default_admin():
+    """Create default admin/admin123 on first run if no users exist."""
+    db = SessionLocal()
+    try:
+        if db.query(User).count() == 0:
+            db.add(User(
+                username="admin",
+                password_hash=_bcrypt.hashpw(b"admin123", _bcrypt.gensalt()).decode(),
+                role="admin",
+            ))
+            db.commit()
+    finally:
+        db.close()

@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from app.models.database import get_db, Incident, IncidentAnswer
 from app.core.engine import engine_instance
+from app.core.auth import require_auth
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -18,7 +19,7 @@ CLASSIFICATION_ORDER = ["informativo", "sospechoso", "incidente", "critico", "br
 
 
 @router.get("/dashboard", response_class=HTMLResponse)
-async def dashboard(request: Request, db: Session = Depends(get_db)):
+async def dashboard(request: Request, db: Session = Depends(get_db), _user: dict = Depends(require_auth)):
     all_incidents = db.query(Incident).order_by(Incident.timestamp.desc()).all()
     total = len(all_incidents)
 
@@ -113,7 +114,7 @@ async def dashboard(request: Request, db: Session = Depends(get_db)):
 
 
 @router.get("/incidentes", response_class=HTMLResponse)
-async def incidents_list(request: Request, db: Session = Depends(get_db)):
+async def incidents_list(request: Request, db: Session = Depends(get_db), _user: dict = Depends(require_auth)):
     incidents = db.query(Incident).order_by(Incident.timestamp.desc()).all()
     return templates.TemplateResponse("incidents.html", {
         "request": request,
@@ -124,7 +125,7 @@ async def incidents_list(request: Request, db: Session = Depends(get_db)):
 
 
 @router.get("/incidentes/{incident_id}", response_class=HTMLResponse)
-async def incident_detail(incident_id: int, request: Request, db: Session = Depends(get_db)):
+async def incident_detail(incident_id: int, request: Request, db: Session = Depends(get_db), _user: dict = Depends(require_auth)):
     incident = db.query(Incident).filter(Incident.id == incident_id).first()
     if not incident:
         return HTMLResponse("<h2>Incidente no encontrado</h2>", status_code=404)

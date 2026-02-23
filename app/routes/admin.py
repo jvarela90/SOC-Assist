@@ -1,17 +1,18 @@
 """
 SOC Assist — Panel de Administración
-Edición de pesos, umbrales, calibración manual y claves de TI.
+Edición de pesos, umbrales, calibración manual, claves de TI y gestión de usuarios.
 """
 import json
 import re
 from pathlib import Path
-from fastapi import APIRouter, Request, Depends
+from fastapi import APIRouter, Request, Depends, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
-from app.models.database import get_db, CalibrationLog, WeightHistory
+from app.models.database import get_db, CalibrationLog, WeightHistory, User
 from app.core.engine import engine_instance
 from app.core.calibration import run_calibration
+from app.core.auth import require_admin, hash_password
 from app.services.threat_intel import load_ti_config, save_ti_config
 
 router = APIRouter(prefix="/admin")
@@ -34,7 +35,7 @@ def _save_json(path: Path, data: dict):
 
 @router.get("", response_class=HTMLResponse)
 @router.get("/", response_class=HTMLResponse)
-async def admin_home(request: Request, db: Session = Depends(get_db)):
+async def admin_home(request: Request, db: Session = Depends(get_db), _user: dict = Depends(require_admin)):
     config = _load_json(CONFIG_PATH)
     q_data = _load_json(QUESTIONS_PATH)
     ti_config = load_ti_config()
@@ -80,6 +81,8 @@ async def admin_home(request: Request, db: Session = Depends(get_db)):
         },
     }
 
+    users_list = db.query(User).order_by(User.username).all()
+
     return templates.TemplateResponse("admin.html", {
         "request": request,
         "config": config,
@@ -90,11 +93,12 @@ async def admin_home(request: Request, db: Session = Depends(get_db)):
         "thresholds": engine_instance.thresholds,
         "ti_display": ti_display,
         "webhooks": webhooks,
+        "users_list": users_list,
     })
 
 
 @router.post("/module-weights")
-async def update_module_weights(request: Request, db: Session = Depends(get_db)):
+async def update_module_weights(request: Request, db: Session = Depends(get_db), _user: dict = Depends(require_admin)):
     form = await request.form()
     config = _load_json(CONFIG_PATH)
 
@@ -124,7 +128,7 @@ async def update_module_weights(request: Request, db: Session = Depends(get_db))
 
 
 @router.post("/thresholds")
-async def update_thresholds(request: Request, db: Session = Depends(get_db)):
+async def update_thresholds(request: Request, db: Session = Depends(get_db), _user: dict = Depends(require_admin)):
     form = await request.form()
     config = _load_json(CONFIG_PATH)
 
@@ -148,7 +152,8 @@ async def update_thresholds(request: Request, db: Session = Depends(get_db)):
 async def update_question_weight(
     question_id: str,
     request: Request,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _user: dict = Depends(require_admin),
 ):
     form = await request.form()
     q_data = _load_json(QUESTIONS_PATH)
@@ -179,7 +184,7 @@ async def update_question_weight(
 
 
 @router.post("/calibrate")
-async def manual_calibration(request: Request, db: Session = Depends(get_db)):
+async def manual_calibration(request: Request, db: Session = Depends(get_db), _user: dict = Depends(require_admin)):
     result = run_calibration(db)
     engine_instance.reload()
     status = result.get("status", "unknown")
@@ -187,7 +192,7 @@ async def manual_calibration(request: Request, db: Session = Depends(get_db)):
 
 
 @router.post("/ti-keys")
-async def save_ti_keys(request: Request):
+async def save_ti_keys(request: Request, _user: dict = Depends(require_admin)):
     """Save Threat Intelligence API keys to ti_config.json."""
     form = await request.form()
     config = load_ti_config()
@@ -215,7 +220,7 @@ async def save_ti_keys(request: Request):
 
 
 @router.post("/ti-keys/clear")
-async def clear_ti_keys(request: Request):
+async def clear_ti_keys(request: Request, _user: dict = Depends(require_admin)):
     """Clear all Threat Intelligence API keys."""
     form = await request.form()
     source = form.get("source", "all")
@@ -234,7 +239,7 @@ async def clear_ti_keys(request: Request):
 
 
 @router.post("/webhooks")
-async def save_webhooks(request: Request):
+async def save_webhooks(request: Request, _user: dict = Depends(require_admin)):
     """Save webhook notification settings."""
     form = await request.form()
     config = load_ti_config()
@@ -255,3 +260,61 @@ async def save_webhooks(request: Request):
 
     save_ti_config(config)
     return RedirectResponse(url="/admin?msg=webhooks_saved", status_code=303)
+
+
+# ── User management ──────────────────────────────────────────────────────────
+
+@router.post("/users/add")
+async def add_user(request: Request, db: Session = Depends(get_db), _user: dict = Depends(require_admin)):
+    form = await request.form()
+    username = form.get("username", "").strip()
+    password = form.get("password", "").strip()
+    role = form.get("role", "analyst")
+
+    if not username or not password:
+        return RedirectResponse(url="/admin?msg=user_error&tab=users", status_code=303)
+    if role not in ("analyst", "admin"):
+        role = "analyst"
+    if db.query(User).filter(User.username == username).first():
+        return RedirectResponse(url="/admin?msg=user_exists&tab=users", status_code=303)
+
+    db.add(User(username=username, password_hash=hash_password(password), role=role))
+    db.commit()
+    return RedirectResponse(url="/admin?msg=user_added&tab=users", status_code=303)
+
+
+@router.post("/users/{user_id}/password")
+async def change_user_password(
+    user_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_admin),
+):
+    form = await request.form()
+    new_password = form.get("new_password", "").strip()
+    if not new_password:
+        return RedirectResponse(url="/admin?msg=user_error&tab=users", status_code=303)
+
+    user = db.query(User).filter(User.id == user_id).first()
+    if user:
+        user.password_hash = hash_password(new_password)
+        db.commit()
+    return RedirectResponse(url="/admin?msg=password_changed&tab=users", status_code=303)
+
+
+@router.post("/users/{user_id}/delete")
+async def delete_user(
+    user_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_admin),
+):
+    # Prevent deleting own account
+    if user_id == current_user.get("id"):
+        return RedirectResponse(url="/admin?msg=user_self_delete&tab=users", status_code=303)
+
+    user = db.query(User).filter(User.id == user_id).first()
+    if user:
+        db.delete(user)
+        db.commit()
+    return RedirectResponse(url="/admin?msg=user_deleted&tab=users", status_code=303)

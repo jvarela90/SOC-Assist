@@ -64,12 +64,7 @@
       "order": 9
     }
   ],
-
   "questions": [
-
-    // =============================================
-    // MÓDULO A: NATURALEZA DEL EVENTO (10 preguntas)
-    // =============================================
     {
       "id": "q_001",
       "module": "naturaleza",
@@ -79,11 +74,29 @@
       "type": "multichoice",
       "weight": 1.0,
       "options": [
-        { "value": "no",      "label": "No, parece normal",              "score": 0  },
-        { "value": "unknown", "label": "No estoy seguro",                "score": 3  },
-        { "value": "maybe",   "label": "Sí, algo no parece bien",        "score": 6  },
-        { "value": "yes",     "label": "Sí, claramente sospechoso",      "score": 10 }
-      ]
+        {
+          "value": "no",
+          "label": "No, parece normal",
+          "score": 0
+        },
+        {
+          "value": "unknown",
+          "label": "No estoy seguro",
+          "score": 3
+        },
+        {
+          "value": "maybe",
+          "label": "Sí, algo no parece bien",
+          "score": 6
+        },
+        {
+          "value": "yes",
+          "label": "Sí, claramente sospechoso",
+          "score": 10
+        }
+      ],
+      "display_block": 1,
+      "display_position": 1
     },
     {
       "id": "q_002",
@@ -94,13 +107,39 @@
       "type": "multichoice",
       "weight": 1.0,
       "options": [
-        { "value": "manual",         "label": "Observación manual del usuario",   "score": 2  },
-        { "value": "siem_low",       "label": "Alerta SIEM / correlación baja",   "score": 4  },
-        { "value": "ids_ips",        "label": "Alerta IDS / IPS",                 "score": 6  },
-        { "value": "edr_alert",      "label": "Alerta EDR / Antivirus",           "score": 8  },
-        { "value": "siem_high",      "label": "Alerta SIEM alta severidad",       "score": 10 },
-        { "value": "confirmed",      "label": "Incidente confirmado por herramienta", "score": 14}
-      ]
+        {
+          "value": "manual",
+          "label": "Observación manual del usuario",
+          "score": 2
+        },
+        {
+          "value": "siem_low",
+          "label": "Alerta SIEM / correlación baja",
+          "score": 4
+        },
+        {
+          "value": "ids_ips",
+          "label": "Alerta IDS / IPS",
+          "score": 6
+        },
+        {
+          "value": "edr_alert",
+          "label": "Alerta EDR / Antivirus",
+          "score": 8
+        },
+        {
+          "value": "siem_high",
+          "label": "Alerta SIEM alta severidad",
+          "score": 10
+        },
+        {
+          "value": "confirmed",
+          "label": "Incidente confirmado por herramienta",
+          "score": 14
+        }
+      ],
+      "display_block": 1,
+      "display_position": 2
     },
     {
       "id": "q_003",
@@ -111,11 +150,29 @@
       "type": "multichoice",
       "weight": 1.0,
       "options": [
-        { "value": "no",      "label": "No coincide con ningún IOC",       "score": 0  },
-        { "value": "unknown", "label": "No verifiqué / no tengo acceso",    "score": 3  },
-        { "value": "partial", "label": "Coincide parcialmente",            "score": 6  },
-        { "value": "yes",     "label": "Sí, coincide con IOC confirmado",  "score": 12 }
-      ]
+        {
+          "value": "no",
+          "label": "No coincide con ningún IOC",
+          "score": 0
+        },
+        {
+          "value": "unknown",
+          "label": "No verifiqué / no tengo acceso",
+          "score": 3
+        },
+        {
+          "value": "partial",
+          "label": "Coincide parcialmente",
+          "score": 6
+        },
+        {
+          "value": "yes",
+          "label": "Sí, coincide con IOC confirmado",
+          "score": 12
+        }
+      ],
+      "display_block": 2,
+      "display_position": 1
     },
     {
       "id": "q_004",
@@ -126,11 +183,29 @@
       "type": "multichoice",
       "weight": 1.0,
       "options": [
-        { "value": "no",      "label": "No hay alertas de herramientas",   "score": 0  },
-        { "value": "unknown", "label": "No tengo acceso a esa información","score": 2  },
-        { "value": "warning", "label": "Marcado como advertencia/sospecha","score": 5  },
-        { "value": "yes",     "label": "Marcado como malicioso / bloqueado","score": 10}
-      ]
+        {
+          "value": "no",
+          "label": "No hay alertas de herramientas",
+          "score": 0
+        },
+        {
+          "value": "unknown",
+          "label": "No tengo acceso a esa información",
+          "score": 2
+        },
+        {
+          "value": "warning",
+          "label": "Marcado como advertencia/sospecha",
+          "score": 5
+        },
+        {
+          "value": "yes",
+          "label": "Marcado como malicioso / bloqueado",
+          "score": 10
+        }
+      ],
+      "display_block": 1,
+      "display_position": 3
     },
     {
       "id": "q_005",
@@ -141,11 +216,29 @@
       "type": "multichoice",
       "weight": 1.0,
       "options": [
-        { "value": "na",      "label": "No hay archivo/proceso involucrado","score": 0  },
-        { "value": "no",      "label": "Es un proceso/archivo conocido",    "score": 0  },
-        { "value": "unknown", "label": "No reconozco el nombre",            "score": 4  },
-        { "value": "yes",     "label": "Claramente inusual o sospechoso",   "score": 7  }
-      ]
+        {
+          "value": "na",
+          "label": "No hay archivo/proceso involucrado",
+          "score": 0
+        },
+        {
+          "value": "no",
+          "label": "Es un proceso/archivo conocido",
+          "score": 0
+        },
+        {
+          "value": "unknown",
+          "label": "No reconozco el nombre",
+          "score": 4
+        },
+        {
+          "value": "yes",
+          "label": "Claramente inusual o sospechoso",
+          "score": 7
+        }
+      ],
+      "display_block": 1,
+      "display_position": 5
     },
     {
       "id": "q_006",
@@ -156,12 +249,34 @@
       "type": "multichoice",
       "weight": 1.2,
       "options": [
-        { "value": "na",         "label": "No hay IP/dominio externo",          "score": 0  },
-        { "value": "clean",      "label": "Reputación limpia verificada",        "score": 0  },
-        { "value": "unknown",    "label": "No verifiqué / sin información",       "score": 3  },
-        { "value": "suspicious", "label": "Reportada como sospechosa",           "score": 7  },
-        { "value": "malicious",  "label": "Confirmada como maliciosa",           "score": 12 }
-      ]
+        {
+          "value": "na",
+          "label": "No hay IP/dominio externo",
+          "score": 0
+        },
+        {
+          "value": "clean",
+          "label": "Reputación limpia verificada",
+          "score": 0
+        },
+        {
+          "value": "unknown",
+          "label": "No verifiqué / sin información",
+          "score": 3
+        },
+        {
+          "value": "suspicious",
+          "label": "Reportada como sospechosa",
+          "score": 7
+        },
+        {
+          "value": "malicious",
+          "label": "Confirmada como maliciosa",
+          "score": 12
+        }
+      ],
+      "display_block": 2,
+      "display_position": 3
     },
     {
       "id": "q_007",
@@ -172,11 +287,29 @@
       "type": "multichoice",
       "weight": 0.8,
       "options": [
-        { "value": "na",      "label": "No hay dominio externo",                "score": 0  },
-        { "value": "no",      "label": "No, tiene antigüedad normal",           "score": 0  },
-        { "value": "unknown", "label": "No verifiqué",                          "score": 2  },
-        { "value": "yes",     "label": "Sí, dominio muy reciente",              "score": 7  }
-      ]
+        {
+          "value": "na",
+          "label": "No hay dominio externo",
+          "score": 0
+        },
+        {
+          "value": "no",
+          "label": "No, tiene antigüedad normal",
+          "score": 0
+        },
+        {
+          "value": "unknown",
+          "label": "No verifiqué",
+          "score": 2
+        },
+        {
+          "value": "yes",
+          "label": "Sí, dominio muy reciente",
+          "score": 7
+        }
+      ],
+      "display_block": 2,
+      "display_position": 4
     },
     {
       "id": "q_008",
@@ -187,11 +320,29 @@
       "type": "multichoice",
       "weight": 1.5,
       "options": [
-        { "value": "no",      "label": "No se detectó malware",               "score": 0  },
-        { "value": "unknown", "label": "No se pudo determinar",               "score": 2  },
-        { "value": "maybe",   "label": "Comportamiento malicioso, sin nombre","score": 6  },
-        { "value": "yes",     "label": "Sí, malware confirmado e identificado","score": 14}
-      ]
+        {
+          "value": "no",
+          "label": "No se detectó malware",
+          "score": 0
+        },
+        {
+          "value": "unknown",
+          "label": "No se pudo determinar",
+          "score": 2
+        },
+        {
+          "value": "maybe",
+          "label": "Comportamiento malicioso, sin nombre",
+          "score": 6
+        },
+        {
+          "value": "yes",
+          "label": "Sí, malware confirmado e identificado",
+          "score": 14
+        }
+      ],
+      "display_block": 1,
+      "display_position": 4
     },
     {
       "id": "q_009",
@@ -202,12 +353,34 @@
       "type": "multichoice",
       "weight": 1.0,
       "options": [
-        { "value": "na",      "label": "No hay archivo involucrado",         "score": 0  },
-        { "value": "no",      "label": "Hash limpio en todas las plataformas","score": 0  },
-        { "value": "unknown", "label": "No verifiqué el hash",               "score": 2  },
-        { "value": "partial", "label": "Marcado por algunos motores",        "score": 5  },
-        { "value": "yes",     "label": "Confirmado malicioso por múltiples",  "score": 12 }
-      ]
+        {
+          "value": "na",
+          "label": "No hay archivo involucrado",
+          "score": 0
+        },
+        {
+          "value": "no",
+          "label": "Hash limpio en todas las plataformas",
+          "score": 0
+        },
+        {
+          "value": "unknown",
+          "label": "No verifiqué el hash",
+          "score": 2
+        },
+        {
+          "value": "partial",
+          "label": "Marcado por algunos motores",
+          "score": 5
+        },
+        {
+          "value": "yes",
+          "label": "Confirmado malicioso por múltiples",
+          "score": 12
+        }
+      ],
+      "display_block": 2,
+      "display_position": 2
     },
     {
       "id": "q_010",
@@ -218,16 +391,30 @@
       "type": "multichoice",
       "weight": 0.9,
       "options": [
-        { "value": "no",      "label": "Comportamiento completamente normal","score": 0  },
-        { "value": "unknown", "label": "No tengo baseline de comportamiento","score": 2  },
-        { "value": "maybe",   "label": "Algo inusual pero puede ser legítimo","score": 4  },
-        { "value": "yes",     "label": "Claramente fuera del patrón habitual","score": 8  }
-      ]
+        {
+          "value": "no",
+          "label": "Comportamiento completamente normal",
+          "score": 0
+        },
+        {
+          "value": "unknown",
+          "label": "No tengo baseline de comportamiento",
+          "score": 2
+        },
+        {
+          "value": "maybe",
+          "label": "Algo inusual pero puede ser legítimo",
+          "score": 4
+        },
+        {
+          "value": "yes",
+          "label": "Claramente fuera del patrón habitual",
+          "score": 8
+        }
+      ],
+      "display_block": 1,
+      "display_position": 6
     },
-
-    // =============================================
-    // MÓDULO B: ALCANCE Y PROPAGACIÓN (8 preguntas)
-    // =============================================
     {
       "id": "q_011",
       "module": "alcance",
@@ -237,12 +424,34 @@
       "type": "multichoice",
       "weight": 1.0,
       "options": [
-        { "value": "one",     "label": "Solo 1 equipo",                    "score": 2  },
-        { "value": "few",     "label": "Entre 2 y 10 equipos",             "score": 6  },
-        { "value": "many",    "label": "Entre 11 y 50 equipos",            "score": 10 },
-        { "value": "lots",    "label": "Entre 51 y 100 equipos",           "score": 14 },
-        { "value": "massive", "label": "Más de 100 equipos",               "score": 18 }
-      ]
+        {
+          "value": "one",
+          "label": "Solo 1 equipo",
+          "score": 2
+        },
+        {
+          "value": "few",
+          "label": "Entre 2 y 10 equipos",
+          "score": 6
+        },
+        {
+          "value": "many",
+          "label": "Entre 11 y 50 equipos",
+          "score": 10
+        },
+        {
+          "value": "lots",
+          "label": "Entre 51 y 100 equipos",
+          "score": 14
+        },
+        {
+          "value": "massive",
+          "label": "Más de 100 equipos",
+          "score": 18
+        }
+      ],
+      "display_block": 5,
+      "display_position": 1
     },
     {
       "id": "q_012",
@@ -253,11 +462,29 @@
       "type": "multichoice",
       "weight": 0.9,
       "options": [
-        { "value": "one",    "label": "Solo 1 usuario",                   "score": 1  },
-        { "value": "few",    "label": "Entre 2 y 5 usuarios",             "score": 3  },
-        { "value": "many",   "label": "Entre 6 y 20 usuarios",            "score": 6  },
-        { "value": "lots",   "label": "Más de 20 usuarios",               "score": 10 }
-      ]
+        {
+          "value": "one",
+          "label": "Solo 1 usuario",
+          "score": 1
+        },
+        {
+          "value": "few",
+          "label": "Entre 2 y 5 usuarios",
+          "score": 3
+        },
+        {
+          "value": "many",
+          "label": "Entre 6 y 20 usuarios",
+          "score": 6
+        },
+        {
+          "value": "lots",
+          "label": "Más de 20 usuarios",
+          "score": 10
+        }
+      ],
+      "display_block": 5,
+      "display_position": 2
     },
     {
       "id": "q_013",
@@ -268,10 +495,24 @@
       "type": "multichoice",
       "weight": 1.1,
       "options": [
-        { "value": "no",      "label": "No, solo en un segmento",          "score": 0  },
-        { "value": "unknown", "label": "No sé / no tengo visibilidad",      "score": 3  },
-        { "value": "yes",     "label": "Sí, en múltiples segmentos",        "score": 9  }
-      ]
+        {
+          "value": "no",
+          "label": "No, solo en un segmento",
+          "score": 0
+        },
+        {
+          "value": "unknown",
+          "label": "No sé / no tengo visibilidad",
+          "score": 3
+        },
+        {
+          "value": "yes",
+          "label": "Sí, en múltiples segmentos",
+          "score": 9
+        }
+      ],
+      "display_block": 5,
+      "display_position": 3
     },
     {
       "id": "q_014",
@@ -282,12 +523,34 @@
       "type": "multichoice",
       "weight": 1.2,
       "options": [
-        { "value": "int_int",  "label": "Interno → Interno (solo red interna)",  "score": 2  },
-        { "value": "int_ext",  "label": "Interno → Externo (salida)",             "score": 5  },
-        { "value": "ext_int",  "label": "Externo → Interno (entrada)",            "score": 7  },
-        { "value": "bidir",    "label": "Bidireccional (entrada y salida)",        "score": 9  },
-        { "value": "unknown",  "label": "No tengo información de tráfico",         "score": 3  }
-      ]
+        {
+          "value": "int_int",
+          "label": "Interno → Interno (solo red interna)",
+          "score": 2
+        },
+        {
+          "value": "int_ext",
+          "label": "Interno → Externo (salida)",
+          "score": 5
+        },
+        {
+          "value": "ext_int",
+          "label": "Externo → Interno (entrada)",
+          "score": 7
+        },
+        {
+          "value": "bidir",
+          "label": "Bidireccional (entrada y salida)",
+          "score": 9
+        },
+        {
+          "value": "unknown",
+          "label": "No tengo información de tráfico",
+          "score": 3
+        }
+      ],
+      "display_block": 3,
+      "display_position": 3
     },
     {
       "id": "q_015",
@@ -298,10 +561,24 @@
       "type": "multichoice",
       "weight": 1.3,
       "options": [
-        { "value": "no",      "label": "No, el evento está contenido",     "score": 0  },
-        { "value": "unknown", "label": "No tengo visibilidad suficiente",  "score": 4  },
-        { "value": "yes",     "label": "Sí, visible movimiento entre equipos","score": 11}
-      ]
+        {
+          "value": "no",
+          "label": "No, el evento está contenido",
+          "score": 0
+        },
+        {
+          "value": "unknown",
+          "label": "No tengo visibilidad suficiente",
+          "score": 4
+        },
+        {
+          "value": "yes",
+          "label": "Sí, visible movimiento entre equipos",
+          "score": 11
+        }
+      ],
+      "display_block": 5,
+      "display_position": 5
     },
     {
       "id": "q_016",
@@ -312,11 +589,29 @@
       "type": "multichoice",
       "weight": 1.2,
       "options": [
-        { "value": "no",      "label": "No se observa salida inusual",      "score": 0  },
-        { "value": "unknown", "label": "No puedo verificarlo",              "score": 3  },
-        { "value": "maybe",   "label": "Tráfico elevado, no confirmado",    "score": 5  },
-        { "value": "yes",     "label": "Sí, salida masiva de datos",        "score": 12 }
-      ]
+        {
+          "value": "no",
+          "label": "No se observa salida inusual",
+          "score": 0
+        },
+        {
+          "value": "unknown",
+          "label": "No puedo verificarlo",
+          "score": 3
+        },
+        {
+          "value": "maybe",
+          "label": "Tráfico elevado, no confirmado",
+          "score": 5
+        },
+        {
+          "value": "yes",
+          "label": "Sí, salida masiva de datos",
+          "score": 12
+        }
+      ],
+      "display_block": 5,
+      "display_position": 6
     },
     {
       "id": "q_017",
@@ -327,10 +622,24 @@
       "type": "multichoice",
       "weight": 1.0,
       "options": [
-        { "value": "no",      "label": "No, el evento es puntual",          "score": 0  },
-        { "value": "unknown", "label": "No puedo determinarlo",             "score": 2  },
-        { "value": "yes",     "label": "Sí, patrón repetitivo claro",       "score": 8  }
-      ]
+        {
+          "value": "no",
+          "label": "No, el evento es puntual",
+          "score": 0
+        },
+        {
+          "value": "unknown",
+          "label": "No puedo determinarlo",
+          "score": 2
+        },
+        {
+          "value": "yes",
+          "label": "Sí, patrón repetitivo claro",
+          "score": 8
+        }
+      ],
+      "display_block": 6,
+      "display_position": 3
     },
     {
       "id": "q_018",
@@ -341,16 +650,30 @@
       "type": "multichoice",
       "weight": 1.3,
       "options": [
-        { "value": "no",      "label": "No, solo afecta estaciones de trabajo","score": 0  },
-        { "value": "unknown", "label": "No sé qué equipos están afectados","score": 3  },
-        { "value": "server",  "label": "Sí, afecta servidores de aplicación","score": 7  },
-        { "value": "dc",      "label": "Sí, involucra Controlador de Dominio","score": 14 }
-      ]
+        {
+          "value": "no",
+          "label": "No, solo afecta estaciones de trabajo",
+          "score": 0
+        },
+        {
+          "value": "unknown",
+          "label": "No sé qué equipos están afectados",
+          "score": 3
+        },
+        {
+          "value": "server",
+          "label": "Sí, afecta servidores de aplicación",
+          "score": 7
+        },
+        {
+          "value": "dc",
+          "label": "Sí, involucra Controlador de Dominio",
+          "score": 14
+        }
+      ],
+      "display_block": 5,
+      "display_position": 4
     },
-
-    // =============================================
-    // MÓDULO C: IDENTIFICACIÓN DEL ACTIVO (8 preguntas)
-    // =============================================
     {
       "id": "q_019",
       "module": "activo",
@@ -360,16 +683,54 @@
       "type": "multichoice",
       "weight": 1.2,
       "options": [
-        { "value": "workstation", "label": "PC / Estación de trabajo de usuario",  "score": 3  },
-        { "value": "laptop",      "label": "Laptop corporativa",                   "score": 3  },
-        { "value": "server",      "label": "Servidor de aplicaciones",             "score": 6  },
-        { "value": "db",          "label": "Servidor de base de datos",            "score": 9  },
-        { "value": "dc",          "label": "Controlador de Dominio (AD)",          "score": 14 },
-        { "value": "network",     "label": "Equipo de red (switch, router, FW)",   "score": 10 },
-        { "value": "iot",         "label": "Dispositivo IoT / OT",                "score": 7  },
-        { "value": "byod",        "label": "Dispositivo personal (BYOD)",          "score": 6  },
-        { "value": "unknown",     "label": "Desconocido / No identificado",        "score": 8  }
-      ]
+        {
+          "value": "workstation",
+          "label": "PC / Estación de trabajo de usuario",
+          "score": 3
+        },
+        {
+          "value": "laptop",
+          "label": "Laptop corporativa",
+          "score": 3
+        },
+        {
+          "value": "server",
+          "label": "Servidor de aplicaciones",
+          "score": 6
+        },
+        {
+          "value": "db",
+          "label": "Servidor de base de datos",
+          "score": 9
+        },
+        {
+          "value": "dc",
+          "label": "Controlador de Dominio (AD)",
+          "score": 14
+        },
+        {
+          "value": "network",
+          "label": "Equipo de red (switch, router, FW)",
+          "score": 10
+        },
+        {
+          "value": "iot",
+          "label": "Dispositivo IoT / OT",
+          "score": 7
+        },
+        {
+          "value": "byod",
+          "label": "Dispositivo personal (BYOD)",
+          "score": 6
+        },
+        {
+          "value": "unknown",
+          "label": "Desconocido / No identificado",
+          "score": 8
+        }
+      ],
+      "display_block": 4,
+      "display_position": 1
     },
     {
       "id": "q_020",
@@ -380,10 +741,24 @@
       "type": "multichoice",
       "weight": 0.8,
       "options": [
-        { "value": "yes",     "label": "Sí, está en el inventario oficial","score": 0  },
-        { "value": "no",      "label": "No, no está inventariado",          "score": 8  },
-        { "value": "unknown", "label": "No tengo acceso al inventario",     "score": 4  }
-      ]
+        {
+          "value": "yes",
+          "label": "Sí, está en el inventario oficial",
+          "score": 0
+        },
+        {
+          "value": "no",
+          "label": "No, no está inventariado",
+          "score": 8
+        },
+        {
+          "value": "unknown",
+          "label": "No tengo acceso al inventario",
+          "score": 4
+        }
+      ],
+      "display_block": 4,
+      "display_position": 3
     },
     {
       "id": "q_021",
@@ -394,10 +769,24 @@
       "type": "multichoice",
       "weight": 0.9,
       "options": [
-        { "value": "yes",     "label": "Sí, está unido al dominio",        "score": 0  },
-        { "value": "no",      "label": "No, es equipo fuera del dominio",   "score": 7  },
-        { "value": "unknown", "label": "No lo sé",                         "score": 3  }
-      ]
+        {
+          "value": "yes",
+          "label": "Sí, está unido al dominio",
+          "score": 0
+        },
+        {
+          "value": "no",
+          "label": "No, es equipo fuera del dominio",
+          "score": 7
+        },
+        {
+          "value": "unknown",
+          "label": "No lo sé",
+          "score": 3
+        }
+      ],
+      "display_block": 4,
+      "display_position": 4
     },
     {
       "id": "q_022",
@@ -408,10 +797,24 @@
       "type": "multichoice",
       "weight": 0.9,
       "options": [
-        { "value": "no",      "label": "No, está en red interna",          "score": 0  },
-        { "value": "yes",     "label": "Sí, está en la DMZ",               "score": 6  },
-        { "value": "unknown", "label": "No conozco la topología",           "score": 3  }
-      ]
+        {
+          "value": "no",
+          "label": "No, está en red interna",
+          "score": 0
+        },
+        {
+          "value": "yes",
+          "label": "Sí, está en la DMZ",
+          "score": 6
+        },
+        {
+          "value": "unknown",
+          "label": "No conozco la topología",
+          "score": 3
+        }
+      ],
+      "display_block": 4,
+      "display_position": 5
     },
     {
       "id": "q_023",
@@ -422,10 +825,24 @@
       "type": "multichoice",
       "weight": 1.1,
       "options": [
-        { "value": "no",      "label": "No maneja información sensible",    "score": 0  },
-        { "value": "unknown", "label": "No lo sé con certeza",              "score": 4  },
-        { "value": "yes",     "label": "Sí, maneja datos sensibles/regulados","score": 10}
-      ]
+        {
+          "value": "no",
+          "label": "No maneja información sensible",
+          "score": 0
+        },
+        {
+          "value": "unknown",
+          "label": "No lo sé con certeza",
+          "score": 4
+        },
+        {
+          "value": "yes",
+          "label": "Sí, maneja datos sensibles/regulados",
+          "score": 10
+        }
+      ],
+      "display_block": 4,
+      "display_position": 6
     },
     {
       "id": "q_024",
@@ -436,10 +853,24 @@
       "type": "multichoice",
       "weight": 1.5,
       "options": [
-        { "value": "no",      "label": "No es un activo crítico",          "score": 0  },
-        { "value": "unknown", "label": "No sé si es crítico",              "score": 5  },
-        { "value": "yes",     "label": "Sí, es un activo crítico / Crown Jewel","score": 16}
-      ]
+        {
+          "value": "no",
+          "label": "No es un activo crítico",
+          "score": 0
+        },
+        {
+          "value": "unknown",
+          "label": "No sé si es crítico",
+          "score": 5
+        },
+        {
+          "value": "yes",
+          "label": "Sí, es un activo crítico / Crown Jewel",
+          "score": 16
+        }
+      ],
+      "display_block": 4,
+      "display_position": 2
     },
     {
       "id": "q_025",
@@ -450,10 +881,24 @@
       "type": "multichoice",
       "weight": 0.6,
       "options": [
-        { "value": "yes",     "label": "Sí, MAC identificada y reconocida","score": 0  },
-        { "value": "no",      "label": "No, MAC desconocida",              "score": 5  },
-        { "value": "unknown", "label": "No tengo acceso a esa información","score": 2  }
-      ]
+        {
+          "value": "yes",
+          "label": "Sí, MAC identificada y reconocida",
+          "score": 0
+        },
+        {
+          "value": "no",
+          "label": "No, MAC desconocida",
+          "score": 5
+        },
+        {
+          "value": "unknown",
+          "label": "No tengo acceso a esa información",
+          "score": 2
+        }
+      ],
+      "display_block": 3,
+      "display_position": 5
     },
     {
       "id": "q_026",
@@ -464,15 +909,25 @@
       "type": "multichoice",
       "weight": 0.6,
       "options": [
-        { "value": "yes",     "label": "Sí, hostname registrado y reconocido","score": 0  },
-        { "value": "no",      "label": "No está registrado o tiene nombre raro","score": 5 },
-        { "value": "unknown", "label": "No puedo verificarlo",             "score": 2  }
-      ]
+        {
+          "value": "yes",
+          "label": "Sí, hostname registrado y reconocido",
+          "score": 0
+        },
+        {
+          "value": "no",
+          "label": "No está registrado o tiene nombre raro",
+          "score": 5
+        },
+        {
+          "value": "unknown",
+          "label": "No puedo verificarlo",
+          "score": 2
+        }
+      ],
+      "display_block": 3,
+      "display_position": 6
     },
-
-    // =============================================
-    // MÓDULO D: CONTEXTO DEL USUARIO (7 preguntas)
-    // =============================================
     {
       "id": "q_027",
       "module": "usuario",
@@ -482,14 +937,44 @@
       "type": "multichoice",
       "weight": 1.3,
       "options": [
-        { "value": "none",         "label": "Sin usuario asociado / sistema",     "score": 0  },
-        { "value": "restricted",   "label": "Usuario restringido / kiosko",       "score": 1  },
-        { "value": "standard",     "label": "Usuario estándar",                   "score": 3  },
-        { "value": "local_admin",  "label": "Administrador local",                "score": 7  },
-        { "value": "domain_admin", "label": "Administrador de dominio",           "score": 12 },
-        { "value": "service",      "label": "Cuenta de servicio / sistema",       "score": 8  },
-        { "value": "full",         "label": "Privilegios totales / root / Enterprise Admin","score": 15}
-      ]
+        {
+          "value": "none",
+          "label": "Sin usuario asociado / sistema",
+          "score": 0
+        },
+        {
+          "value": "restricted",
+          "label": "Usuario restringido / kiosko",
+          "score": 1
+        },
+        {
+          "value": "standard",
+          "label": "Usuario estándar",
+          "score": 3
+        },
+        {
+          "value": "local_admin",
+          "label": "Administrador local",
+          "score": 7
+        },
+        {
+          "value": "domain_admin",
+          "label": "Administrador de dominio",
+          "score": 12
+        },
+        {
+          "value": "service",
+          "label": "Cuenta de servicio / sistema",
+          "score": 8
+        },
+        {
+          "value": "full",
+          "label": "Privilegios totales / root / Enterprise Admin",
+          "score": 15
+        }
+      ],
+      "display_block": 7,
+      "display_position": 1
     },
     {
       "id": "q_028",
@@ -500,11 +985,29 @@
       "type": "multichoice",
       "weight": 0.9,
       "options": [
-        { "value": "no",      "label": "No, es cuenta de usuario humano",  "score": 0  },
-        { "value": "yes_ok",  "label": "Sí, y el comportamiento es normal","score": 1  },
-        { "value": "yes_bad", "label": "Sí, y el comportamiento es inusual","score": 8  },
-        { "value": "unknown", "label": "No sé",                            "score": 2  }
-      ]
+        {
+          "value": "no",
+          "label": "No, es cuenta de usuario humano",
+          "score": 0
+        },
+        {
+          "value": "yes_ok",
+          "label": "Sí, y el comportamiento es normal",
+          "score": 1
+        },
+        {
+          "value": "yes_bad",
+          "label": "Sí, y el comportamiento es inusual",
+          "score": 8
+        },
+        {
+          "value": "unknown",
+          "label": "No sé",
+          "score": 2
+        }
+      ],
+      "display_block": 7,
+      "display_position": 2
     },
     {
       "id": "q_029",
@@ -515,11 +1018,29 @@
       "type": "multichoice",
       "weight": 1.2,
       "options": [
-        { "value": "no",      "label": "No, la cuenta estaba activa y es válida","score": 0 },
-        { "value": "inactive","label": "Cuenta existente pero inactiva mucho tiempo","score": 7},
-        { "value": "yes",     "label": "Cuenta deshabilitada que aparece activa","score": 14},
-        { "value": "unknown", "label": "No pude verificar el estado de la cuenta","score": 3}
-      ]
+        {
+          "value": "no",
+          "label": "No, la cuenta estaba activa y es válida",
+          "score": 0
+        },
+        {
+          "value": "inactive",
+          "label": "Cuenta existente pero inactiva mucho tiempo",
+          "score": 7
+        },
+        {
+          "value": "yes",
+          "label": "Cuenta deshabilitada que aparece activa",
+          "score": 14
+        },
+        {
+          "value": "unknown",
+          "label": "No pude verificar el estado de la cuenta",
+          "score": 3
+        }
+      ],
+      "display_block": 7,
+      "display_position": 3
     },
     {
       "id": "q_030",
@@ -530,11 +1051,29 @@
       "type": "multichoice",
       "weight": 1.0,
       "options": [
-        { "value": "no",      "label": "No, es una cuenta establecida",    "score": 0  },
-        { "value": "recent",  "label": "Creada hace 7-30 días",            "score": 3  },
-        { "value": "yes",     "label": "Creada hace menos de 7 días",      "score": 9  },
-        { "value": "unknown", "label": "No puedo verificarlo",             "score": 2  }
-      ]
+        {
+          "value": "no",
+          "label": "No, es una cuenta establecida",
+          "score": 0
+        },
+        {
+          "value": "recent",
+          "label": "Creada hace 7-30 días",
+          "score": 3
+        },
+        {
+          "value": "yes",
+          "label": "Creada hace menos de 7 días",
+          "score": 9
+        },
+        {
+          "value": "unknown",
+          "label": "No puedo verificarlo",
+          "score": 2
+        }
+      ],
+      "display_block": 7,
+      "display_position": 4
     },
     {
       "id": "q_031",
@@ -545,11 +1084,29 @@
       "type": "multichoice",
       "weight": 1.0,
       "options": [
-        { "value": "no",      "label": "No, acceso normal",                "score": 0  },
-        { "value": "few",     "label": "Algunos intentos fallidos (3-10)", "score": 3  },
-        { "value": "many",    "label": "Muchos intentos fallidos (+10)",   "score": 7  },
-        { "value": "unknown", "label": "No tengo acceso a logs de auth",   "score": 2  }
-      ]
+        {
+          "value": "no",
+          "label": "No, acceso normal",
+          "score": 0
+        },
+        {
+          "value": "few",
+          "label": "Algunos intentos fallidos (3-10)",
+          "score": 3
+        },
+        {
+          "value": "many",
+          "label": "Muchos intentos fallidos (+10)",
+          "score": 7
+        },
+        {
+          "value": "unknown",
+          "label": "No tengo acceso a logs de auth",
+          "score": 2
+        }
+      ],
+      "display_block": 7,
+      "display_position": 5
     },
     {
       "id": "q_032",
@@ -560,11 +1117,29 @@
       "type": "multichoice",
       "weight": 0.8,
       "options": [
-        { "value": "no",      "label": "No, la contraseña no cambió recientemente","score": 0},
-        { "value": "yes",     "label": "Sí, cambió en las últimas 48 horas","score": 5  },
-        { "value": "forced",  "label": "Cambio forzado por sistema/admin",  "score": 2  },
-        { "value": "unknown", "label": "No tengo acceso a esa información","score": 1  }
-      ]
+        {
+          "value": "no",
+          "label": "No, la contraseña no cambió recientemente",
+          "score": 0
+        },
+        {
+          "value": "yes",
+          "label": "Sí, cambió en las últimas 48 horas",
+          "score": 5
+        },
+        {
+          "value": "forced",
+          "label": "Cambio forzado por sistema/admin",
+          "score": 2
+        },
+        {
+          "value": "unknown",
+          "label": "No tengo acceso a esa información",
+          "score": 1
+        }
+      ],
+      "display_block": 8,
+      "display_position": 6
     },
     {
       "id": "q_033",
@@ -575,16 +1150,30 @@
       "type": "multichoice",
       "weight": 1.0,
       "options": [
-        { "value": "no",      "label": "No, comportamiento normal para este usuario","score": 0},
-        { "value": "slight",  "label": "Algo diferente pero podría ser legítimo","score": 3  },
-        { "value": "yes",     "label": "Completamente fuera de su patrón habitual","score": 8},
-        { "value": "unknown", "label": "No tengo baseline de este usuario", "score": 3  }
-      ]
+        {
+          "value": "no",
+          "label": "No, comportamiento normal para este usuario",
+          "score": 0
+        },
+        {
+          "value": "slight",
+          "label": "Algo diferente pero podría ser legítimo",
+          "score": 3
+        },
+        {
+          "value": "yes",
+          "label": "Completamente fuera de su patrón habitual",
+          "score": 8
+        },
+        {
+          "value": "unknown",
+          "label": "No tengo baseline de este usuario",
+          "score": 3
+        }
+      ],
+      "display_block": 7,
+      "display_position": 6
     },
-
-    // =============================================
-    // MÓDULO E: CONTEXTO TEMPORAL (5 preguntas)
-    // =============================================
     {
       "id": "q_034",
       "module": "temporal",
@@ -594,12 +1183,34 @@
       "type": "multichoice",
       "weight": 1.0,
       "options": [
-        { "value": "business",    "label": "Horario laboral normal",          "score": 0  },
-        { "value": "evening",     "label": "Tarde/noche (18:00-23:00)",       "score": 3  },
-        { "value": "dawn",        "label": "Madrugada (23:00-06:00)",         "score": 8  },
-        { "value": "morning",     "label": "Madrugada/mañana temprano (06:00-08:00)","score": 5},
-        { "value": "unknown",     "label": "No sé el horario exacto",        "score": 2  }
-      ]
+        {
+          "value": "business",
+          "label": "Horario laboral normal",
+          "score": 0
+        },
+        {
+          "value": "evening",
+          "label": "Tarde/noche (18:00-23:00)",
+          "score": 3
+        },
+        {
+          "value": "dawn",
+          "label": "Madrugada (23:00-06:00)",
+          "score": 8
+        },
+        {
+          "value": "morning",
+          "label": "Madrugada/mañana temprano (06:00-08:00)",
+          "score": 5
+        },
+        {
+          "value": "unknown",
+          "label": "No sé el horario exacto",
+          "score": 2
+        }
+      ],
+      "display_block": 6,
+      "display_position": 1
     },
     {
       "id": "q_035",
@@ -610,11 +1221,29 @@
       "type": "multichoice",
       "weight": 0.9,
       "options": [
-        { "value": "no",      "label": "No, fue un día laborable normal",   "score": 0  },
-        { "value": "weekend", "label": "Sí, fue fin de semana",             "score": 6  },
-        { "value": "holiday", "label": "Sí, fue día festivo/feriado",       "score": 8  },
-        { "value": "unknown", "label": "No lo sé",                         "score": 1  }
-      ]
+        {
+          "value": "no",
+          "label": "No, fue un día laborable normal",
+          "score": 0
+        },
+        {
+          "value": "weekend",
+          "label": "Sí, fue fin de semana",
+          "score": 6
+        },
+        {
+          "value": "holiday",
+          "label": "Sí, fue día festivo/feriado",
+          "score": 8
+        },
+        {
+          "value": "unknown",
+          "label": "No lo sé",
+          "score": 1
+        }
+      ],
+      "display_block": 6,
+      "display_position": 2
     },
     {
       "id": "q_036",
@@ -625,11 +1254,29 @@
       "type": "multichoice",
       "weight": 0.9,
       "options": [
-        { "value": "no",      "label": "No, es un evento puntual",          "score": 0  },
-        { "value": "irregular","label": "Se repite pero de forma irregular","score": 4  },
-        { "value": "regular", "label": "Patrón muy regular (cada X minutos)","score": 8  },
-        { "value": "unknown", "label": "No tengo suficiente histórico",     "score": 2  }
-      ]
+        {
+          "value": "no",
+          "label": "No, es un evento puntual",
+          "score": 0
+        },
+        {
+          "value": "irregular",
+          "label": "Se repite pero de forma irregular",
+          "score": 4
+        },
+        {
+          "value": "regular",
+          "label": "Patrón muy regular (cada X minutos)",
+          "score": 8
+        },
+        {
+          "value": "unknown",
+          "label": "No tengo suficiente histórico",
+          "score": 2
+        }
+      ],
+      "display_block": 6,
+      "display_position": 4
     },
     {
       "id": "q_037",
@@ -640,11 +1287,29 @@
       "type": "multichoice",
       "weight": 1.0,
       "options": [
-        { "value": "normal",  "label": "Es comportamiento normal y esperado","score": 0  },
-        { "value": "slight",  "label": "Algo inusual, podría tener explicación","score": 3},
-        { "value": "yes",     "label": "Completamente inusual para este contexto","score": 7},
-        { "value": "unknown", "label": "No tengo datos históricos",         "score": 2  }
-      ]
+        {
+          "value": "normal",
+          "label": "Es comportamiento normal y esperado",
+          "score": 0
+        },
+        {
+          "value": "slight",
+          "label": "Algo inusual, podría tener explicación",
+          "score": 3
+        },
+        {
+          "value": "yes",
+          "label": "Completamente inusual para este contexto",
+          "score": 7
+        },
+        {
+          "value": "unknown",
+          "label": "No tengo datos históricos",
+          "score": 2
+        }
+      ],
+      "display_block": 6,
+      "display_position": 6
     },
     {
       "id": "q_038",
@@ -655,16 +1320,30 @@
       "type": "multichoice",
       "weight": 0.9,
       "options": [
-        { "value": "normal",  "label": "Frecuencia normal / baja",          "score": 0  },
-        { "value": "high",    "label": "Alta, pero podría ser legítima",    "score": 3  },
-        { "value": "very_high","label": "Inusualmente alta (decenas/hora)", "score": 7  },
-        { "value": "burst",   "label": "Ráfaga masiva (cientos en minutos)","score": 10 }
-      ]
+        {
+          "value": "normal",
+          "label": "Frecuencia normal / baja",
+          "score": 0
+        },
+        {
+          "value": "high",
+          "label": "Alta, pero podría ser legítima",
+          "score": 3
+        },
+        {
+          "value": "very_high",
+          "label": "Inusualmente alta (decenas/hora)",
+          "score": 7
+        },
+        {
+          "value": "burst",
+          "label": "Ráfaga masiva (cientos en minutos)",
+          "score": 10
+        }
+      ],
+      "display_block": 6,
+      "display_position": 5
     },
-
-    // =============================================
-    // MÓDULO F: EVIDENCIA TÉCNICA (10 preguntas)
-    // =============================================
     {
       "id": "q_039",
       "module": "evidencia",
@@ -674,10 +1353,24 @@
       "type": "multichoice",
       "weight": 1.2,
       "options": [
-        { "value": "no",      "label": "No se detectó persistencia",       "score": 0  },
-        { "value": "unknown", "label": "No puedo verificarlo",             "score": 3  },
-        { "value": "yes",     "label": "Sí, se detectó mecanismo de persistencia","score": 14}
-      ]
+        {
+          "value": "no",
+          "label": "No se detectó persistencia",
+          "score": 0
+        },
+        {
+          "value": "unknown",
+          "label": "No puedo verificarlo",
+          "score": 3
+        },
+        {
+          "value": "yes",
+          "label": "Sí, se detectó mecanismo de persistencia",
+          "score": 14
+        }
+      ],
+      "display_block": 10,
+      "display_position": 1
     },
     {
       "id": "q_040",
@@ -688,10 +1381,24 @@
       "type": "multichoice",
       "weight": 1.3,
       "options": [
-        { "value": "no",      "label": "No hay evidencia de movimiento lateral","score": 0},
-        { "value": "unknown", "label": "No tengo visibilidad suficiente",  "score": 3  },
-        { "value": "yes",     "label": "Sí, movimiento lateral confirmado","score": 14 }
-      ]
+        {
+          "value": "no",
+          "label": "No hay evidencia de movimiento lateral",
+          "score": 0
+        },
+        {
+          "value": "unknown",
+          "label": "No tengo visibilidad suficiente",
+          "score": 3
+        },
+        {
+          "value": "yes",
+          "label": "Sí, movimiento lateral confirmado",
+          "score": 14
+        }
+      ],
+      "display_block": 10,
+      "display_position": 2
     },
     {
       "id": "q_041",
@@ -702,10 +1409,24 @@
       "type": "multichoice",
       "weight": 1.2,
       "options": [
-        { "value": "no",      "label": "No, sin elevación de privilegios", "score": 0  },
-        { "value": "unknown", "label": "No puedo verificarlo",             "score": 2  },
-        { "value": "yes",     "label": "Sí, elevación de privilegios detectada","score": 12}
-      ]
+        {
+          "value": "no",
+          "label": "No, sin elevación de privilegios",
+          "score": 0
+        },
+        {
+          "value": "unknown",
+          "label": "No puedo verificarlo",
+          "score": 2
+        },
+        {
+          "value": "yes",
+          "label": "Sí, elevación de privilegios detectada",
+          "score": 12
+        }
+      ],
+      "display_block": 10,
+      "display_position": 3
     },
     {
       "id": "q_042",
@@ -716,11 +1437,29 @@
       "type": "multichoice",
       "weight": 1.3,
       "options": [
-        { "value": "no",      "label": "Las herramientas de seguridad están activas","score": 0},
-        { "value": "unknown", "label": "No puedo verificar el estado del AV","score": 3  },
-        { "value": "partial", "label": "AV parcialmente desactivado o modificado","score": 8},
-        { "value": "yes",     "label": "AV/EDR completamente deshabilitado","score": 14 }
-      ]
+        {
+          "value": "no",
+          "label": "Las herramientas de seguridad están activas",
+          "score": 0
+        },
+        {
+          "value": "unknown",
+          "label": "No puedo verificar el estado del AV",
+          "score": 3
+        },
+        {
+          "value": "partial",
+          "label": "AV parcialmente desactivado o modificado",
+          "score": 8
+        },
+        {
+          "value": "yes",
+          "label": "AV/EDR completamente deshabilitado",
+          "score": 14
+        }
+      ],
+      "display_block": 10,
+      "display_position": 4
     },
     {
       "id": "q_043",
@@ -731,10 +1470,24 @@
       "type": "multichoice",
       "weight": 1.1,
       "options": [
-        { "value": "no",      "label": "No se detectaron cambios de política","score": 0 },
-        { "value": "unknown", "label": "No puedo verificarlo",             "score": 2  },
-        { "value": "yes",     "label": "Sí, políticas modificadas sin autorización","score": 10}
-      ]
+        {
+          "value": "no",
+          "label": "No se detectaron cambios de política",
+          "score": 0
+        },
+        {
+          "value": "unknown",
+          "label": "No puedo verificarlo",
+          "score": 2
+        },
+        {
+          "value": "yes",
+          "label": "Sí, políticas modificadas sin autorización",
+          "score": 10
+        }
+      ],
+      "display_block": 10,
+      "display_position": 5
     },
     {
       "id": "q_044",
@@ -745,10 +1498,24 @@
       "type": "multichoice",
       "weight": 1.3,
       "options": [
-        { "value": "no",      "label": "No se crearon cuentas no autorizadas","score": 0 },
-        { "value": "unknown", "label": "No puedo verificarlo",             "score": 3  },
-        { "value": "yes",     "label": "Sí, cuenta admin creada sin autorización","score": 14}
-      ]
+        {
+          "value": "no",
+          "label": "No se crearon cuentas no autorizadas",
+          "score": 0
+        },
+        {
+          "value": "unknown",
+          "label": "No puedo verificarlo",
+          "score": 3
+        },
+        {
+          "value": "yes",
+          "label": "Sí, cuenta admin creada sin autorización",
+          "score": 14
+        }
+      ],
+      "display_block": 10,
+      "display_position": 6
     },
     {
       "id": "q_045",
@@ -759,11 +1526,29 @@
       "type": "multichoice",
       "weight": 1.1,
       "options": [
-        { "value": "no",      "label": "No se detectaron comandos sospechosos","score": 0},
-        { "value": "unknown", "label": "No tengo acceso a los logs de comandos","score": 2},
-        { "value": "maybe",   "label": "Comandos inusuales pero podrían ser legítimos","score": 5},
-        { "value": "yes",     "label": "Sí, comandos claramente sospechosos","score": 10 }
-      ]
+        {
+          "value": "no",
+          "label": "No se detectaron comandos sospechosos",
+          "score": 0
+        },
+        {
+          "value": "unknown",
+          "label": "No tengo acceso a los logs de comandos",
+          "score": 2
+        },
+        {
+          "value": "maybe",
+          "label": "Comandos inusuales pero podrían ser legítimos",
+          "score": 5
+        },
+        {
+          "value": "yes",
+          "label": "Sí, comandos claramente sospechosos",
+          "score": 10
+        }
+      ],
+      "display_block": 11,
+      "display_position": 1
     },
     {
       "id": "q_046",
@@ -774,11 +1559,29 @@
       "type": "multichoice",
       "weight": 1.5,
       "options": [
-        { "value": "no",      "label": "No hay indicios de comunicación C2","score": 0  },
-        { "value": "unknown", "label": "No puedo determinarlo",             "score": 4  },
-        { "value": "suspected","label": "Tráfico sospechoso a destino desconocido","score": 8},
-        { "value": "yes",     "label": "Comunicación C2 confirmada",        "score": 16 }
-      ]
+        {
+          "value": "no",
+          "label": "No hay indicios de comunicación C2",
+          "score": 0
+        },
+        {
+          "value": "unknown",
+          "label": "No puedo determinarlo",
+          "score": 4
+        },
+        {
+          "value": "suspected",
+          "label": "Tráfico sospechoso a destino desconocido",
+          "score": 8
+        },
+        {
+          "value": "yes",
+          "label": "Comunicación C2 confirmada",
+          "score": 16
+        }
+      ],
+      "display_block": 11,
+      "display_position": 2
     },
     {
       "id": "q_047",
@@ -789,11 +1592,29 @@
       "type": "multichoice",
       "weight": 1.5,
       "options": [
-        { "value": "no",      "label": "No hay exfiltración detectada",    "score": 0  },
-        { "value": "unknown", "label": "No puedo determinarlo",            "score": 4  },
-        { "value": "suspected","label": "Posible exfiltración, no confirmada","score": 8},
-        { "value": "yes",     "label": "Exfiltración de datos confirmada", "score": 18 }
-      ]
+        {
+          "value": "no",
+          "label": "No hay exfiltración detectada",
+          "score": 0
+        },
+        {
+          "value": "unknown",
+          "label": "No puedo determinarlo",
+          "score": 4
+        },
+        {
+          "value": "suspected",
+          "label": "Posible exfiltración, no confirmada",
+          "score": 8
+        },
+        {
+          "value": "yes",
+          "label": "Exfiltración de datos confirmada",
+          "score": 18
+        }
+      ],
+      "display_block": 11,
+      "display_position": 3
     },
     {
       "id": "q_048",
@@ -804,16 +1625,30 @@
       "type": "multichoice",
       "weight": 1.8,
       "options": [
-        { "value": "no",      "label": "No hay cifrado de archivos",       "score": 0  },
-        { "value": "unknown", "label": "No puedo verificarlo",             "score": 3  },
-        { "value": "maybe",   "label": "Algunos archivos inaccesibles, no confirmado","score": 8},
-        { "value": "yes",     "label": "Sí, cifrado masivo confirmado / Ransomware","score": 22}
-      ]
+        {
+          "value": "no",
+          "label": "No hay cifrado de archivos",
+          "score": 0
+        },
+        {
+          "value": "unknown",
+          "label": "No puedo verificarlo",
+          "score": 3
+        },
+        {
+          "value": "maybe",
+          "label": "Algunos archivos inaccesibles, no confirmado",
+          "score": 8
+        },
+        {
+          "value": "yes",
+          "label": "Sí, cifrado masivo confirmado / Ransomware",
+          "score": 22
+        }
+      ],
+      "display_block": 11,
+      "display_position": 4
     },
-
-    // =============================================
-    // MÓDULO G: MEDIDAS DE PROTECCIÓN (5 preguntas)
-    // =============================================
     {
       "id": "q_049",
       "module": "proteccion",
@@ -823,13 +1658,39 @@
       "type": "multichoice",
       "weight": 1.2,
       "options": [
-        { "value": "none",       "label": "Sin ninguna solución de seguridad",  "score": 10 },
-        { "value": "av_free",    "label": "Antivirus gratuito (ej. Windows Defender básico)","score": 7},
-        { "value": "av_corp",    "label": "Antivirus corporativo gestionado",    "score": 4  },
-        { "value": "edr",        "label": "EDR (CrowdStrike, SentinelOne, etc.)","score": 1  },
-        { "value": "xdr",        "label": "XDR (plataforma extendida)",          "score": 0  },
-        { "value": "unknown",    "label": "No sé qué protección tiene",          "score": 6  }
-      ]
+        {
+          "value": "none",
+          "label": "Sin ninguna solución de seguridad",
+          "score": 10
+        },
+        {
+          "value": "av_free",
+          "label": "Antivirus gratuito (ej. Windows Defender básico)",
+          "score": 7
+        },
+        {
+          "value": "av_corp",
+          "label": "Antivirus corporativo gestionado",
+          "score": 4
+        },
+        {
+          "value": "edr",
+          "label": "EDR (CrowdStrike, SentinelOne, etc.)",
+          "score": 1
+        },
+        {
+          "value": "xdr",
+          "label": "XDR (plataforma extendida)",
+          "score": 0
+        },
+        {
+          "value": "unknown",
+          "label": "No sé qué protección tiene",
+          "score": 6
+        }
+      ],
+      "display_block": 8,
+      "display_position": 1
     },
     {
       "id": "q_050",
@@ -840,12 +1701,34 @@
       "type": "multichoice",
       "weight": 0.7,
       "options": [
-        { "value": "yes",     "label": "Sí, actualizado en las últimas 24 horas","score": 0},
-        { "value": "old",     "label": "Desactualizado (más de 24-72 horas)",   "score": 4  },
-        { "value": "very_old","label": "Muy desactualizado (+72 horas)",         "score": 7  },
-        { "value": "na",      "label": "No aplica / sin AV",                    "score": 0  },
-        { "value": "unknown", "label": "No sé el estado de actualización",      "score": 2  }
-      ]
+        {
+          "value": "yes",
+          "label": "Sí, actualizado en las últimas 24 horas",
+          "score": 0
+        },
+        {
+          "value": "old",
+          "label": "Desactualizado (más de 24-72 horas)",
+          "score": 4
+        },
+        {
+          "value": "very_old",
+          "label": "Muy desactualizado (+72 horas)",
+          "score": 7
+        },
+        {
+          "value": "na",
+          "label": "No aplica / sin AV",
+          "score": 0
+        },
+        {
+          "value": "unknown",
+          "label": "No sé el estado de actualización",
+          "score": 2
+        }
+      ],
+      "display_block": 8,
+      "display_position": 2
     },
     {
       "id": "q_051",
@@ -856,11 +1739,29 @@
       "type": "multichoice",
       "weight": 0.8,
       "options": [
-        { "value": "yes",     "label": "Sí, firewall activo y configurado", "score": 0  },
-        { "value": "partial", "label": "Parcialmente activo o con reglas básicas","score": 4},
-        { "value": "no",      "label": "Firewall desactivado",              "score": 8  },
-        { "value": "unknown", "label": "No sé el estado del firewall",      "score": 3  }
-      ]
+        {
+          "value": "yes",
+          "label": "Sí, firewall activo y configurado",
+          "score": 0
+        },
+        {
+          "value": "partial",
+          "label": "Parcialmente activo o con reglas básicas",
+          "score": 4
+        },
+        {
+          "value": "no",
+          "label": "Firewall desactivado",
+          "score": 8
+        },
+        {
+          "value": "unknown",
+          "label": "No sé el estado del firewall",
+          "score": 3
+        }
+      ],
+      "display_block": 8,
+      "display_position": 3
     },
     {
       "id": "q_052",
@@ -871,12 +1772,34 @@
       "type": "multichoice",
       "weight": 1.0,
       "options": [
-        { "value": "complete","label": "Logs completos y disponibles",      "score": 0  },
-        { "value": "partial", "label": "Logs parciales o con gaps",         "score": 5  },
-        { "value": "deleted", "label": "Logs borrados o manipulados",       "score": 12 },
-        { "value": "none",    "label": "Sin logs disponibles",              "score": 8  },
-        { "value": "unknown", "label": "No sé el estado de los logs",       "score": 3  }
-      ]
+        {
+          "value": "complete",
+          "label": "Logs completos y disponibles",
+          "score": 0
+        },
+        {
+          "value": "partial",
+          "label": "Logs parciales o con gaps",
+          "score": 5
+        },
+        {
+          "value": "deleted",
+          "label": "Logs borrados o manipulados",
+          "score": 12
+        },
+        {
+          "value": "none",
+          "label": "Sin logs disponibles",
+          "score": 8
+        },
+        {
+          "value": "unknown",
+          "label": "No sé el estado de los logs",
+          "score": 3
+        }
+      ],
+      "display_block": 8,
+      "display_position": 4
     },
     {
       "id": "q_053",
@@ -887,16 +1810,30 @@
       "type": "multichoice",
       "weight": 0.9,
       "options": [
-        { "value": "yes",     "label": "Sí, MFA activo y funcionando",     "score": 0  },
-        { "value": "partial", "label": "MFA existe pero no es obligatorio","score": 3  },
-        { "value": "no",      "label": "Sin MFA",                          "score": 7  },
-        { "value": "unknown", "label": "No sé",                            "score": 2  }
-      ]
+        {
+          "value": "yes",
+          "label": "Sí, MFA activo y funcionando",
+          "score": 0
+        },
+        {
+          "value": "partial",
+          "label": "MFA existe pero no es obligatorio",
+          "score": 3
+        },
+        {
+          "value": "no",
+          "label": "Sin MFA",
+          "score": 7
+        },
+        {
+          "value": "unknown",
+          "label": "No sé",
+          "score": 2
+        }
+      ],
+      "display_block": 8,
+      "display_position": 5
     },
-
-    // =============================================
-    // MÓDULO H: CANAL SOCIAL / HUMANO (5 preguntas)
-    // =============================================
     {
       "id": "q_054",
       "module": "social",
@@ -906,10 +1843,24 @@
       "type": "multichoice",
       "weight": 1.0,
       "options": [
-        { "value": "no",      "label": "No, sin contacto telefónico",       "score": 0  },
-        { "value": "unknown", "label": "No se reportó / no lo sé",          "score": 1  },
-        { "value": "yes",     "label": "Sí, llamada sospechosa reportada",  "score": 8  }
-      ]
+        {
+          "value": "no",
+          "label": "No, sin contacto telefónico",
+          "score": 0
+        },
+        {
+          "value": "unknown",
+          "label": "No se reportó / no lo sé",
+          "score": 1
+        },
+        {
+          "value": "yes",
+          "label": "Sí, llamada sospechosa reportada",
+          "score": 8
+        }
+      ],
+      "display_block": 9,
+      "display_position": 1
     },
     {
       "id": "q_055",
@@ -920,10 +1871,24 @@
       "type": "multichoice",
       "weight": 1.0,
       "options": [
-        { "value": "no",      "label": "No hay solicitudes inusuales",      "score": 0  },
-        { "value": "unknown", "label": "No se reportó",                     "score": 1  },
-        { "value": "yes",     "label": "Sí, solicitud urgente detectada",   "score": 9  }
-      ]
+        {
+          "value": "no",
+          "label": "No hay solicitudes inusuales",
+          "score": 0
+        },
+        {
+          "value": "unknown",
+          "label": "No se reportó",
+          "score": 1
+        },
+        {
+          "value": "yes",
+          "label": "Sí, solicitud urgente detectada",
+          "score": 9
+        }
+      ],
+      "display_block": 9,
+      "display_position": 2
     },
     {
       "id": "q_056",
@@ -934,10 +1899,24 @@
       "type": "multichoice",
       "weight": 1.1,
       "options": [
-        { "value": "no",      "label": "No, sin solicitudes MFA inusuales", "score": 0  },
-        { "value": "few",     "label": "Algunas notificaciones MFA raras",  "score": 4  },
-        { "value": "yes",     "label": "Sí, múltiples solicitudes MFA seguidas","score": 10}
-      ]
+        {
+          "value": "no",
+          "label": "No, sin solicitudes MFA inusuales",
+          "score": 0
+        },
+        {
+          "value": "few",
+          "label": "Algunas notificaciones MFA raras",
+          "score": 4
+        },
+        {
+          "value": "yes",
+          "label": "Sí, múltiples solicitudes MFA seguidas",
+          "score": 10
+        }
+      ],
+      "display_block": 9,
+      "display_position": 3
     },
     {
       "id": "q_057",
@@ -948,10 +1927,24 @@
       "type": "multichoice",
       "weight": 1.0,
       "options": [
-        { "value": "no",      "label": "Sin phishing detectado",            "score": 0  },
-        { "value": "suspected","label": "Email sospechoso pero no confirmado","score": 4 },
-        { "value": "yes",     "label": "Phishing confirmado",               "score": 9  }
-      ]
+        {
+          "value": "no",
+          "label": "Sin phishing detectado",
+          "score": 0
+        },
+        {
+          "value": "suspected",
+          "label": "Email sospechoso pero no confirmado",
+          "score": 4
+        },
+        {
+          "value": "yes",
+          "label": "Phishing confirmado",
+          "score": 9
+        }
+      ],
+      "display_block": 9,
+      "display_position": 4
     },
     {
       "id": "q_058",
@@ -962,16 +1955,30 @@
       "type": "multichoice",
       "weight": 1.1,
       "options": [
-        { "value": "no",      "label": "No reportó nada inusual",           "score": 0  },
-        { "value": "unknown", "label": "No se pudo contactar al usuario",   "score": 2  },
-        { "value": "suspected","label": "El usuario tiene dudas sobre algo","score": 5  },
-        { "value": "yes",     "label": "Sí, confirma que fue víctima de engaño","score": 11}
-      ]
+        {
+          "value": "no",
+          "label": "No reportó nada inusual",
+          "score": 0
+        },
+        {
+          "value": "unknown",
+          "label": "No se pudo contactar al usuario",
+          "score": 2
+        },
+        {
+          "value": "suspected",
+          "label": "El usuario tiene dudas sobre algo",
+          "score": 5
+        },
+        {
+          "value": "yes",
+          "label": "Sí, confirma que fue víctima de engaño",
+          "score": 11
+        }
+      ],
+      "display_block": 11,
+      "display_position": 5
     },
-
-    // =============================================
-    // MÓDULO I: IDENTIFICADORES TÉCNICOS (5 preguntas)
-    // =============================================
     {
       "id": "q_059",
       "module": "identificadores",
@@ -981,11 +1988,29 @@
       "type": "multichoice",
       "weight": 0.8,
       "options": [
-        { "value": "yes_internal","label": "Sí, IP interna identificada y conocida","score": 0},
-        { "value": "yes_external","label": "Sí, IP externa identificada",     "score": 2  },
-        { "value": "proxy",       "label": "Proxy / Tor / VPN anónima",       "score": 8  },
-        { "value": "no",          "label": "IP de origen desconocida",        "score": 6  }
-      ]
+        {
+          "value": "yes_internal",
+          "label": "Sí, IP interna identificada y conocida",
+          "score": 0
+        },
+        {
+          "value": "yes_external",
+          "label": "Sí, IP externa identificada",
+          "score": 2
+        },
+        {
+          "value": "proxy",
+          "label": "Proxy / Tor / VPN anónima",
+          "score": 8
+        },
+        {
+          "value": "no",
+          "label": "IP de origen desconocida",
+          "score": 6
+        }
+      ],
+      "display_block": 3,
+      "display_position": 1
     },
     {
       "id": "q_060",
@@ -996,11 +2021,29 @@
       "type": "multichoice",
       "weight": 0.8,
       "options": [
-        { "value": "yes_internal","label": "Sí, IP interna conocida y válida", "score": 0 },
-        { "value": "yes_known",  "label": "IP externa conocida y legítima",    "score": 0  },
-        { "value": "unknown",    "label": "IP externa desconocida",            "score": 5  },
-        { "value": "malicious",  "label": "IP confirmada maliciosa",           "score": 10 }
-      ]
+        {
+          "value": "yes_internal",
+          "label": "Sí, IP interna conocida y válida",
+          "score": 0
+        },
+        {
+          "value": "yes_known",
+          "label": "IP externa conocida y legítima",
+          "score": 0
+        },
+        {
+          "value": "unknown",
+          "label": "IP externa desconocida",
+          "score": 5
+        },
+        {
+          "value": "malicious",
+          "label": "IP confirmada maliciosa",
+          "score": 10
+        }
+      ],
+      "display_block": 3,
+      "display_position": 2
     },
     {
       "id": "q_061",
@@ -1011,12 +2054,34 @@
       "type": "multichoice",
       "weight": 0.9,
       "options": [
-        { "value": "no",       "label": "No, acceso local directo",           "score": 0  },
-        { "value": "vpn_ok",   "label": "VPN corporativa y acceso autorizado","score": 1  },
-        { "value": "vpn_anon", "label": "VPN no corporativa / anónima",       "score": 7  },
-        { "value": "rdp",      "label": "RDP / acceso remoto expuesto",       "score": 8  },
-        { "value": "unknown",  "label": "No sé cómo se conecta",              "score": 3  }
-      ]
+        {
+          "value": "no",
+          "label": "No, acceso local directo",
+          "score": 0
+        },
+        {
+          "value": "vpn_ok",
+          "label": "VPN corporativa y acceso autorizado",
+          "score": 1
+        },
+        {
+          "value": "vpn_anon",
+          "label": "VPN no corporativa / anónima",
+          "score": 7
+        },
+        {
+          "value": "rdp",
+          "label": "RDP / acceso remoto expuesto",
+          "score": 8
+        },
+        {
+          "value": "unknown",
+          "label": "No sé cómo se conecta",
+          "score": 3
+        }
+      ],
+      "display_block": 3,
+      "display_position": 4
     },
     {
       "id": "q_062",
@@ -1027,14 +2092,44 @@
       "type": "multichoice",
       "weight": 1.2,
       "options": [
-        { "value": "none",        "label": "Sin asociación a amenazas",       "score": 0  },
-        { "value": "unknown",     "label": "No verifiqué / sin info",          "score": 3  },
-        { "value": "cryptominer", "label": "Cryptomining",                    "score": 6  },
-        { "value": "phishing",    "label": "Phishing / Fraude",               "score": 8  },
-        { "value": "botnet",      "label": "Botnet",                          "score": 10 },
-        { "value": "c2",          "label": "Command & Control",               "score": 14 },
-        { "value": "ransomware",  "label": "Ransomware / APT",               "score": 16 }
-      ]
+        {
+          "value": "none",
+          "label": "Sin asociación a amenazas",
+          "score": 0
+        },
+        {
+          "value": "unknown",
+          "label": "No verifiqué / sin info",
+          "score": 3
+        },
+        {
+          "value": "cryptominer",
+          "label": "Cryptomining",
+          "score": 6
+        },
+        {
+          "value": "phishing",
+          "label": "Phishing / Fraude",
+          "score": 8
+        },
+        {
+          "value": "botnet",
+          "label": "Botnet",
+          "score": 10
+        },
+        {
+          "value": "c2",
+          "label": "Command & Control",
+          "score": 14
+        },
+        {
+          "value": "ransomware",
+          "label": "Ransomware / APT",
+          "score": 16
+        }
+      ],
+      "display_block": 2,
+      "display_position": 5
     },
     {
       "id": "q_063",
@@ -1045,12 +2140,102 @@
       "type": "multichoice",
       "weight": 1.0,
       "options": [
-        { "value": "na",     "label": "No hay IP/dominio externo involucrado","score": 0  },
-        { "value": "one",    "label": "Solo 1 equipo",                       "score": 2  },
-        { "value": "few",    "label": "Menos de 10 equipos",                 "score": 5  },
-        { "value": "many",   "label": "10 a 50 equipos",                    "score": 9  },
-        { "value": "lots",   "label": "Más de 50 equipos",                  "score": 14 }
-      ]
+        {
+          "value": "na",
+          "label": "No hay IP/dominio externo involucrado",
+          "score": 0
+        },
+        {
+          "value": "one",
+          "label": "Solo 1 equipo",
+          "score": 2
+        },
+        {
+          "value": "few",
+          "label": "Menos de 10 equipos",
+          "score": 5
+        },
+        {
+          "value": "many",
+          "label": "10 a 50 equipos",
+          "score": 9
+        },
+        {
+          "value": "lots",
+          "label": "Más de 50 equipos",
+          "score": 14
+        }
+      ],
+      "display_block": 2,
+      "display_position": 6
+    }
+  ],
+  "blocks": [
+    {
+      "id": 1,
+      "label": "Primera Evaluación",
+      "icon": "bi-eye-fill",
+      "description": "Que detectaste? Describe el evento en terminos generales."
+    },
+    {
+      "id": 2,
+      "label": "Inteligencia de Amenazas",
+      "icon": "bi-database-exclamation",
+      "description": "IOC conocidos, reputacion de IP/dominio y threat intelligence."
+    },
+    {
+      "id": 3,
+      "label": "Identidad de Red",
+      "icon": "bi-ethernet",
+      "description": "IP origen, IP destino, direccion del trafico, MAC y hostname."
+    },
+    {
+      "id": 4,
+      "label": "El Activo Afectado",
+      "icon": "bi-pc-display-horizontal",
+      "description": "Que tipo de equipo esta involucrado y que tan critico es?"
+    },
+    {
+      "id": 5,
+      "label": "Alcance y Propagacion",
+      "icon": "bi-diagram-3-fill",
+      "description": "Cuantos sistemas y usuarios estan afectados?"
+    },
+    {
+      "id": 6,
+      "label": "Contexto Temporal",
+      "icon": "bi-clock-history",
+      "description": "Cuando ocurrio el evento? Es un patron inusual o automatizado?"
+    },
+    {
+      "id": 7,
+      "label": "El Usuario Involucrado",
+      "icon": "bi-person-fill-lock",
+      "description": "Perfil, privilegios y comportamiento del usuario relacionado."
+    },
+    {
+      "id": 8,
+      "label": "Controles de Seguridad",
+      "icon": "bi-shield-fill-check",
+      "description": "Protecciones activas, autenticacion y visibilidad de logs."
+    },
+    {
+      "id": 9,
+      "label": "Canal Humano",
+      "icon": "bi-people-fill",
+      "description": "Hay indicios de phishing, llamadas sospechosas o ingenieria social?"
+    },
+    {
+      "id": 10,
+      "label": "Evidencia Tecnica I",
+      "icon": "bi-bug-fill",
+      "description": "Persistencia, movimiento lateral, escalada de privilegios y backdoors."
+    },
+    {
+      "id": 11,
+      "label": "Evidencia Critica",
+      "icon": "bi-radioactive",
+      "description": "Indicadores de maximo riesgo: C2, exfiltracion y ransomware."
     }
   ]
 }

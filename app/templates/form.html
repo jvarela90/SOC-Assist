@@ -2,322 +2,359 @@
 {% block title %}Nueva Evaluación{% endblock %}
 
 {% block content %}
-<div class="row">
+<div class="row g-4">
 
-  <!-- Left: Wizard form -->
+  <!-- ═══════════════════════════════════════════════
+       LEFT: Wizard por bloques
+       ═══════════════════════════════════════════════ -->
   <div class="col-lg-8">
-    <h4 class="mb-1"><i class="bi bi-search-heart-fill text-danger me-2"></i>Evaluación de Evento</h4>
-    <p class="text-muted small mb-3">Responde las preguntas basándote en lo que observas. Usa "No sé" si no tienes la información.</p>
+
+    <!-- Header -->
+    <div class="mb-3">
+      <h4 class="mb-0">
+        <i class="bi bi-search-heart-fill text-danger me-2"></i>Evaluación de Evento de Seguridad
+      </h4>
+      <p class="text-muted small mt-1 mb-0">
+        Responde basándote en lo que <em>observas</em>. Usa "No sé" cuando no tengas información.
+        No hay respuestas correctas o incorrectas.
+      </p>
+    </div>
 
     <!-- Progress bar -->
     <div class="mb-3">
       <div class="d-flex justify-content-between small text-muted mb-1">
-        <span id="step-label">Módulo 1 de {{ modules|length }}</span>
-        <span id="step-pct">0%</span>
+        <span id="step-label">Bloque 1 de {{ total_blocks }}</span>
+        <span id="step-answered" class="text-muted">0 / {{ total_questions }} respondidas</span>
       </div>
-      <div class="progress" style="height:8px;">
-        <div id="progress-bar" class="progress-bar bg-danger" style="width:0%; transition: width 0.3s;"></div>
+      <div class="progress" style="height: 6px;">
+        <div id="progress-bar" class="progress-bar bg-secondary"
+             style="width: {{ (1 / total_blocks * 100)|round|int }}%; transition: width 0.3s;"></div>
       </div>
-    </div>
-
-    <!-- Module nav tabs -->
-    <div class="d-flex flex-wrap gap-1 mb-3" id="module-tabs">
-      {% for mod in modules %}
-      <button type="button"
-              class="btn btn-sm btn-outline-secondary module-tab"
-              data-module-index="{{ loop.index0 }}"
-              onclick="goToModule({{ loop.index0 }})">
-        <i class="bi {{ mod.icon }} me-1"></i>{{ loop.index }}
-      </button>
-      {% endfor %}
     </div>
 
     <form id="eval-form" method="post" action="/evaluar">
 
-      <!-- Module sections -->
-      {% for mod in modules %}
-      <div class="module-section card border-secondary mb-3" id="module-{{ loop.index0 }}" style="display:none;">
-        <div class="card-header d-flex align-items-center gap-2">
-          <i class="bi {{ mod.icon }} text-danger fs-5"></i>
-          <div>
-            <h6 class="mb-0">{{ mod.label }}</h6>
-            <small class="text-muted">{{ mod.description }}</small>
+      <!-- ── Block sections ────────────────────────── -->
+      {% for block in blocks %}
+      {% set bqs = questions_by_block.get(block.id, []) %}
+      <div class="block-section" id="block-{{ loop.index0 }}" style="display:none;">
+
+        <!-- Block header -->
+        <div class="block-header d-flex align-items-center gap-3 mb-3 pb-2 border-bottom border-secondary">
+          <div class="block-icon-wrap">
+            <i class="bi {{ block.icon }} text-danger" style="font-size:1.6rem;"></i>
           </div>
-          <span class="ms-auto badge bg-secondary">{{ questions_by_module[mod.id]|length }} preguntas</span>
+          <div>
+            <h5 class="mb-0 fw-bold">{{ block.label }}</h5>
+            <small class="text-muted">{{ block.description }}</small>
+          </div>
+          <span class="ms-auto badge bg-dark border border-secondary text-muted">
+            {{ bqs|length }} preguntas
+          </span>
         </div>
-        <div class="card-body">
-          {% for q in questions_by_module[mod.id] %}
-          <div class="question-block mb-4 pb-3 border-bottom border-secondary">
-            <label class="form-label fw-semibold">
-              <span class="badge bg-secondary me-1 small">{{ loop.index }}</span>
-              {{ q.text }}
-            </label>
-            {% if q.help %}
-            <div class="text-muted small mb-2">
-              <i class="bi bi-info-circle me-1"></i>{{ q.help }}
-            </div>
-            {% endif %}
-            <div class="d-flex flex-wrap gap-2">
-              {% for opt in questions_with_scores[q.id] %}
-              <div class="form-check form-check-option">
-                <input class="form-check-input answer-radio"
-                       type="radio"
-                       name="{{ q.id }}"
-                       id="{{ q.id }}_{{ opt.value }}"
-                       value="{{ opt.value }}"
-                       data-score="{{ opt.weighted_score }}"
-                       onchange="updateIndicator()">
-                <label class="form-check-label option-label {% if opt.weighted_score == 0 %}opt-safe{% elif opt.weighted_score <= 5 %}opt-low{% elif opt.weighted_score <= 10 %}opt-med{% elif opt.weighted_score <= 15 %}opt-high{% else %}opt-critical{% endif %}"
-                       for="{{ q.id }}_{{ opt.value }}">
-                  {{ opt.label }}
-                  {% if opt.weighted_score > 0 %}
-                  <span class="score-badge">+{{ "%.1f"|format(opt.weighted_score) }}</span>
-                  {% endif %}
-                </label>
+
+        <!-- Questions grid: 2 columns × up to 3 rows -->
+        <div class="row g-3">
+          {% for q in bqs %}
+          <div class="col-md-6">
+            <div class="question-card h-100" id="qcard-{{ q.id }}">
+
+              <!-- Question text -->
+              <div class="qcard-header">
+                <span class="q-number">{{ loop.index }}</span>
+                <span class="q-text">{{ q.text }}</span>
+                {% if q.help %}
+                <button type="button"
+                        class="btn-help"
+                        data-bs-toggle="tooltip"
+                        data-bs-placement="top"
+                        title="{{ q.help }}">
+                  <i class="bi bi-question-circle"></i>
+                </button>
+                {% endif %}
               </div>
-              {% endfor %}
+
+              <!-- Help text (mobile-friendly fallback) -->
+              {% if q.help %}
+              <div class="qcard-help" id="help-{{ q.id }}">
+                <i class="bi bi-info-circle me-1 text-muted"></i>{{ q.help }}
+              </div>
+              {% endif %}
+
+              <!-- Options — neutral, no scores shown, no color coding -->
+              <div class="qcard-options">
+                {% for opt in weighted_options[q.id] %}
+                <div class="q-option">
+                  <input type="radio"
+                         class="q-radio"
+                         name="{{ q.id }}"
+                         id="{{ q.id }}_{{ opt.value }}"
+                         value="{{ opt.value }}"
+                         data-score="{{ opt.weighted_score }}"
+                         onchange="onAnswerChange('{{ q.id }}', this)">
+                  <label class="q-label" for="{{ q.id }}_{{ opt.value }}">
+                    {{ opt.label }}
+                  </label>
+                </div>
+                {% endfor %}
+              </div>
+
             </div>
           </div>
           {% endfor %}
         </div>
-      </div>
+
+      </div><!-- /.block-section -->
       {% endfor %}
 
-      <!-- Analyst info -->
-      <div class="module-section card border-secondary mb-3" id="module-{{ modules|length }}" style="display:none;">
-        <div class="card-header">
-          <h6 class="mb-0"><i class="bi bi-person-fill me-2"></i>Información del Analista</h6>
+      <!-- ── Summary / Analyst step ───────────────── -->
+      <div class="block-section" id="block-{{ total_blocks }}" style="display:none;">
+        <div class="block-header d-flex align-items-center gap-3 mb-3 pb-2 border-bottom border-secondary">
+          <i class="bi bi-send-fill text-danger" style="font-size:1.6rem;"></i>
+          <div>
+            <h5 class="mb-0 fw-bold">Resumen y Envío</h5>
+            <small class="text-muted">Revisión final antes de evaluar el evento.</small>
+          </div>
         </div>
-        <div class="card-body">
-          <div class="mb-3">
-            <label class="form-label">Nombre del analista (opcional)</label>
-            <input type="text" class="form-control bg-dark text-light border-secondary" name="analyst_name" placeholder="Tu nombre...">
+
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label small text-muted">Nombre del analista <span class="text-muted">(opcional)</span></label>
+            <input type="text"
+                   name="analyst_name"
+                   class="form-control bg-dark text-light border-secondary"
+                   placeholder="Tu nombre o alias...">
           </div>
-          <div class="alert alert-warning">
-            <i class="bi bi-exclamation-triangle-fill me-2"></i>
-            <strong>Revisión Final:</strong> Al enviar, el sistema calculará el puntaje de riesgo y generará la clasificación del evento.
+          <div class="col-12">
+            <div id="summary-stats" class="row g-2"></div>
           </div>
-          <div id="summary-preview" class="mt-3"></div>
+          <div class="col-12">
+            <div class="alert alert-secondary mb-0">
+              <i class="bi bi-info-circle me-2"></i>
+              Al enviar, el sistema calculará la clasificación del evento y generará el reporte de análisis.
+              Las respuestas no respondidas no contribuyen al puntaje.
+            </div>
+          </div>
         </div>
       </div>
 
-      <!-- Navigation buttons -->
-      <div class="d-flex justify-content-between mt-3">
-        <button type="button" class="btn btn-outline-secondary" id="btn-prev" onclick="prevModule()" style="display:none;">
-          <i class="bi bi-arrow-left me-1"></i>Anterior
+      <!-- ── Navigation buttons ────────────────────── -->
+      <div class="d-flex justify-content-between mt-4">
+        <button type="button" class="btn btn-outline-secondary" id="btn-prev"
+                onclick="prevBlock()" style="display:none;">
+          <i class="bi bi-arrow-left me-1"></i> Anterior
         </button>
+
         <div class="ms-auto d-flex gap-2">
-          <button type="button" class="btn btn-outline-primary" id="btn-next" onclick="nextModule()">
+          <button type="button" class="btn btn-primary px-4" id="btn-next"
+                  onclick="nextBlock()">
             Siguiente <i class="bi bi-arrow-right ms-1"></i>
           </button>
-          <button type="submit" class="btn btn-danger" id="btn-submit" style="display:none;">
-            <i class="bi bi-play-fill me-1"></i>Evaluar Evento
+          <button type="submit" class="btn btn-danger px-5" id="btn-submit"
+                  style="display:none;">
+            <i class="bi bi-play-fill me-1"></i> Evaluar Evento
           </button>
         </div>
       </div>
-    </form>
-  </div>
 
-  <!-- Right: Risk indicator sidebar -->
+    </form><!-- /#eval-form -->
+  </div><!-- /.col-lg-8 -->
+
+
+  <!-- ═══════════════════════════════════════════════
+       RIGHT: Sidebar — progreso y estado
+       ═══════════════════════════════════════════════ -->
   <div class="col-lg-4">
     <div class="sticky-top" style="top: 80px;">
 
-      <!-- Risk meter -->
+      <!-- Classification indicator (label only, no number) -->
       <div class="card border-secondary mb-3">
-        <div class="card-header text-center">
-          <small class="text-muted">INDICADOR DE RIESGO EN TIEMPO REAL</small>
+        <div class="card-header text-center py-2">
+          <small class="text-muted text-uppercase letter-spacing-1">Nivel de Atención</small>
         </div>
-        <div class="card-body text-center py-4">
-          <div id="risk-emoji" style="font-size: 3.5rem; line-height:1;">🟢</div>
-          <div id="risk-label" class="fw-bold fs-5 mt-2">Informativo</div>
-          <div class="mt-2">
-            <span class="text-muted small">Score estimado:</span>
-            <span id="risk-score" class="fs-4 fw-bold ms-2">0</span>
+        <div class="card-body text-center py-3">
+          <div id="risk-label" class="fw-bold fs-4 mb-1">Informativo</div>
+          <div id="risk-desc" class="small text-muted">Continúa respondiendo las preguntas.</div>
+          <!-- Subtle level bar — no numbers -->
+          <div class="level-bar mt-3">
+            <div id="level-fill" class="level-fill" style="width:2%;"></div>
           </div>
-          <div class="progress mt-3" style="height: 12px;">
-            <div id="risk-progress" class="progress-bar" style="width: 0%; transition: width 0.4s; background: #198754;"></div>
-          </div>
-          <div class="d-flex justify-content-between small text-muted mt-1">
-            <span>0</span><span>100</span><span>200+</span>
+          <div class="d-flex justify-content-between" style="font-size:0.65rem; color:#555; margin-top:3px;">
+            <span>Bajo</span><span>Medio</span><span>Alto</span><span>Crítico</span>
           </div>
         </div>
       </div>
 
-      <!-- Module checklist -->
+      <!-- Block checklist -->
       <div class="card border-secondary">
-        <div class="card-header">
-          <small class="text-muted">MÓDULOS</small>
+        <div class="card-header py-2">
+          <small class="text-muted text-uppercase">Bloques</small>
+          <span class="float-end small text-muted" id="answered-count">0 / {{ total_questions }}</span>
         </div>
-        <div class="list-group list-group-flush" id="module-checklist">
-          {% for mod in modules %}
-          <div class="list-group-item list-group-item-action bg-dark border-secondary d-flex align-items-center gap-2"
-               id="check-{{ loop.index0 }}"
-               onclick="goToModule({{ loop.index0 }})"
-               style="cursor:pointer;">
-            <i class="bi bi-circle text-secondary fs-5" id="check-icon-{{ loop.index0 }}"></i>
-            <div>
-              <div class="small fw-semibold">{{ mod.label }}</div>
-              <div class="text-muted" style="font-size:0.7rem;">{{ questions_by_module[mod.id]|length }} preguntas</div>
+        <div class="list-group list-group-flush" id="block-checklist">
+          {% for block in blocks %}
+          <button type="button"
+                  class="list-group-item list-group-item-action bg-dark border-secondary d-flex align-items-center gap-2 py-2 checklist-btn"
+                  id="chk-{{ loop.index0 }}"
+                  onclick="goToBlock({{ loop.index0 }})">
+            <i class="bi bi-circle text-secondary small" id="chk-icon-{{ loop.index0 }}"></i>
+            <div class="text-start">
+              <div class="small fw-semibold" style="font-size:0.8rem;">{{ block.label }}</div>
+              <div class="text-muted" style="font-size:0.7rem;">
+                {{ questions_by_block.get(block.id, [])|length }} preguntas
+              </div>
             </div>
-          </div>
+          </button>
           {% endfor %}
-          <div class="list-group-item bg-dark border-secondary d-flex align-items-center gap-2"
-               id="check-{{ modules|length }}"
-               onclick="goToModule({{ modules|length }})"
-               style="cursor:pointer;">
-            <i class="bi bi-circle text-secondary fs-5" id="check-icon-{{ modules|length }}"></i>
-            <div class="small fw-semibold">Resumen y Envío</div>
-          </div>
+          <!-- Summary step -->
+          <button type="button"
+                  class="list-group-item list-group-item-action bg-dark border-secondary d-flex align-items-center gap-2 py-2 checklist-btn"
+                  id="chk-{{ total_blocks }}"
+                  onclick="goToBlock({{ total_blocks }})">
+            <i class="bi bi-circle text-secondary small" id="chk-icon-{{ total_blocks }}"></i>
+            <div class="text-start">
+              <div class="small fw-semibold" style="font-size:0.8rem;">Resumen y Envío</div>
+            </div>
+          </button>
         </div>
       </div>
 
-    </div>
-  </div>
-</div>
+    </div><!-- /.sticky-top -->
+  </div><!-- /.col-lg-4 -->
+
+</div><!-- /.row -->
 {% endblock %}
 
 {% block scripts %}
 <script>
-const TOTAL_MODULES = {{ modules|length }};
-let currentModule = 0;
+const TOTAL_BLOCKS = {{ total_blocks }};
+let currentBlock = 0;
+const answeredMap = {}; // q_id -> score
 
-// Score thresholds for indicator
-const THRESHOLDS = {
-  informativo: { max: 30,  emoji: "🟢", label: "Informativo",      color: "#198754", cls: "success" },
-  sospechoso:  { max: 70,  emoji: "🟡", label: "Sospechoso",        color: "#ffc107", cls: "warning" },
-  incidente:   { max: 130, emoji: "🟠", label: "Incidente",         color: "#fd7e14", cls: "orange"  },
-  critico:     { max: 200, emoji: "🔴", label: "Incidente Crítico", color: "#dc3545", cls: "danger"  },
-  brecha:      { max: 9999,emoji: "🚨", label: "Brecha Confirmada", color: "#6f1a1a", cls: "breach"  },
-};
+// ── Thresholds (for level indicator — no numbers shown to user)
+const LEVELS = [
+  { max: 40,  label: "Informativo",      desc: "Evento de bajo riesgo aparente.",         pct: 10, color: "#198754" },
+  { max: 110, label: "Sospechoso",        desc: "Algo merece más atención.",               pct: 35, color: "#e0a800" },
+  { max: 280, label: "Incidente",         desc: "Requiere investigación activa.",           pct: 60, color: "#fd7e14" },
+  { max: 600, label: "Incidente Crítico", desc: "Escalar al equipo de seguridad.",         pct: 82, color: "#dc3545" },
+  { max: 9999,"label": "Brecha Confirmada","desc": "Activar protocolo de respuesta.",       pct: 98, color: "#8b0000" },
+];
 
-function getClassification(score) {
-  if (score <= 40)  return THRESHOLDS.informativo;
-  if (score <= 110)  return THRESHOLDS.sospechoso;
-  if (score <= 280) return THRESHOLDS.incidente;
-  if (score <= 600) return THRESHOLDS.critico;
-  return THRESHOLDS.brecha;
+function getLevel(score) {
+  for (const l of LEVELS) if (score <= l.max) return l;
+  return LEVELS[LEVELS.length - 1];
+}
+
+// ── Answer handler
+function onAnswerChange(qid, el) {
+  answeredMap[qid] = parseFloat(el.dataset.score || 0);
+  updateIndicator();
+  updateAnsweredCount();
+  markCardAnswered(qid);
+}
+
+function markCardAnswered(qid) {
+  const card = document.getElementById('qcard-' + qid);
+  if (card) card.classList.add('answered');
 }
 
 function updateIndicator() {
-  let total = 0;
-  document.querySelectorAll('.answer-radio:checked').forEach(el => {
-    total += parseFloat(el.dataset.score || 0);
-  });
-
-  const cls = getClassification(total);
-  document.getElementById('risk-emoji').textContent = cls.emoji;
-  document.getElementById('risk-label').textContent = cls.label;
-  document.getElementById('risk-score').textContent = Math.round(total);
-  document.getElementById('risk-label').style.color = cls.color;
-
-  const pct = Math.min(100, (total / 201) * 100);
-  const bar = document.getElementById('risk-progress');
-  bar.style.width = pct + '%';
-  bar.style.background = cls.color;
+  const total = Object.values(answeredMap).reduce((s, v) => s + v, 0);
+  const lvl = getLevel(total);
+  document.getElementById('risk-label').textContent = lvl.label;
+  document.getElementById('risk-label').style.color = lvl.color;
+  document.getElementById('risk-desc').textContent = lvl.desc;
+  const fill = document.getElementById('level-fill');
+  fill.style.width = lvl.pct + '%';
+  fill.style.background = lvl.color;
 }
 
-function goToModule(index) {
-  // Hide all
-  document.querySelectorAll('.module-section').forEach(el => el.style.display = 'none');
-  // Show target
-  const target = document.getElementById('module-' + index);
-  if (target) target.style.display = 'block';
+function updateAnsweredCount() {
+  const n = Object.keys(answeredMap).length;
+  document.getElementById('answered-count').textContent = n + ' / {{ total_questions }}';
+  document.getElementById('step-answered').textContent = n + ' / {{ total_questions }} respondidas';
+}
 
-  currentModule = index;
+// ── Navigation
+function goToBlock(index) {
+  document.querySelectorAll('.block-section').forEach(el => el.style.display = 'none');
+  const target = document.getElementById('block-' + index);
+  if (target) { target.style.display = 'block'; target.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+  currentBlock = index;
   updateProgress();
   updateNav();
   updateChecklist();
-  updateTabHighlight();
-
-  if (index === TOTAL_MODULES) buildSummary();
+  if (index === TOTAL_BLOCKS) buildSummaryStats();
 }
 
-function nextModule() {
-  if (currentModule < TOTAL_MODULES) {
-    goToModule(currentModule + 1);
-  }
-}
-
-function prevModule() {
-  if (currentModule > 0) {
-    goToModule(currentModule - 1);
-  }
-}
+function nextBlock() { if (currentBlock <= TOTAL_BLOCKS) goToBlock(currentBlock + 1); }
+function prevBlock() { if (currentBlock > 0) goToBlock(currentBlock - 1); }
 
 function updateProgress() {
-  const pct = Math.round((currentModule / TOTAL_MODULES) * 100);
-  document.getElementById('progress-bar').style.width = pct + '%';
-  document.getElementById('step-pct').textContent = pct + '%';
+  const pct = Math.round((currentBlock / TOTAL_BLOCKS) * 100);
+  document.getElementById('progress-bar').style.width = Math.max(pct, 2) + '%';
   document.getElementById('step-label').textContent =
-    currentModule < TOTAL_MODULES
-      ? `Módulo ${currentModule + 1} de ${TOTAL_MODULES}`
-      : 'Revisión y Envío';
+    currentBlock < TOTAL_BLOCKS
+      ? `Bloque ${currentBlock + 1} de ${TOTAL_BLOCKS}`
+      : 'Resumen y Envío';
 }
 
 function updateNav() {
-  document.getElementById('btn-prev').style.display = currentModule > 0 ? 'inline-block' : 'none';
-  document.getElementById('btn-next').style.display = currentModule < TOTAL_MODULES ? 'inline-block' : 'none';
-  document.getElementById('btn-submit').style.display = currentModule === TOTAL_MODULES ? 'inline-block' : 'none';
+  document.getElementById('btn-prev').style.display   = currentBlock > 0              ? 'inline-block' : 'none';
+  document.getElementById('btn-next').style.display   = currentBlock < TOTAL_BLOCKS   ? 'inline-block' : 'none';
+  document.getElementById('btn-submit').style.display = currentBlock === TOTAL_BLOCKS  ? 'inline-block' : 'none';
 }
 
 function updateChecklist() {
-  for (let i = 0; i <= TOTAL_MODULES; i++) {
-    const icon = document.getElementById('check-icon-' + i);
-    const item = document.getElementById('check-' + i);
+  for (let i = 0; i <= TOTAL_BLOCKS; i++) {
+    const icon = document.getElementById('chk-icon-' + i);
+    const btn  = document.getElementById('chk-' + i);
     if (!icon) continue;
-
-    if (i === currentModule) {
-      icon.className = 'bi bi-record-circle-fill text-danger fs-5';
-      item.classList.add('active');
-    } else if (i < currentModule) {
-      icon.className = 'bi bi-check-circle-fill text-success fs-5';
-      item.classList.remove('active');
+    if (i === currentBlock) {
+      icon.className = 'bi bi-record-circle-fill text-danger small';
+      btn.classList.add('active');
+    } else if (i < currentBlock) {
+      icon.className = 'bi bi-check-circle-fill text-success small';
+      btn.classList.remove('active');
     } else {
-      icon.className = 'bi bi-circle text-secondary fs-5';
-      item.classList.remove('active');
+      icon.className = 'bi bi-circle text-secondary small';
+      btn.classList.remove('active');
     }
   }
 }
 
-function updateTabHighlight() {
-  document.querySelectorAll('.module-tab').forEach((btn, i) => {
-    btn.classList.toggle('active', i === currentModule);
-    btn.classList.toggle('btn-danger', i === currentModule);
-    btn.classList.toggle('btn-outline-secondary', i !== currentModule);
-  });
+function buildSummaryStats() {
+  const answered = Object.keys(answeredMap).length;
+  const total    = {{ total_questions }};
+  const missing  = total - answered;
+  const html = `
+    <div class="col-4">
+      <div class="card border-secondary text-center py-2">
+        <div class="fs-4 fw-bold">${answered}</div>
+        <div class="small text-muted">Respondidas</div>
+      </div>
+    </div>
+    <div class="col-4">
+      <div class="card border-secondary text-center py-2">
+        <div class="fs-4 fw-bold text-muted">${missing}</div>
+        <div class="small text-muted">Sin responder</div>
+      </div>
+    </div>
+    <div class="col-4">
+      <div class="card border-secondary text-center py-2">
+        <div class="fs-4 fw-bold">${TOTAL_BLOCKS}</div>
+        <div class="small text-muted">Bloques</div>
+      </div>
+    </div>`;
+  document.getElementById('summary-stats').innerHTML = html;
 }
 
-function buildSummary() {
-  const answered = document.querySelectorAll('.answer-radio:checked').length;
-  const total = document.querySelectorAll('.answer-radio').length;
-  const risky = [];
-
-  document.querySelectorAll('.answer-radio:checked').forEach(el => {
-    const score = parseFloat(el.dataset.score || 0);
-    if (score >= 8) {
-      const label = document.querySelector(`label[for="${el.id}"]`);
-      const qLabel = el.closest('.question-block').querySelector('.form-label').textContent.trim();
-      risky.push({ q: qLabel.substring(0, 60), s: score });
-    }
+// ── Init tooltips and first block
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
+    new bootstrap.Tooltip(el);
   });
-
-  risky.sort((a, b) => b.s - a.s);
-
-  let html = `<p class="small text-muted">Preguntas respondidas: <strong>${answered}</strong> de ${total}</p>`;
-  if (risky.length > 0) {
-    html += `<div class="alert alert-warning py-2"><i class="bi bi-exclamation-triangle-fill me-2"></i><strong>Factores de alto riesgo detectados:</strong><ul class="mb-0 mt-2 small">`;
-    risky.slice(0, 5).forEach(r => {
-      html += `<li>${r.q}... <span class="text-danger fw-bold">+${r.s.toFixed(1)}</span></li>`;
-    });
-    html += `</ul></div>`;
-  } else {
-    html += `<div class="alert alert-success py-2"><i class="bi bi-check-circle-fill me-2"></i>No se detectaron factores de alto riesgo en las respuestas.</div>`;
-  }
-
-  document.getElementById('summary-preview').innerHTML = html;
-}
-
-// Initialize
-goToModule(0);
+  goToBlock(0);
+});
 </script>
 {% endblock %}

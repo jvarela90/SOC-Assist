@@ -3,6 +3,9 @@ SOC Assist — Rutas del formulario de evaluación
 Navegación por bloques temáticos (no por módulos).
 """
 import asyncio
+import json
+import re
+from pathlib import Path
 from fastapi import APIRouter, Request, Depends
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
@@ -11,6 +14,15 @@ from app.models.database import get_db, Incident, IncidentAnswer
 from app.core.engine import engine_instance
 from app.core.auth import require_auth
 from app.services.notifications import notify_incident
+
+_PLAYBOOKS_PATH = Path(__file__).resolve().parent.parent.parent / "playbooks.json"
+
+
+def _load_playbooks() -> dict:
+    if _PLAYBOOKS_PATH.exists():
+        raw = _PLAYBOOKS_PATH.read_text(encoding="utf-8")
+        return json.loads(re.sub(r'//[^\n]*', '', raw))
+    return {}
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -138,12 +150,15 @@ async def evaluar_submit(request: Request, db: Session = Depends(get_db), _user:
 
     mod_labels = {m["id"]: m["label"] for m in engine_instance.modules}
 
+    playbook = _load_playbooks().get(result["classification"], {})
+
     return templates.TemplateResponse("result.html", {
         "request": request,
         "result": result,
         "incident_id": incident.id,
         "mod_labels": mod_labels,
         "analyst_name": analyst_name,
+        "playbook": playbook,
     })
 
 

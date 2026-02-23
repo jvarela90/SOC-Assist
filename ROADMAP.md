@@ -1,6 +1,6 @@
 # SOC Assist — Guía de Desarrollo y Roadmap
 
-> **Estado actual:** v1.3 — Motor ponderado + TI + OUI + Webhooks + Autenticación por roles
+> **Estado actual:** v1.4 — Motor ponderado + TI + Webhooks + Auth roles + Playbooks + Heatmap + CSV + Filtros
 > **Repositorio:** https://github.com/jvarela90/SOC-Assist
 > **Última actualización:** 2026-02
 
@@ -13,7 +13,7 @@
 | 1 | Core — Motor + Formulario | ✅ Completado |
 | 2 | UX — Bloques temáticos + sesgo neutral | ✅ Completado |
 | 3 | Integraciones externas | ✅ Completado |
-| 4 | Analítica avanzada + Colaboración | ⬜ Pendiente |
+| 4 | Analítica avanzada + Colaboración | 🔄 En Progreso |
 | 5 | Producción + Seguridad | ⬜ Pendiente |
 
 ---
@@ -87,24 +87,24 @@
 
 ---
 
-## Fase 4 — Analítica Avanzada + Colaboración (Pendiente ⬜)
+## Fase 4 — Analítica Avanzada + Colaboración (🔄 En Progreso)
 
 | # | Feature | Estado |
 |---|---------|--------|
 | 37 | Mapeo MITRE ATT&CK — etiquetar respuestas con técnica (T1059, T1003…) | ⬜ |
-| 38 | Playbooks de respuesta — lista de pasos por tipo de incidente | ⬜ |
-| 39 | Heatmap temporal (hora del día × día de semana) de incidentes | ⬜ |
+| 38 | Playbooks de respuesta — lista de pasos por tipo de incidente | ✅ |
+| 39 | Heatmap temporal (hora del día × día de semana) de incidentes | ✅ |
 | 40 | REST API documentada (OpenAPI) para integración con SIEMs externos | ⬜ |
 | 41 | Exportación de reportes a PDF (wkhtmltopdf o weasyprint) | ⬜ |
-| 42 | Exportación a CSV/Excel del historial | ⬜ |
+| 42 | Exportación a CSV/Excel del historial | ✅ |
 | 43 | Comparación de incidentes similares (clustering por vectores de respuesta) | ⬜ |
 | 44 | Score de similitud — "Este incidente se parece a ID-42 en un 78%" | ⬜ |
 | 45 | Comentarios colaborativos por incidente (varios analistas) | ⬜ |
 | 46 | Asignación de incidentes a analista específico | ⬜ |
 | 47 | Timeline gráfico del incidente (hora de detección → resolución) | ⬜ |
 | 48 | Adjuntar evidencia (screenshots, logs, pcap) al incidente | ⬜ |
-| 49 | Búsqueda full-text en historial de incidentes | ⬜ |
-| 50 | Filtros avanzados en historial: por fecha, nivel, módulo, analista | ⬜ |
+| 49 | Búsqueda full-text en historial de incidentes | ✅ |
+| 50 | Filtros avanzados en historial: por fecha, nivel, módulo, analista | ✅ |
 
 ---
 

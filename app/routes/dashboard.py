@@ -1,13 +1,18 @@
 """
 SOC Assist — Dashboard ejecutivo y historial de incidentes
 """
+import csv
+import io
+import json
+import re
 from datetime import datetime, timedelta
 from collections import defaultdict
+from pathlib import Path
 from fastapi import APIRouter, Request, Depends
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from app.models.database import get_db, Incident, IncidentAnswer
 from app.core.engine import engine_instance
 from app.core.auth import require_auth
@@ -16,6 +21,17 @@ router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
 
 CLASSIFICATION_ORDER = ["informativo", "sospechoso", "incidente", "critico", "brecha"]
+_BASE_DIR = Path(__file__).resolve().parent.parent.parent
+_PLAYBOOKS_PATH = _BASE_DIR / "playbooks.json"
+
+DAY_NAMES = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
+
+
+def _load_playbooks() -> dict:
+    if _PLAYBOOKS_PATH.exists():
+        raw = _PLAYBOOKS_PATH.read_text(encoding="utf-8")
+        return json.loads(re.sub(r'//[^\n]*', '', raw))
+    return {}
 
 
 @router.get("/dashboard", response_class=HTMLResponse)
@@ -90,6 +106,16 @@ async def dashboard(request: Request, db: Session = Depends(get_db), _user: dict
         module_avg_labels.append(mod_labels.get(mod, mod))
         module_avg_data.append(round(sum(vals) / len(vals), 2) if vals else 0)
 
+    # Heatmap: day-of-week × hour-of-day incident counts
+    heatmap = [[0] * 24 for _ in range(7)]
+    heatmap_max = 0
+    for inc in all_incidents:
+        d = inc.timestamp.weekday()
+        h = inc.timestamp.hour
+        heatmap[d][h] += 1
+        if heatmap[d][h] > heatmap_max:
+            heatmap_max = heatmap[d][h]
+
     # Recent 10 incidents for table
     recent_incidents = all_incidents[:10]
 
@@ -110,18 +136,96 @@ async def dashboard(request: Request, db: Session = Depends(get_db), _user: dict
         "module_avg_data": module_avg_data,
         "recent_incidents": recent_incidents,
         "thresholds": engine_instance.thresholds,
+        "heatmap": heatmap,
+        "heatmap_max": heatmap_max,
+        "day_names": DAY_NAMES,
     })
 
 
 @router.get("/incidentes", response_class=HTMLResponse)
 async def incidents_list(request: Request, db: Session = Depends(get_db), _user: dict = Depends(require_auth)):
-    incidents = db.query(Incident).order_by(Incident.timestamp.desc()).all()
+    q         = request.query_params.get("q", "").strip()
+    level     = request.query_params.get("level", "")
+    from_date = request.query_params.get("from_date", "")
+    to_date   = request.query_params.get("to_date", "")
+    resolution = request.query_params.get("resolution", "")
+
+    total_all = db.query(Incident).count()
+    query = db.query(Incident)
+
+    if level and level in CLASSIFICATION_ORDER:
+        query = query.filter(Incident.classification == level)
+    if resolution:
+        if resolution == "pending":
+            query = query.filter(Incident.resolution == None)
+        else:
+            query = query.filter(Incident.resolution == resolution)
+    if from_date:
+        try:
+            query = query.filter(Incident.timestamp >= datetime.strptime(from_date, "%Y-%m-%d"))
+        except ValueError:
+            pass
+    if to_date:
+        try:
+            query = query.filter(Incident.timestamp < datetime.strptime(to_date, "%Y-%m-%d") + timedelta(days=1))
+        except ValueError:
+            pass
+    if q:
+        query = query.filter(
+            or_(
+                Incident.analyst_name.ilike(f"%{q}%"),
+                Incident.analyst_notes.ilike(f"%{q}%"),
+            )
+        )
+
+    incidents = query.order_by(Incident.timestamp.desc()).all()
+
     return templates.TemplateResponse("incidents.html", {
         "request": request,
         "incidents": incidents,
         "thresholds": engine_instance.thresholds,
-        "total": len(incidents),
+        "total": total_all,
+        "filtered": len(incidents),
+        "active_filters": bool(q or level or from_date or to_date or resolution),
+        "filters": {
+            "q": q, "level": level,
+            "from_date": from_date, "to_date": to_date,
+            "resolution": resolution,
+        },
     })
+
+
+@router.get("/incidentes/export/csv")
+async def export_csv(request: Request, db: Session = Depends(get_db), _user: dict = Depends(require_auth)):
+    """Export all incidents as CSV download."""
+    incidents = db.query(Incident).order_by(Incident.timestamp.desc()).all()
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow([
+        "ID", "Fecha (UTC)", "Clasificación", "Score Final",
+        "Score Base", "Multiplicador", "Analista",
+        "Resolución", "Escalado", "Notas",
+    ])
+    for inc in incidents:
+        writer.writerow([
+            inc.id,
+            inc.timestamp.strftime("%Y-%m-%d %H:%M"),
+            inc.classification,
+            int(inc.final_score),
+            int(inc.base_score),
+            inc.multiplier,
+            inc.analyst_name or "",
+            inc.resolution or "",
+            "Sí" if inc.escalated else "No",
+            inc.analyst_notes or "",
+        ])
+    output.seek(0)
+    ts = datetime.utcnow().strftime("%Y%m%d_%H%M")
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f"attachment; filename=incidentes_soc_{ts}.csv"},
+    )
 
 
 @router.get("/incidentes/{incident_id}", response_class=HTMLResponse)
@@ -138,6 +242,8 @@ async def incident_detail(incident_id: int, request: Request, db: Session = Depe
     for ans in sorted(incident.answers, key=lambda a: a.contribution, reverse=True):
         answers_by_module[ans.module].append(ans)
 
+    playbook = _load_playbooks().get(incident.classification, {})
+
     return templates.TemplateResponse("incident_detail.html", {
         "request": request,
         "incident": incident,
@@ -145,4 +251,5 @@ async def incident_detail(incident_id: int, request: Request, db: Session = Depe
         "answers_by_module": dict(answers_by_module),
         "mod_labels": mod_labels,
         "questions_map": questions_map,
+        "playbook": playbook,
     })

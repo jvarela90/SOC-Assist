@@ -2,12 +2,80 @@
 {% block title %}Historial de Incidentes{% endblock %}
 
 {% block content %}
-<div class="d-flex align-items-center mb-3">
+<div class="d-flex align-items-center mb-3 flex-wrap gap-2">
   <h4 class="mb-0"><i class="bi bi-list-ul text-danger me-2"></i>Historial de Evaluaciones</h4>
-  <span class="badge bg-secondary ms-2">{{ total }}</span>
-  <a href="/evaluar" class="ms-auto btn btn-danger btn-sm">
-    <i class="bi bi-plus-circle me-1"></i>Nueva Evaluación
-  </a>
+  <span class="badge bg-secondary ms-1">{{ total }} total</span>
+  {% if active_filters %}
+  <span class="badge bg-info text-dark">{{ filtered }} filtrados</span>
+  {% endif %}
+  <div class="ms-auto d-flex gap-2">
+    <a href="/incidentes/export/csv" class="btn btn-outline-secondary btn-sm" title="Exportar CSV">
+      <i class="bi bi-download me-1"></i>CSV
+    </a>
+    <a href="/evaluar" class="btn btn-danger btn-sm">
+      <i class="bi bi-plus-circle me-1"></i>Nueva Evaluación
+    </a>
+  </div>
+</div>
+
+<!-- Filter bar -->
+<div class="card border-secondary mb-3">
+  <div class="card-body py-2">
+    <form method="get" action="/incidentes" class="row g-2 align-items-end">
+      <div class="col-12 col-md-3">
+        <label class="form-label form-label-sm text-muted mb-1">Buscar analista / notas</label>
+        <div class="input-group input-group-sm">
+          <span class="input-group-text bg-dark border-secondary"><i class="bi bi-search text-muted"></i></span>
+          <input type="text" name="q" value="{{ filters.q if filters is defined else '' }}"
+                 class="form-control bg-dark text-light border-secondary"
+                 placeholder="Texto libre...">
+        </div>
+      </div>
+      <div class="col-6 col-md-2">
+        <label class="form-label form-label-sm text-muted mb-1">Nivel</label>
+        <select name="level" class="form-select form-select-sm bg-dark text-light border-secondary">
+          <option value="">Todos</option>
+          {% set f = filters if filters is defined else {} %}
+          {% for key in ['informativo','sospechoso','incidente','critico','brecha'] %}
+          <option value="{{ key }}" {% if f.level == key %}selected{% endif %}>
+            {{ thresholds[key].emoji }} {{ thresholds[key].label }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-6 col-md-2">
+        <label class="form-label form-label-sm text-muted mb-1">Resolución</label>
+        <select name="resolution" class="form-select form-select-sm bg-dark text-light border-secondary">
+          <option value="">Todas</option>
+          <option value="pending" {% if f.resolution == 'pending' %}selected{% endif %}>⏸ Pendiente</option>
+          <option value="tp_resolved" {% if f.resolution == 'tp_resolved' %}selected{% endif %}>✅ TP Resuelto</option>
+          <option value="tp_escalated" {% if f.resolution == 'tp_escalated' %}selected{% endif %}>✅ TP Escalado</option>
+          <option value="fp" {% if f.resolution == 'fp' %}selected{% endif %}>❌ Falso Positivo</option>
+          <option value="ongoing" {% if f.resolution == 'ongoing' %}selected{% endif %}>⏳ En curso</option>
+        </select>
+      </div>
+      <div class="col-6 col-md-2">
+        <label class="form-label form-label-sm text-muted mb-1">Desde</label>
+        <input type="date" name="from_date" value="{{ f.from_date }}"
+               class="form-control form-control-sm bg-dark text-light border-secondary">
+      </div>
+      <div class="col-6 col-md-2">
+        <label class="form-label form-label-sm text-muted mb-1">Hasta</label>
+        <input type="date" name="to_date" value="{{ f.to_date }}"
+               class="form-control form-control-sm bg-dark text-light border-secondary">
+      </div>
+      <div class="col-12 col-md-1 d-flex gap-1">
+        <button type="submit" class="btn btn-sm btn-primary flex-fill" title="Aplicar filtros">
+          <i class="bi bi-funnel-fill"></i>
+        </button>
+        {% if active_filters %}
+        <a href="/incidentes" class="btn btn-sm btn-outline-secondary" title="Limpiar filtros">
+          <i class="bi bi-x-lg"></i>
+        </a>
+        {% endif %}
+      </div>
+    </form>
+  </div>
 </div>
 
 {% if incidents %}
@@ -73,6 +141,12 @@
       {% endfor %}
     </tbody>
   </table>
+</div>
+{% elif active_filters %}
+<div class="text-center py-5 text-muted">
+  <i class="bi bi-funnel fs-1 mb-3 d-block"></i>
+  <h5>Sin resultados para los filtros aplicados</h5>
+  <a href="/incidentes" class="btn btn-outline-secondary mt-3">Limpiar filtros</a>
 </div>
 {% else %}
 <div class="text-center py-5 text-muted">

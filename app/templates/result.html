@@ -222,6 +222,58 @@
       </div>
     </div>
 
+    <!-- Playbook de respuesta -->
+    {% set pb = playbook if playbook is defined else {} %}
+    {% if pb %}
+    <div class="card border-{{ pb.color | default('secondary') }} mb-4">
+      <div class="card-header d-flex align-items-center gap-2 {% if pb.color in ('danger',) %}text-danger{% elif pb.color == 'warning' %}text-warning{% else %}text-success{% endif %}">
+        <i class="bi {{ pb.icon | default('bi-journal-text') }}"></i>
+        <strong>Playbook de Respuesta</strong>
+        <span class="ms-2 text-muted small fw-normal">{{ pb.title }}</span>
+        <button class="btn btn-sm btn-link ms-auto p-0 text-muted"
+                data-bs-toggle="collapse" data-bs-target="#pbCollapse">
+          <i class="bi bi-chevron-down"></i>
+        </button>
+      </div>
+      <div class="collapse {% if cls in ('incidente','critico','brecha') %}show{% endif %}" id="pbCollapse">
+        <div class="card-body">
+          <p class="text-muted small mb-3">{{ pb.summary }}</p>
+
+          <h6 class="small fw-semibold mb-2"><i class="bi bi-list-ol me-1 text-info"></i>Pasos de Respuesta</h6>
+          <ol class="small mb-3">
+            {% for step in pb.steps %}
+            <li class="mb-1">{{ step }}</li>
+            {% endfor %}
+          </ol>
+
+          {% if pb.containment %}
+          <h6 class="small fw-semibold mb-2"><i class="bi bi-shield-fill-check me-1 text-warning"></i>Contención</h6>
+          <ul class="small mb-3">
+            {% for item in pb.containment %}
+            <li class="mb-1">{{ item }}</li>
+            {% endfor %}
+          </ul>
+          {% endif %}
+
+          {% if pb.eradication %}
+          <h6 class="small fw-semibold mb-2"><i class="bi bi-trash3-fill me-1 text-danger"></i>Erradicación</h6>
+          <ul class="small mb-3">
+            {% for item in pb.eradication %}
+            <li class="mb-1">{{ item }}</li>
+            {% endfor %}
+          </ul>
+          {% endif %}
+
+          {% if pb.notes %}
+          <div class="alert alert-secondary py-2 mb-0 small">
+            <i class="bi bi-info-circle me-1"></i>{{ pb.notes }}
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
   </div>
 </div>
 {% endblock %}

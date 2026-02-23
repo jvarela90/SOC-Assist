@@ -117,4 +117,54 @@
     </div>
   </div>
 </div>
+
+<!-- Playbook de respuesta -->
+{% set pb = playbook if playbook is defined else {} %}
+{% if pb %}
+<div class="card border-{{ pb.color | default('secondary') }} mt-3 mb-3">
+  <div class="card-header d-flex align-items-center gap-2 {% if pb.color == 'danger' %}text-danger{% elif pb.color == 'warning' %}text-warning{% else %}text-success{% endif %}">
+    <i class="bi {{ pb.icon | default('bi-journal-text') }}"></i>
+    <strong>Playbook de Respuesta</strong>
+    <span class="ms-2 text-muted small fw-normal">{{ pb.title }}</span>
+    <button class="btn btn-sm btn-link ms-auto p-0 text-muted"
+            data-bs-toggle="collapse" data-bs-target="#pbCollapse">
+      <i class="bi bi-chevron-down"></i>
+    </button>
+  </div>
+  <div class="collapse" id="pbCollapse">
+    <div class="card-body">
+      <p class="text-muted small mb-3">{{ pb.summary }}</p>
+      <div class="row g-3">
+        <div class="col-md-{% if pb.containment or pb.eradication %}6{% else %}12{% endif %}">
+          <h6 class="small fw-semibold mb-2"><i class="bi bi-list-ol me-1 text-info"></i>Pasos</h6>
+          <ol class="small mb-0">
+            {% for step in pb.steps %}<li class="mb-1">{{ step }}</li>{% endfor %}
+          </ol>
+        </div>
+        {% if pb.containment or pb.eradication %}
+        <div class="col-md-6">
+          {% if pb.containment %}
+          <h6 class="small fw-semibold mb-2"><i class="bi bi-shield-fill-check me-1 text-warning"></i>Contención</h6>
+          <ul class="small mb-2">
+            {% for item in pb.containment %}<li class="mb-1">{{ item }}</li>{% endfor %}
+          </ul>
+          {% endif %}
+          {% if pb.eradication %}
+          <h6 class="small fw-semibold mb-2"><i class="bi bi-trash3-fill me-1 text-danger"></i>Erradicación</h6>
+          <ul class="small mb-0">
+            {% for item in pb.eradication %}<li class="mb-1">{{ item }}</li>{% endfor %}
+          </ul>
+          {% endif %}
+        </div>
+        {% endif %}
+      </div>
+      {% if pb.notes %}
+      <div class="alert alert-secondary py-2 mt-3 mb-0 small">
+        <i class="bi bi-info-circle me-1"></i>{{ pb.notes }}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endif %}
 {% endblock %}

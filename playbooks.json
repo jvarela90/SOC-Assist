@@ -1,0 +1,133 @@
+{
+  "informativo": {
+    "icon": "bi-info-circle-fill",
+    "color": "success",
+    "title": "Nivel Informativo — Monitoreo y Documentación",
+    "summary": "El evento no presenta indicadores claros de amenaza. Se recomienda documentar y mantener visibilidad.",
+    "steps": [
+      "Registrar el evento en el log de monitoreo (ticket de baja prioridad).",
+      "Verificar si este patrón se repite o se correlaciona con otros eventos recientes.",
+      "Revisar si el activo involucrado tiene historial de comportamiento anómalo.",
+      "Actualizar el baseline de comportamiento normal si aplica.",
+      "Archivar la evidencia para correlación futura."
+    ],
+    "containment": [],
+    "eradication": [],
+    "notes": "No se requiere escalamiento inmediato. Revisar en ciclo de monitoreo periódico."
+  },
+
+  "sospechoso": {
+    "icon": "bi-search",
+    "color": "warning",
+    "title": "Nivel Sospechoso — Investigación Activa",
+    "summary": "El evento muestra indicadores que requieren investigación adicional antes de determinar si es un incidente real.",
+    "steps": [
+      "Abrir ticket de investigación con prioridad media.",
+      "Recopilar logs extendidos del activo origen y destino (últimas 24-48 h).",
+      "Realizar búsqueda en inteligencia de amenazas (VirusTotal, AbuseIPDB) de las IPs y dominios involucrados.",
+      "Verificar contexto de negocio: ¿el comportamiento es esperado para este usuario/sistema?",
+      "Revisar si el usuario o host tiene comportamiento similar en otros sistemas (movimiento lateral).",
+      "Escalar a analista senior si la investigación no concluye en 2 horas."
+    ],
+    "containment": [
+      "Considerar bloqueo temporal preventivo de la IP origen si la investigación se prolonga."
+    ],
+    "eradication": [],
+    "notes": "SLA de investigación: 2 horas. Documentar hallazgos en el ticket independientemente del resultado."
+  },
+
+  "incidente": {
+    "icon": "bi-exclamation-triangle-fill",
+    "color": "warning",
+    "title": "Incidente Confirmado — Respuesta Inmediata",
+    "summary": "El evento es un incidente de seguridad que requiere contención y respuesta estructurada.",
+    "steps": [
+      "Abrir ticket de incidente con prioridad alta. Notificar al líder del equipo SOC.",
+      "Identificar y documentar el alcance: sistemas afectados, usuarios impactados, datos en riesgo.",
+      "Recopilar toda la evidencia disponible: logs, capturas de tráfico, imágenes de memoria si aplica.",
+      "Determinar el vector de ataque inicial (phishing, exploit, credenciales comprometidas, etc.).",
+      "Evaluar impacto en confidencialidad, integridad y disponibilidad de los datos.",
+      "Notificar al dueño del activo afectado.",
+      "Iniciar contención según procedimiento de la organización.",
+      "Documentar línea de tiempo del incidente desde detección."
+    ],
+    "containment": [
+      "Aislar el sistema afectado de la red (si el impacto lo justifica).",
+      "Revocar o resetear credenciales comprometidas.",
+      "Bloquear IPs / dominios maliciosos en firewall y proxy.",
+      "Deshabilitar cuentas de usuario si se confirma compromiso."
+    ],
+    "eradication": [
+      "Identificar y eliminar artefactos del atacante (malware, backdoors, cuentas no autorizadas).",
+      "Aplicar parches o mitigaciones para la vulnerabilidad explotada.",
+      "Verificar integridad del sistema antes de restaurar a producción."
+    ],
+    "notes": "SLA de respuesta inicial: 30 minutos. Notificar a stakeholders según política de comunicación de incidentes."
+  },
+
+  "critico": {
+    "icon": "bi-fire",
+    "color": "danger",
+    "title": "Nivel Crítico — Respuesta de Emergencia",
+    "summary": "Incidente de alto impacto con potencial daño significativo a la organización. Activar protocolo de crisis.",
+    "steps": [
+      "ESCALAMIENTO INMEDIATO al CISO / Director de Seguridad.",
+      "Activar equipo de respuesta a incidentes (IRT) o CSIRT si aplica.",
+      "Determinar si se debe activar el plan de continuidad de negocio (BCP).",
+      "Preservar toda la evidencia forense (no apagar sistemas, crear imágenes de disco si es posible).",
+      "Establecer sala de guerra (war room) para coordinación del equipo.",
+      "Aislar completamente los sistemas comprometidos.",
+      "Notificar a áreas de negocio afectadas y a la dirección.",
+      "Evaluar si el incidente requiere notificación regulatoria (GDPR, NIS2, ley local).",
+      "Asignar responsable de comunicación interna y externa.",
+      "Documentar cada acción tomada con timestamp."
+    ],
+    "containment": [
+      "Segmentar o aislar completamente el segmento de red afectado.",
+      "Revocar todos los accesos del dominio comprometido si hay indicios de movimiento lateral.",
+      "Bloquear toda comunicación saliente desde sistemas sospechosos.",
+      "Considerar reset de contraseñas masivo si se confirma compromiso de AD/LDAP."
+    ],
+    "eradication": [
+      "Análisis forense completo antes de cualquier acción de remediación.",
+      "Reimagen o restauración desde backup limpio de sistemas comprometidos.",
+      "Auditoría completa de accesos y cambios en los últimos 30-90 días.",
+      "Revisión de todas las cuentas privilegiadas."
+    ],
+    "notes": "Este nivel puede requerir intervención de terceros (forensics externos, asesoría legal). SLA de escalamiento: 15 minutos."
+  },
+
+  "brecha": {
+    "icon": "bi-shield-x",
+    "color": "danger",
+    "title": "Brecha de Seguridad — Protocolo de Crisis Activo",
+    "summary": "Brecha de seguridad confirmada con exfiltración o compromiso masivo. Activar todos los protocolos de crisis.",
+    "steps": [
+      "ALERTA MÁXIMA — Notificar inmediatamente a CISO, CEO y Dirección Legal.",
+      "Activar el Plan de Respuesta a Brechas de Datos (DRRP).",
+      "Contactar a firma de forensics externa si no se cuenta con capacidad interna.",
+      "Preservar TODA la evidencia: logs, sistemas, tráfico de red — NO modificar ni apagar sin autorización.",
+      "Evaluar el volumen y naturaleza de los datos comprometidos (PII, financiero, IP).",
+      "Determinar obligaciones de notificación legal (GDPR: 72 h, sectores regulados).",
+      "Preparar comunicado inicial para stakeholders internos.",
+      "Establecer canal seguro de comunicación para el equipo de respuesta.",
+      "Contratar servicio de monitoreo de dark web si hay riesgo de venta de datos.",
+      "Preparar estrategia de comunicación externa (clientes, regulador, medios si aplica).",
+      "Documentar una línea de tiempo forense completa."
+    ],
+    "containment": [
+      "Desconexión completa de Internet / WAN de los segmentos comprometidos.",
+      "Revocación masiva de credenciales y certificados.",
+      "Activar MFA forzoso en todos los sistemas críticos.",
+      "Bloquear todos los accesos remotos hasta verificación.",
+      "Notificar a proveedores de nube / SaaS sobre el compromiso."
+    ],
+    "eradication": [
+      "Análisis forense completo de todos los sistemas del alcance.",
+      "Auditoría de todos los vectores de acceso: VPN, RDP, APIs, SaaS.",
+      "Reconstrucción de infraestructura crítica desde cero si hay indicios de persistencia.",
+      "Revisión de cadena de suministro de software si hay indicios de supply chain attack."
+    ],
+    "notes": "SLA regulatorio: notificación en 72 horas (GDPR/NIS2). Conservar evidencia para posible litigio o investigación regulatoria."
+  }
+}

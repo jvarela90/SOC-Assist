@@ -126,6 +126,7 @@
   <div class="col-lg-5">
 
     <!-- ═══ Threat Intelligence API Keys ══════════════════════════════ -->
+    {% set ti = ti_display if ti_display is defined else {} %}
     <div class="card border-info mb-3">
       <div class="card-header text-info">
         <i class="bi bi-shield-lock me-2"></i>Fuentes de Inteligencia de Amenazas
@@ -145,7 +146,7 @@
           <div class="mb-3">
             <label class="form-label small d-flex align-items-center gap-2">
               <span class="fw-semibold text-light">VirusTotal</span>
-              {% if ti_display.virustotal.configured %}
+              {% if ti.virustotal is defined and ti.virustotal.configured %}
               <span class="badge bg-success" style="font-size:0.65rem;">CONFIGURADO</span>
               {% else %}
               <span class="badge bg-secondary" style="font-size:0.65rem;">SIN CLAVE</span>
@@ -160,7 +161,7 @@
               <input type="password"
                      name="vt_api_key"
                      class="form-control bg-dark text-light border-secondary"
-                     placeholder="{% if ti_display.virustotal.configured %}{{ ti_display.virustotal.api_key_masked }}{% else %}Pega tu API key aquí...{% endif %}"
+                     placeholder="{% if ti.virustotal is defined and ti.virustotal.configured %}{{ ti.virustotal.api_key_masked }}{% else %}Pega tu API key aquí...{% endif %}"
                      autocomplete="new-password">
             </div>
             <div class="form-text text-muted" style="font-size:0.7rem;">
@@ -172,7 +173,7 @@
           <div class="mb-3">
             <label class="form-label small d-flex align-items-center gap-2">
               <span class="fw-semibold text-light">AbuseIPDB</span>
-              {% if ti_display.abuseipdb.configured %}
+              {% if ti.abuseipdb is defined and ti.abuseipdb.configured %}
               <span class="badge bg-success" style="font-size:0.65rem;">CONFIGURADO</span>
               {% else %}
               <span class="badge bg-secondary" style="font-size:0.65rem;">SIN CLAVE</span>
@@ -187,7 +188,7 @@
               <input type="password"
                      name="abuse_api_key"
                      class="form-control bg-dark text-light border-secondary"
-                     placeholder="{% if ti_display.abuseipdb.configured %}{{ ti_display.abuseipdb.api_key_masked }}{% else %}Pega tu API key aquí...{% endif %}"
+                     placeholder="{% if ti.abuseipdb is defined and ti.abuseipdb.configured %}{{ ti.abuseipdb.api_key_masked }}{% else %}Pega tu API key aquí...{% endif %}"
                      autocomplete="new-password">
             </div>
             <div class="form-text text-muted" style="font-size:0.7rem;">
@@ -199,7 +200,7 @@
           <div class="mb-3">
             <label class="form-label small d-flex align-items-center gap-2">
               <span class="fw-semibold text-light">IBM X-Force Exchange</span>
-              {% if ti_display.xforce.configured %}
+              {% if ti.xforce is defined and ti.xforce.configured %}
               <span class="badge bg-success" style="font-size:0.65rem;">CONFIGURADO</span>
               {% else %}
               <span class="badge bg-secondary" style="font-size:0.65rem;">SIN CLAVE</span>
@@ -212,7 +213,7 @@
               <input type="password"
                      name="xforce_api_key"
                      class="form-control bg-dark text-light border-secondary"
-                     placeholder="{% if ti_display.xforce.configured %}{{ ti_display.xforce.api_key_masked }}{% else %}API Key...{% endif %}"
+                     placeholder="{% if ti.xforce is defined and ti.xforce.configured %}{{ ti.xforce.api_key_masked }}{% else %}API Key...{% endif %}"
                      autocomplete="new-password">
             </div>
             <div class="input-group input-group-sm">
@@ -220,7 +221,7 @@
               <input type="password"
                      name="xforce_api_password"
                      class="form-control bg-dark text-light border-secondary"
-                     placeholder="{% if ti_display.xforce.configured %}{{ ti_display.xforce.api_password_masked }}{% else %}Password...{% endif %}"
+                     placeholder="{% if ti.xforce is defined and ti.xforce.configured %}{{ ti.xforce.api_password_masked }}{% else %}Password...{% endif %}"
                      autocomplete="new-password">
             </div>
             <div class="form-text text-muted" style="font-size:0.7rem;">

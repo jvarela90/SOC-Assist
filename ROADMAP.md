@@ -15,6 +15,8 @@
 | 3 | Integraciones externas | ✅ Completado |
 | 4 | Analítica avanzada + Colaboración | ✅ Completado |
 | 5 | Producción + Seguridad | ✅ Completado |
+| 6 | Contexto de Red + TI Enrichment Híbrido | ✅ Completado |
+| 7 | Gestión de Usuarios + Trazabilidad | ✅ Completado |
 
 ---
 

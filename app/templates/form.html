@@ -53,6 +53,95 @@
           </span>
         </div>
 
+        <!-- Bloque 0: Contexto del Evento — campos adicionales de red -->
+        {% if block.id == 0 %}
+        <div class="card border-info mb-3">
+          <div class="card-body">
+
+            <!-- Fila 1: IP Origen + Dirección + IP Destino -->
+            <div class="row g-3 mb-3">
+              <div class="col-md-5">
+                <label class="form-label small text-muted">IP Origen <span class="text-muted fw-normal">(opcional)</span></label>
+                <div class="input-group input-group-sm">
+                  <input type="text" name="ctx_ip_src" id="ctx_ip_src"
+                         class="form-control bg-dark text-light border-secondary font-monospace"
+                         placeholder="p.ej. 192.168.1.100 ó 203.0.113.5">
+                  <button type="button" class="btn btn-outline-info btn-sm"
+                          onclick="doBlockTI('ctx_ip_src','ti-res-src')"
+                          title="Consultar TI">
+                    <i class="bi bi-search"></i>
+                  </button>
+                </div>
+                <div id="ti-res-src" class="mt-1"></div>
+              </div>
+
+              <div class="col-md-2 d-flex flex-column align-items-center justify-content-start pt-4">
+                <select name="ctx_ip_direction"
+                        class="form-select form-select-sm bg-dark text-light border-secondary text-center"
+                        style="font-size:1.1rem; padding:4px;">
+                  <option value="unknown">?</option>
+                  <option value="outbound">→</option>
+                  <option value="inbound">←</option>
+                  <option value="bidirectional">↔</option>
+                </select>
+              </div>
+
+              <div class="col-md-5">
+                <label class="form-label small text-muted">IP Destino <span class="text-muted fw-normal">(opcional)</span></label>
+                <div class="input-group input-group-sm">
+                  <input type="text" name="ctx_ip_dst" id="ctx_ip_dst"
+                         class="form-control bg-dark text-light border-secondary font-monospace"
+                         placeholder="p.ej. 8.8.8.8 ó evil.example.com">
+                  <button type="button" class="btn btn-outline-info btn-sm"
+                          onclick="doBlockTI('ctx_ip_dst','ti-res-dst')"
+                          title="Consultar TI">
+                    <i class="bi bi-search"></i>
+                  </button>
+                </div>
+                <div id="ti-res-dst" class="mt-1"></div>
+              </div>
+            </div>
+
+            <!-- Fila 2: URL + MAC -->
+            <div class="row g-3 mb-2">
+              <div class="col-md-8">
+                <label class="form-label small text-muted">URL / Dominio involucrado <span class="text-muted fw-normal">(opcional)</span></label>
+                <div class="input-group input-group-sm">
+                  <input type="text" name="ctx_url" id="ctx_url"
+                         class="form-control bg-dark text-light border-secondary"
+                         placeholder="p.ej. http://malicious.ru/payload.exe">
+                  <button type="button" class="btn btn-outline-info btn-sm"
+                          onclick="doBlockTI('ctx_url','ti-res-url')"
+                          title="Consultar TI">
+                    <i class="bi bi-search"></i>
+                  </button>
+                </div>
+                <div id="ti-res-url" class="mt-1"></div>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label small text-muted">MAC Origen <span class="text-muted fw-normal">(opcional)</span></label>
+                <div class="input-group input-group-sm">
+                  <input type="text" name="ctx_mac" id="ctx_mac"
+                         class="form-control bg-dark text-light border-secondary font-monospace"
+                         placeholder="00:1A:2B:3C:4D:5E">
+                  <button type="button" class="btn btn-outline-secondary btn-sm"
+                          onclick="doBlockMAC()"
+                          title="Identificar fabricante">
+                    <i class="bi bi-cpu"></i>
+                  </button>
+                </div>
+                <div id="mac-res" class="mt-1"></div>
+              </div>
+            </div>
+
+            <div class="text-muted" style="font-size:0.68rem;">
+              <i class="bi bi-shield-slash me-1"></i>IPs privadas/locales no se consultan en fuentes externas de TI.
+              Los campos de contexto son opcionales y no afectan la puntuación directamente.
+            </div>
+          </div>
+        </div>
+        {% endif %}
+
         <!-- Questions grid: 2 columns × up to 3 rows -->
         <div class="row g-3">
           {% for q in bqs %}
@@ -407,6 +496,43 @@ function buildSummaryStats() {
       </div>
     </div>`;
   document.getElementById('summary-stats').innerHTML = html;
+}
+
+// ── Bloque 0: inline TI lookups ─────────────────────────────────────────────
+async function doBlockTI(fieldId, resultDivId) {
+  const val = document.getElementById(fieldId).value.trim();
+  const out = document.getElementById(resultDivId);
+  if (!val || !out) return;
+  out.innerHTML = '<span class="text-muted small"><span class="spinner-border spinner-border-sm me-1" style="width:.7rem;height:.7rem;"></span>Consultando...</span>';
+  try {
+    const res = await fetch('/api/ti/lookup', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({indicator: val, type: 'auto'})
+    });
+    const data = await res.json();
+    const v = data.summary_verdict || 'DESCONOCIDO';
+    const color = v === 'MALICIOSO' ? 'danger' : v === 'SOSPECHOSO' ? 'warning' : v === 'LIMPIO' ? 'success' : 'secondary';
+    const icon  = v === 'MALICIOSO' ? 'bi-shield-x' : v === 'SOSPECHOSO' ? 'bi-shield-exclamation' : v === 'LIMPIO' ? 'bi-shield-check' : 'bi-shield';
+    out.innerHTML = `<span class="badge bg-${color} small"><i class="bi ${icon} me-1"></i>${v}</span>`;
+  } catch(e) {
+    out.innerHTML = '<span class="text-muted small">Error TI</span>';
+  }
+}
+
+async function doBlockMAC() {
+  const val = document.getElementById('ctx_mac').value.trim();
+  const out = document.getElementById('mac-res');
+  if (!val || !out) return;
+  try {
+    const res = await fetch('/api/mac/lookup?mac=' + encodeURIComponent(val));
+    const data = await res.json();
+    if (data.vendor) {
+      out.innerHTML = `<span class="text-info small"><i class="bi bi-cpu me-1"></i>${data.vendor}</span>`;
+    } else {
+      out.innerHTML = '<span class="text-muted small">Fabricante desconocido</span>';
+    }
+  } catch(e) {}
 }
 
 // ── Init tooltips and first block

@@ -4,7 +4,18 @@
 {% block content %}
 <div class="d-flex align-items-center mb-4">
   <h4 class="mb-0"><i class="bi bi-sliders text-danger me-2"></i>Panel de Administración</h4>
-  <span class="ms-auto badge bg-warning text-dark">Administrador</span>
+  <div class="ms-auto d-flex gap-2">
+    <a href="/admin/usuarios" class="btn btn-sm btn-outline-info">
+      <i class="bi bi-people-fill me-1"></i>Usuarios
+    </a>
+    <a href="/admin/audit-log" class="btn btn-sm btn-outline-warning">
+      <i class="bi bi-journal-bookmark me-1"></i>Audit Log
+    </a>
+    <a href="/admin/backup" class="btn btn-sm btn-outline-success">
+      <i class="bi bi-download me-1"></i>Backup
+    </a>
+    <span class="badge bg-warning text-dark d-flex align-items-center">Administrador</span>
+  </div>
 </div>
 
 <div class="row g-3">

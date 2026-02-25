@@ -2168,9 +2168,119 @@
       ],
       "display_block": 2,
       "display_position": 6
+    },
+    {
+      "id": "q_064",
+      "module": "naturaleza",
+      "order": 99,
+      "text": "¿El intento de comunicación de red involucrado fue exitoso?",
+      "help": "Considera si se estableció conexión, fue bloqueada por firewall/proxy, o falló sin respuesta.",
+      "type": "multichoice",
+      "weight": 1.5,
+      "options": [
+        {
+          "value": "yes",
+          "label": "Sí, comunicación establecida",
+          "score": 12
+        },
+        {
+          "value": "partial",
+          "label": "Parcialmente (bloqueada tardíamente)",
+          "score": 8
+        },
+        {
+          "value": "blocked",
+          "label": "Bloqueada por controles",
+          "score": 3
+        },
+        {
+          "value": "failed",
+          "label": "No hubo respuesta / conexión fallida",
+          "score": 2
+        },
+        {
+          "value": "unknown",
+          "label": "No se puede determinar",
+          "score": 4
+        }
+      ],
+      "display_block": 0,
+      "display_position": 1
+    },
+    {
+      "id": "q_065",
+      "module": "usuario",
+      "order": 99,
+      "text": "¿El usuario involucrado en el evento ha sido identificado?",
+      "help": "¿Se sabe qué cuenta de usuario o identidad está asociada al evento?",
+      "type": "multichoice",
+      "weight": 1.0,
+      "options": [
+        {
+          "value": "yes_known",
+          "label": "Sí, usuario conocido e identificado",
+          "score": 0
+        },
+        {
+          "value": "yes_foreign",
+          "label": "Sí, pero es usuario externo/proveedor",
+          "score": 6
+        },
+        {
+          "value": "not_yet",
+          "label": "Todavía no identificado (en proceso)",
+          "score": 5
+        },
+        {
+          "value": "no",
+          "label": "No fue posible identificarlo",
+          "score": 9
+        }
+      ],
+      "display_block": 0,
+      "display_position": 2
+    },
+    {
+      "id": "q_066",
+      "module": "usuario",
+      "order": 99,
+      "text": "¿El usuario involucrado ocupa una función crítica para el negocio?",
+      "help": "Ejecutivos C-level, administradores de sistemas críticos, CISO, CFO, auditores internos…",
+      "type": "multichoice",
+      "weight": 1.2,
+      "options": [
+        {
+          "value": "yes",
+          "label": "Sí, función crítica para el negocio",
+          "score": 10
+        },
+        {
+          "value": "no",
+          "label": "No, función estándar",
+          "score": 0
+        },
+        {
+          "value": "unknown",
+          "label": "No se sabe aún",
+          "score": 3
+        },
+        {
+          "value": "na",
+          "label": "No aplica (sin usuario identificado)",
+          "score": 0
+        }
+      ],
+      "display_block": 0,
+      "display_position": 3
     }
   ],
   "blocks": [
+    {
+      "id": 0,
+      "label": "Contexto del Evento",
+      "icon": "bi-diagram-3",
+      "description": "Identificadores de red, usuario y activo afectado — enriquece el análisis TI"
+    },
     {
       "id": 1,
       "label": "Primera Evaluación",

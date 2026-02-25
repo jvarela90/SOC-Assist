@@ -31,6 +31,33 @@
       </div>
     </div>
 
+    <!-- TI Enrichment banner — shown when TI detected indicators and adjustment is available -->
+    {% if ti_adjustment is defined and ti_adjustment %}
+    {% set ti_cls = ti_adjustment.classification %}
+    {% set is_malicious = ti_summary is defined and ti_summary == 'MALICIOSO' %}
+    <div class="alert alert-{{ 'danger' if is_malicious else 'warning' }} d-flex align-items-center gap-3 mb-4">
+      <i class="bi bi-shield-exclamation fs-3"></i>
+      <div class="flex-grow-1">
+        <strong>Inteligencia de Amenazas detectó indicadores {{ 'MALICIOSOS' if is_malicious else 'SOSPECHOSOS' }}</strong>
+        <div class="small mt-1">
+          Score actual: <strong>{{ result.final_score | int }}</strong>
+          &rarr; Score ajustado: <strong>{{ ti_adjustment.score }}</strong>
+          &rarr; Clasificación sugerida:
+          {% if thresholds is defined and ti_cls in thresholds %}
+          <span class="badge badge-cls-{{ ti_cls }}">{{ thresholds[ti_cls].emoji }} {{ thresholds[ti_cls].label }}</span>
+          {% else %}
+          <span class="badge bg-secondary">{{ ti_cls }}</span>
+          {% endif %}
+        </div>
+      </div>
+      <form method="post" action="/incident/{{ incident_id }}/apply-ti-adjustment">
+        <button type="submit" class="btn btn-{{ 'danger' if is_malicious else 'warning' }} btn-sm text-nowrap">
+          <i class="bi bi-shield-fill-exclamation me-1"></i>Aplicar ajuste TI
+        </button>
+      </form>
+    </div>
+    {% endif %}
+
     <!-- Actions row -->
     <div class="row g-3 mb-4">
       <div class="col-md-4">
@@ -269,6 +296,59 @@
             <i class="bi bi-info-circle me-1"></i>{{ pb.notes }}
           </div>
           {% endif %}
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- MITRE ATT&CK Techniques (#37) -->
+    {% if mitre_techniques is defined and mitre_techniques %}
+    <div class="card border-secondary mb-4">
+      <div class="card-header d-flex align-items-center gap-2">
+        <i class="bi bi-shield-shaded text-danger"></i>
+        <strong>MITRE ATT&CK — Técnicas Relevantes</strong>
+        <span class="badge bg-secondary ms-1">{{ mitre_techniques | length }}</span>
+        <a href="https://attack.mitre.org/" target="_blank" rel="noopener"
+           class="btn btn-sm btn-link ms-auto p-0 text-muted text-decoration-none small">
+          attack.mitre.org <i class="bi bi-box-arrow-up-right ms-1"></i>
+        </a>
+        <button class="btn btn-sm btn-link p-0 text-muted"
+                data-bs-toggle="collapse" data-bs-target="#mitreResultCollapse">
+          <i class="bi bi-chevron-down"></i>
+        </button>
+      </div>
+      <div class="collapse show" id="mitreResultCollapse">
+        <div class="card-body pb-2">
+          <p class="text-muted small mb-3">
+            Basado en las respuestas y módulos activados, las siguientes técnicas MITRE ATT&amp;CK
+            son relevantes para este incidente.
+          </p>
+          {% set ns = namespace(current_tactic='', open_group=false) %}
+          {% for tech in mitre_techniques %}
+            {% if tech.tactic != ns.current_tactic %}
+              {% if ns.open_group %}
+                </div></div>
+              {% endif %}
+              {% set ns.current_tactic = tech.tactic %}
+              {% set ns.open_group = true %}
+              <div class="mb-3">
+                <div class="text-muted small fw-semibold mb-2 text-uppercase" style="letter-spacing:.05em">
+                  <i class="bi bi-arrow-right-short"></i>{{ tech.tactic }}
+                </div>
+                <div class="d-flex flex-wrap gap-2">
+            {% endif %}
+            <a href="https://attack.mitre.org/techniques/{{ tech.id | replace('.', '/') }}/"
+               target="_blank" rel="noopener"
+               class="badge text-decoration-none border text-light py-2 px-2
+                      {% if tech.color == 'danger' %}bg-danger bg-opacity-25 border-danger
+                      {% elif tech.color == 'warning' %}bg-warning bg-opacity-25 border-warning
+                      {% else %}bg-info bg-opacity-25 border-info{% endif %}"
+               title="{{ tech.tactic }}">
+              <span class="font-monospace" style="font-size:.75rem">{{ tech.id }}</span>
+              <span class="ms-1" style="font-size:.78rem">{{ tech.name }}</span>
+            </a>
+          {% endfor %}
+          {% if ns.open_group %}</div></div>{% endif %}
         </div>
       </div>
     </div>

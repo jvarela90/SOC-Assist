@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="es" data-bs-theme="dark">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Recuperar Acceso — SOC Assist</title>
+  <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+  <style>
+    body { background:#0d1117; min-height:100vh;
+           display:flex; align-items:center; justify-content:center; }
+    .recover-card { max-width: 440px; width: 100%; }
+    .logo-icon { font-size: 2.8rem; }
+    .step-badge {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 24px; height: 24px; border-radius: 50%;
+      background: var(--bs-secondary-bg); font-size: 0.75rem; font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+<div class="recover-card mx-3">
+
+  <div class="text-center mb-4">
+    <div class="logo-icon mb-2">🛡️</div>
+    <h4 class="fw-bold mb-0">SOC Assist</h4>
+    <div class="text-muted small">Recuperación de acceso</div>
+  </div>
+
+  {% if success %}
+  {# ── Success state ──────────────────────────────────────────────── #}
+  <div class="card border-success">
+    <div class="card-body text-center py-5">
+      <i class="bi bi-check-circle-fill text-success" style="font-size:3rem;"></i>
+      <h5 class="mt-3 mb-2">Contraseña actualizada</h5>
+      <p class="text-muted small mb-4">
+        Tu contraseña ha sido restablecida correctamente.
+        El código de recuperación ha sido invalidado.
+      </p>
+      <a href="/login" class="btn btn-success">
+        <i class="bi bi-box-arrow-in-right me-1"></i>Iniciar sesión
+      </a>
+    </div>
+  </div>
+
+  {% else %}
+  {# ── Recovery form ──────────────────────────────────────────────── #}
+  <div class="card border-secondary">
+    <div class="card-header border-secondary">
+      <i class="bi bi-shield-lock-fill text-warning me-2"></i>
+      <strong>Restablecer contraseña</strong>
+    </div>
+    <div class="card-body">
+
+      {% if error %}
+      <div class="alert alert-danger py-2 mb-3 small">
+        <i class="bi bi-exclamation-triangle-fill me-1"></i>{{ error }}
+      </div>
+      {% endif %}
+
+      <div class="alert alert-secondary py-2 mb-4 small">
+        <i class="bi bi-info-circle me-1"></i>
+        Necesitas el código de recuperación generado por un administrador de SOC Assist.
+        Si no tienes uno, contacta al equipo de seguridad.
+      </div>
+
+      <form method="post" action="/recuperar" autocomplete="off">
+
+        {# Step 1: Username #}
+        <div class="mb-3">
+          <label class="form-label small">
+            <span class="step-badge me-1">1</span>
+            Nombre de usuario
+          </label>
+          <input type="text" name="username"
+                 class="form-control bg-dark text-light border-secondary"
+                 required autocomplete="off"
+                 value="{{ prefill_username or '' }}"
+                 placeholder="Tu nombre de usuario">
+        </div>
+
+        {# Step 2: Recovery code #}
+        <div class="mb-3">
+          <label class="form-label small">
+            <span class="step-badge me-1">2</span>
+            Código de recuperación
+          </label>
+          <div class="input-group">
+            <input type="password" name="recovery_code" id="rec-code"
+                   class="form-control bg-dark text-light border-secondary font-monospace"
+                   required autocomplete="off"
+                   placeholder="XXXXXX-XXXXXX-XXXXXX-XXXXXX">
+            <button type="button" class="btn btn-outline-secondary"
+                    onclick="toggleField('rec-code', this)">
+              <i class="bi bi-eye"></i>
+            </button>
+          </div>
+          <div class="form-text text-muted small">
+            Código de 4 segmentos generado por el administrador.
+          </div>
+        </div>
+
+        {# Step 3: New password #}
+        <div class="mb-3">
+          <label class="form-label small">
+            <span class="step-badge me-1">3</span>
+            Nueva contraseña
+          </label>
+          <div class="input-group">
+            <input type="password" name="new_password" id="new-pwd"
+                   class="form-control bg-dark text-light border-secondary"
+                   required minlength="8"
+                   placeholder="Mínimo 8 caracteres"
+                   oninput="checkStrength(this.value)">
+            <button type="button" class="btn btn-outline-secondary"
+                    onclick="toggleField('new-pwd', this)">
+              <i class="bi bi-eye"></i>
+            </button>
+          </div>
+          <div id="strength-bar" class="mt-1" style="height:3px; border-radius:2px; background:#333;
+                                                      transition:width .3s, background .3s;">
+          </div>
+          <div id="strength-label" class="form-text small mt-1"></div>
+        </div>
+
+        {# Step 4: Confirm #}
+        <div class="mb-4">
+          <label class="form-label small">
+            <span class="step-badge me-1">4</span>
+            Confirmar nueva contraseña
+          </label>
+          <input type="password" name="confirm_password"
+                 class="form-control bg-dark text-light border-secondary"
+                 required minlength="8"
+                 placeholder="Repite la contraseña">
+        </div>
+
+        <button type="submit" class="btn btn-warning w-100 fw-bold">
+          <i class="bi bi-shield-fill-check me-1"></i>Restablecer contraseña
+        </button>
+      </form>
+    </div>
+    <div class="card-footer border-secondary text-center py-2">
+      <a href="/login" class="text-muted text-decoration-none small">
+        <i class="bi bi-arrow-left me-1"></i>Volver al inicio de sesión
+      </a>
+    </div>
+  </div>
+
+  {% endif %}
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+function toggleField(id, btn) {
+  const inp = document.getElementById(id);
+  if (!inp) return;
+  const visible = inp.type === 'text';
+  inp.type = visible ? 'password' : 'text';
+  btn.innerHTML = visible ? '<i class="bi bi-eye"></i>' : '<i class="bi bi-eye-slash"></i>';
+}
+
+function checkStrength(pwd) {
+  const bar   = document.getElementById('strength-bar');
+  const label = document.getElementById('strength-label');
+  if (!bar || !label) return;
+
+  let score = 0;
+  if (pwd.length >= 8)  score++;
+  if (pwd.length >= 12) score++;
+  if (/[A-Z]/.test(pwd)) score++;
+  if (/[0-9]/.test(pwd)) score++;
+  if (/[^A-Za-z0-9]/.test(pwd)) score++;
+
+  const levels = [
+    { pct: 15, color: '#dc3545', label: 'Muy débil'  },
+    { pct: 35, color: '#fd7e14', label: 'Débil'      },
+    { pct: 60, color: '#ffc107', label: 'Moderada'   },
+    { pct: 80, color: '#20c997', label: 'Fuerte'     },
+    { pct: 100,color: '#198754', label: 'Muy fuerte' },
+  ];
+  const lvl = levels[Math.min(score, 4)];
+  bar.style.width    = lvl.pct + '%';
+  bar.style.background = lvl.color;
+  label.textContent  = pwd.length ? 'Fortaleza: ' + lvl.label : '';
+  label.style.color  = lvl.color;
+}
+</script>
+</body>
+</html>

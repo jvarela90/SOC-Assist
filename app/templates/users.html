@@ -1,0 +1,474 @@
+{% extends "base.html" %}
+{% block title %}Gestión de Usuarios{% endblock %}
+
+{% block content %}
+
+{# ── Toast messages ───────────────────────────────────────────────── #}
+{% set msg_map = {
+  'user_added':          ('success', 'Usuario creado correctamente.'),
+  'password_changed':    ('success', 'Contraseña actualizada.'),
+  'user_deleted':        ('success', 'Usuario eliminado.'),
+  'status_changed':      ('info',    'Estado del usuario actualizado.'),
+  'role_changed':        ('info',    'Rol actualizado.'),
+  'notes_saved':         ('success', 'Notas guardadas.'),
+  'recovery_generated':  ('success', 'Código de recuperación generado. Cópialo ahora.'),
+  'recovery_revoked':    ('warning', 'Código de recuperación revocado.'),
+  'user_self_deactivate':('danger',  'No puedes desactivar tu propia cuenta.'),
+  'user_self_role':      ('danger',  'No puedes cambiar tu propio rol.'),
+  'user_error':          ('danger',  'Error: usuario o contraseña inválidos.'),
+  'user_exists':         ('danger',  'Ese nombre de usuario ya existe.'),
+} %}
+{% if msg and msg in msg_map %}
+{% set alert_type, alert_text = msg_map[msg] %}
+<div class="alert alert-{{ alert_type }} alert-dismissible fade show mb-3" role="alert">
+  <i class="bi bi-{% if alert_type=='success' %}check-circle{% elif alert_type=='danger' %}x-circle{% elif alert_type=='warning' %}exclamation-triangle{% else %}info-circle{% endif %} me-2"></i>
+  {{ alert_text }}
+  <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endif %}
+
+{# ── Recovery code flash (shown ONCE after generation) ──────────────── #}
+{% if recovery_flash %}
+<div class="alert alert-danger border-danger mb-3" role="alert">
+  <div class="d-flex align-items-start gap-3">
+    <i class="bi bi-key-fill fs-3 text-danger flex-shrink-0 mt-1"></i>
+    <div class="flex-grow-1">
+      <strong>Código de recuperación generado para <span class="font-monospace">{{ recovery_flash.username }}</span></strong>
+      <div class="text-muted small mb-2">Generado: {{ recovery_flash.set_at }} — Este código solo se muestra una vez. Guárdalo de forma segura.</div>
+      <div class="input-group" style="max-width:480px;">
+        <input type="text" class="form-control form-control-lg font-monospace bg-dark text-danger border-danger fw-bold"
+               id="recovery-code-display"
+               value="{{ recovery_flash.code }}" readonly>
+        <button class="btn btn-outline-danger" onclick="copyRecoveryCode()" title="Copiar código">
+          <i class="bi bi-clipboard"></i>
+        </button>
+      </div>
+      <div class="small text-muted mt-2">
+        El usuario puede usar este código en <a href="/recuperar" target="_blank" class="text-info">/recuperar</a>
+        junto con su nombre de usuario para establecer una nueva contraseña.
+        El código se invalida automáticamente tras el primer uso.
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+function copyRecoveryCode() {
+  const el = document.getElementById('recovery-code-display');
+  navigator.clipboard.writeText(el.value).then(() => {
+    const btn = el.nextElementSibling;
+    btn.innerHTML = '<i class="bi bi-clipboard-check"></i>';
+    btn.classList.replace('btn-outline-danger','btn-success');
+  });
+}
+</script>
+{% endif %}
+
+{# ── Header ──────────────────────────────────────────────────────────── #}
+<div class="d-flex align-items-center mb-4 gap-3">
+  <a href="/admin" class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-arrow-left"></i>
+  </a>
+  <h4 class="mb-0"><i class="bi bi-people-fill me-2 text-info"></i>Gestión de Usuarios</h4>
+
+  <div class="ms-auto d-flex gap-2">
+    <input type="text" id="user-search" class="form-control form-control-sm bg-dark text-light border-secondary"
+           placeholder="Buscar usuario..." style="width:180px;"
+           oninput="filterUsers(this.value)">
+    <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#modalNewUser">
+      <i class="bi bi-person-plus-fill me-1"></i>Nuevo Usuario
+    </button>
+  </div>
+</div>
+
+{# ── Stats cards ──────────────────────────────────────────────────────── #}
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="card border-secondary text-center py-3">
+      <div class="fs-2 fw-bold">{{ stats.total }}</div>
+      <div class="small text-muted">Total usuarios</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card border-success text-center py-3">
+      <div class="fs-2 fw-bold text-success">{{ stats.active }}</div>
+      <div class="small text-muted">Activos</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card border-danger text-center py-3">
+      <div class="fs-2 fw-bold text-danger">{{ stats.admins }}</div>
+      <div class="small text-muted">Administradores</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card border-warning text-center py-3">
+      <div class="fs-2 fw-bold text-warning">{{ stats.with_rc }}</div>
+      <div class="small text-muted">Con código de recuperación</div>
+    </div>
+  </div>
+</div>
+
+{# ── Users table ──────────────────────────────────────────────────────── #}
+<div class="card border-secondary">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-dark table-hover mb-0" id="users-table">
+        <thead class="table-secondary">
+          <tr>
+            <th style="width:40px;"></th>
+            <th>Usuario</th>
+            <th style="width:120px;">Rol</th>
+            <th style="width:90px;">Estado</th>
+            <th>Creado</th>
+            <th>Último login</th>
+            <th>Último análisis</th>
+            <th>Cambio de contraseña</th>
+            <th style="width:110px;">Recuperación</th>
+            <th style="width:175px;">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for u in users %}
+          {% set is_me = u.id == current_user.id %}
+          {% set last_inc = last_incidents.get(u.id) %}
+          <tr class="user-row" data-username="{{ u.username | lower }}">
+
+            {# Avatar #}
+            <td class="text-center">
+              <div class="rounded-circle d-inline-flex align-items-center justify-content-center
+                           {% if not u.is_active %}bg-secondary{% elif u.role=='admin' %}bg-danger{% else %}bg-info{% endif %} bg-opacity-25"
+                   style="width:32px;height:32px;">
+                <i class="bi bi-person-fill small"></i>
+              </div>
+            </td>
+
+            {# Username #}
+            <td>
+              <span class="fw-semibold">{{ u.username }}</span>
+              {% if is_me %}<span class="badge bg-secondary ms-1 small">Tú</span>{% endif %}
+              {% if u.notes %}
+              <i class="bi bi-sticky-fill text-warning ms-1 small"
+                 data-bs-toggle="tooltip" title="{{ u.notes }}"></i>
+              {% endif %}
+              <div class="text-muted" style="font-size:0.7rem;">ID #{{ u.id }}</div>
+            </td>
+
+            {# Role — inline change #}
+            <td>
+              {% if not is_me %}
+              <form method="post" action="/admin/users/{{ u.id }}/role" class="d-inline">
+                <select name="role" onchange="this.form.submit()"
+                        class="form-select form-select-sm bg-dark border-secondary
+                               {% if u.role == 'admin' %}text-danger{% else %}text-info{% endif %}"
+                        style="width:105px; font-size:0.75rem;">
+                  <option value="analyst" {% if u.role=='analyst' %}selected{% endif %}>Analista</option>
+                  <option value="admin"   {% if u.role=='admin'   %}selected{% endif %}>Admin</option>
+                </select>
+              </form>
+              {% else %}
+              <span class="badge {% if u.role=='admin' %}bg-danger{% else %}bg-secondary{% endif %}">
+                {{ 'Admin' if u.role == 'admin' else 'Analista' }}
+              </span>
+              {% endif %}
+            </td>
+
+            {# Status toggle #}
+            <td>
+              {% if not is_me %}
+              <form method="post" action="/admin/users/{{ u.id }}/toggle-active">
+                <button type="submit"
+                        class="btn btn-sm {% if u.is_active %}btn-outline-success{% else %}btn-outline-secondary{% endif %}"
+                        style="font-size:0.7rem; padding:2px 8px;"
+                        onclick="return confirm('{{ 'Desactivar' if u.is_active else 'Activar' }} al usuario {{ u.username }}?')">
+                  {% if u.is_active %}<i class="bi bi-check-circle me-1"></i>Activo
+                  {% else %}<i class="bi bi-slash-circle me-1"></i>Inactivo{% endif %}
+                </button>
+              </form>
+              {% else %}
+              <span class="badge bg-success">Activo</span>
+              {% endif %}
+            </td>
+
+            {# Created at #}
+            <td class="small text-muted font-monospace">
+              {{ u.created_at.strftime('%d/%m/%Y') if u.created_at else '—' }}
+            </td>
+
+            {# Last login + count #}
+            <td class="small">
+              {% if u.last_login %}
+              <div class="font-monospace">{{ u.last_login.strftime('%d/%m/%Y %H:%M') }}</div>
+              <div class="text-muted" style="font-size:0.68rem;">
+                <i class="bi bi-arrow-repeat me-1"></i>{{ u.login_count or 0 }} accesos
+              </div>
+              {% else %}
+              <span class="text-muted">Nunca</span>
+              {% endif %}
+            </td>
+
+            {# Last analysis #}
+            <td class="small">
+              {% if last_inc %}
+              <div class="font-monospace">{{ last_inc.timestamp.strftime('%d/%m/%Y %H:%M') }}</div>
+              <a href="/incidentes/{{ last_inc.id }}" class="text-decoration-none">
+                <span class="badge badge-cls-{{ last_inc.classification }} small">
+                  {{ thresholds[last_inc.classification].emoji if last_inc.classification in thresholds }}
+                  #{{ last_inc.id }}
+                </span>
+              </a>
+              {% else %}
+              <span class="text-muted">Sin análisis</span>
+              {% endif %}
+            </td>
+
+            {# Last password change #}
+            <td class="small text-muted font-monospace">
+              {% if u.password_changed_at %}
+              {{ u.password_changed_at.strftime('%d/%m/%Y %H:%M') }}
+              {% else %}
+              <span class="text-muted">No registrado</span>
+              {% endif %}
+            </td>
+
+            {# Recovery code status #}
+            <td class="text-center">
+              {% if u.recovery_code_hash %}
+              <div>
+                <span class="badge bg-warning text-dark small" data-bs-toggle="tooltip"
+                      title="Generado: {{ u.recovery_set_at.strftime('%d/%m/%Y %H:%M') if u.recovery_set_at else 'fecha desconocida' }}">
+                  <i class="bi bi-key-fill me-1"></i>Activo
+                </span>
+              </div>
+              <form method="post" action="/admin/users/{{ u.id }}/revoke-recovery" class="mt-1">
+                <button type="submit" class="btn btn-sm btn-outline-secondary"
+                        style="font-size:0.65rem; padding:1px 6px;"
+                        onclick="return confirm('Revocar el código de recuperación de {{ u.username }}?')">
+                  Revocar
+                </button>
+              </form>
+              {% else %}
+              <span class="text-muted small">—</span>
+              {% endif %}
+            </td>
+
+            {# Actions #}
+            <td>
+              <div class="d-flex gap-1 flex-wrap">
+
+                {# Change password #}
+                <button class="btn btn-sm btn-outline-info"
+                        data-bs-toggle="modal"
+                        data-bs-target="#modalPwd{{ u.id }}"
+                        title="Cambiar contraseña">
+                  <i class="bi bi-key"></i>
+                </button>
+
+                {# Generate recovery code #}
+                <form method="post" action="/admin/users/{{ u.id }}/generate-recovery" class="d-inline">
+                  <button type="submit" class="btn btn-sm btn-outline-warning"
+                          title="Generar código de recuperación"
+                          onclick="return confirm('Generar nuevo código de recuperación para {{ u.username }}? Esto invalidará el anterior.')">
+                    <i class="bi bi-shield-lock"></i>
+                  </button>
+                </form>
+
+                {# Notes #}
+                <button class="btn btn-sm btn-outline-secondary"
+                        data-bs-toggle="modal"
+                        data-bs-target="#modalNotes{{ u.id }}"
+                        title="Notas de administrador">
+                  <i class="bi bi-sticky"></i>
+                </button>
+
+                {# Delete — disabled for own account #}
+                {% if not is_me %}
+                <form method="post" action="/admin/users/{{ u.id }}/delete" class="d-inline">
+                  <button type="submit" class="btn btn-sm btn-outline-danger"
+                          title="Eliminar usuario"
+                          onclick="return confirm('Eliminar al usuario {{ u.username }}? Esta acción no se puede deshacer.')">
+                    <i class="bi bi-trash3"></i>
+                  </button>
+                </form>
+                {% endif %}
+
+              </div>
+            </td>
+
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% if not users %}
+    <div class="text-center py-5 text-muted">
+      <i class="bi bi-people" style="font-size:2.5rem;"></i>
+      <p class="mt-2">No hay usuarios en el sistema.</p>
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+
+
+{# ══════════════════════════════════════════════════════════════════════
+   MODALS
+   ══════════════════════════════════════════════════════════════════════ #}
+
+{# Modal — New user #}
+<div class="modal fade" id="modalNewUser" tabindex="-1">
+  <div class="modal-dialog modal-md">
+    <div class="modal-content bg-dark border-secondary">
+      <div class="modal-header border-secondary">
+        <h5 class="modal-title"><i class="bi bi-person-plus-fill text-success me-2"></i>Crear Nuevo Usuario</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" action="/admin/users/add">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label small text-muted">Nombre de usuario <span class="text-danger">*</span></label>
+            <input type="text" name="username" class="form-control bg-dark text-light border-secondary"
+                   required maxlength="50" placeholder="ej. jsmith">
+          </div>
+          <div class="mb-3">
+            <label class="form-label small text-muted">Contraseña <span class="text-danger">*</span></label>
+            <div class="input-group">
+              <input type="password" name="password" id="new-user-pwd"
+                     class="form-control bg-dark text-light border-secondary"
+                     required minlength="8" placeholder="Mínimo 8 caracteres">
+              <button type="button" class="btn btn-outline-secondary"
+                      onclick="togglePwd('new-user-pwd', this)">
+                <i class="bi bi-eye"></i>
+              </button>
+            </div>
+            <div class="form-text text-muted small">Mínimo 8 caracteres.</div>
+          </div>
+          <div class="mb-2">
+            <label class="form-label small text-muted">Rol</label>
+            <select name="role" class="form-select bg-dark text-light border-secondary">
+              <option value="analyst" selected>Analista — solo evaluar e historiales</option>
+              <option value="admin">Administrador — acceso total</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer border-secondary">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-success">
+            <i class="bi bi-person-check-fill me-1"></i>Crear Usuario
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{# Per-user modals: password change + notes #}
+{% for u in users %}
+
+{# Modal — Change password #}
+<div class="modal fade" id="modalPwd{{ u.id }}" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content bg-dark border-secondary">
+      <div class="modal-header border-secondary">
+        <h5 class="modal-title">
+          <i class="bi bi-key-fill text-info me-2"></i>
+          Cambiar contraseña — <span class="font-monospace">{{ u.username }}</span>
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" action="/admin/users/{{ u.id }}/password">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label small text-muted">Nueva contraseña <span class="text-danger">*</span></label>
+            <div class="input-group">
+              <input type="password" name="new_password" id="pwd-{{ u.id }}"
+                     class="form-control bg-dark text-light border-secondary"
+                     required minlength="8" placeholder="Mínimo 8 caracteres">
+              <button type="button" class="btn btn-outline-secondary"
+                      onclick="togglePwd('pwd-{{ u.id }}', this)">
+                <i class="bi bi-eye"></i>
+              </button>
+            </div>
+          </div>
+          {% if u.password_changed_at %}
+          <div class="text-muted small">
+            <i class="bi bi-clock me-1"></i>Último cambio:
+            {{ u.password_changed_at.strftime('%d/%m/%Y %H:%M') }}
+          </div>
+          {% endif %}
+        </div>
+        <div class="modal-footer border-secondary">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-info">
+            <i class="bi bi-floppy me-1"></i>Guardar Contraseña
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{# Modal — Notes #}
+<div class="modal fade" id="modalNotes{{ u.id }}" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content bg-dark border-secondary">
+      <div class="modal-header border-secondary">
+        <h5 class="modal-title">
+          <i class="bi bi-sticky-fill text-warning me-2"></i>
+          Notas — <span class="font-monospace">{{ u.username }}</span>
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" action="/admin/users/{{ u.id }}/notes">
+        <div class="modal-body">
+          <textarea name="notes" rows="4"
+                    class="form-control bg-dark text-light border-secondary"
+                    maxlength="1000"
+                    placeholder="Notas sobre este usuario (cuenta corporativa, restricciones, observaciones…)">{{ u.notes or '' }}</textarea>
+          <div class="form-text text-muted small">Máximo 1000 caracteres. Solo visible para administradores.</div>
+        </div>
+        <div class="modal-footer border-secondary">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-warning">
+            <i class="bi bi-floppy me-1"></i>Guardar Notas
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% endfor %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ── Search filter
+function filterUsers(query) {
+  const q = query.toLowerCase();
+  document.querySelectorAll('.user-row').forEach(row => {
+    row.style.display = row.dataset.username.includes(q) ? '' : 'none';
+  });
+}
+
+// ── Toggle password visibility
+function togglePwd(inputId, btn) {
+  const inp = document.getElementById(inputId);
+  if (!inp) return;
+  const visible = inp.type === 'text';
+  inp.type = visible ? 'password' : 'text';
+  btn.innerHTML = visible ? '<i class="bi bi-eye"></i>' : '<i class="bi bi-eye-slash"></i>';
+}
+
+// ── Init tooltips
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => new bootstrap.Tooltip(el));
+
+  // Auto-open new user modal if creation failed
+  {% if msg in ('user_error','user_exists') %}
+  new bootstrap.Modal(document.getElementById('modalNewUser')).show();
+  {% endif %}
+});
+</script>
+{% endblock %}

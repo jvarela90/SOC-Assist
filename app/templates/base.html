@@ -11,6 +11,18 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet"/>
   <!-- Custom styles -->
   <link href="/static/css/style.css" rel="stylesheet"/>
+  <!-- Print styles (#41) -->
+  <style>
+    @media print {
+      .navbar, .btn, form, #pbCollapse .collapse:not(.show),
+      .accordion-button, footer { display: none !important; }
+      .card { border: 1px solid #ccc !important; break-inside: avoid; }
+      body { background: #fff !important; color: #000 !important; font-size: 11pt; }
+      a[href]::after { content: none !important; }
+      .badge { border: 1px solid #999 !important; }
+      .collapse { display: block !important; }
+    }
+  </style>
 </head>
 <body>
 
@@ -20,7 +32,7 @@
     <a class="navbar-brand d-flex align-items-center gap-2" href="/">
       <i class="bi bi-shield-shaded text-danger fs-4"></i>
       <span class="fw-bold">SOC<span class="text-danger">Assist</span></span>
-      <small class="text-muted fs-6 ms-1">v1.3</small>
+      <small class="text-muted fs-6 ms-1">v1.7</small>
     </a>
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu">
@@ -51,10 +63,34 @@
         </li>
         {% set _u = request.session.get("user") %}
         {% if _u and _u.role == "admin" %}
-        <li class="nav-item">
-          <a class="nav-link {% if '/admin' in request.url.path %}active{% endif %}" href="/admin">
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle {% if '/admin' in request.url.path %}active{% endif %}"
+             href="#" data-bs-toggle="dropdown">
             <i class="bi bi-sliders"></i> Admin
           </a>
+          <ul class="dropdown-menu dropdown-menu-dark bg-dark border-secondary">
+            <li>
+              <a class="dropdown-item" href="/admin">
+                <i class="bi bi-gear me-2"></i>Configuración
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item" href="/admin/usuarios">
+                <i class="bi bi-people-fill me-2"></i>Gestión de Usuarios
+              </a>
+            </li>
+            <li><hr class="dropdown-divider border-secondary"></li>
+            <li>
+              <a class="dropdown-item" href="/admin/audit-log">
+                <i class="bi bi-journal-bookmark me-2"></i>Audit Log
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item" href="/admin/backup">
+                <i class="bi bi-download me-2"></i>Backup
+              </a>
+            </li>
+          </ul>
         </li>
         {% endif %}
       </ul>
@@ -113,7 +149,7 @@
   <small>
     <i class="bi bi-shield-shaded text-danger"></i>
     <strong>SOC Assist</strong> — Plataforma de Alerta Temprana en Ciberseguridad
-    &nbsp;|&nbsp; Motor v1.3 &nbsp;|&nbsp; Para uso interno
+    &nbsp;|&nbsp; Motor v1.5 &nbsp;|&nbsp; Para uso interno
   </small>
 </footer>
 

@@ -1,0 +1,40 @@
+version: "3.9"
+
+# SOC Assist — Docker Compose
+# Quick start: docker-compose up -d
+# Logs:        docker-compose logs -f soc-assist
+
+services:
+  soc-assist:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: soc-assist
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      # Persist database and config outside the container
+      - soc_data:/data
+      - ./config_engine.json:/app/config_engine.json
+      - ./questions.json:/app/questions.json
+      - ./playbooks.json:/app/playbooks.json
+      - ./ti_config.json:/app/ti_config.json
+    environment:
+      # CHANGE THIS in production — use a long random string
+      SOC_SECRET_KEY: ${SOC_SECRET_KEY:-change-this-key-in-production}
+      SOC_DB_PATH: /data/soc_assist.db
+      SOC_HOST: 0.0.0.0
+      SOC_PORT: 8000
+      SOC_WORKERS: 1
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+volumes:
+  soc_data:
+    driver: local

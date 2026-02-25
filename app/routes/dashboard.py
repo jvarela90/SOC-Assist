@@ -13,9 +13,11 @@ from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from sqlalchemy import func, or_
-from app.models.database import get_db, Incident, IncidentAnswer
+from app.models.database import get_db, Incident, IncidentAnswer, User
 from app.core.engine import engine_instance
 from app.core.auth import require_auth
+from app.services.mitre import get_techniques_for_incident
+from app.services.similarity import find_similar_incidents
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -242,7 +244,33 @@ async def incident_detail(incident_id: int, request: Request, db: Session = Depe
     for ans in sorted(incident.answers, key=lambda a: a.contribution, reverse=True):
         answers_by_module[ans.module].append(ans)
 
+    # Module scores from answers
+    module_scores: dict[str, float] = defaultdict(float)
+    for ans in incident.answers:
+        module_scores[ans.module] += ans.contribution
+
     playbook = _load_playbooks().get(incident.classification, {})
+    mitre_techniques = get_techniques_for_incident(
+        module_scores=dict(module_scores),
+        hard_rule_id=incident.hard_rule_id,
+    )
+
+    # Analyst list for assignment dropdown
+    analysts = db.query(User).filter(User.is_active == True).order_by(User.username).all()
+
+    # Similar incidents (#43/#44) — load recent 200 to keep it fast
+    all_recent = db.query(Incident).order_by(Incident.timestamp.desc()).limit(200).all()
+    similar = find_similar_incidents(incident, all_recent)
+
+    # Parse network_context JSON if present
+    network_ctx = None
+    if incident.network_context:
+        try:
+            network_ctx = json.loads(incident.network_context)
+        except Exception:
+            pass
+
+    msg = request.query_params.get("msg", "")
 
     return templates.TemplateResponse("incident_detail.html", {
         "request": request,
@@ -252,4 +280,9 @@ async def incident_detail(incident_id: int, request: Request, db: Session = Depe
         "mod_labels": mod_labels,
         "questions_map": questions_map,
         "playbook": playbook,
+        "mitre_techniques": mitre_techniques,
+        "analysts": analysts,
+        "similar_incidents": similar,
+        "network_ctx": network_ctx,
+        "msg": msg,
     })

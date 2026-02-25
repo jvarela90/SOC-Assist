@@ -12,6 +12,11 @@
   <span class="ms-3 badge badge-cls-{{ incident.classification }} fs-6">
     {{ t.emoji }} {{ t.label }}
   </span>
+  {% if incident.assigned_to %}
+  <span class="ms-3 badge bg-info bg-opacity-25 border border-info text-light">
+    <i class="bi bi-person-fill me-1"></i>{{ incident.assigned_to }}
+  </span>
+  {% endif %}
 </div>
 
 <div class="row g-3 mb-4">
@@ -28,6 +33,9 @@
           <tr><th class="text-muted">Score final</th><td class="fw-bold">{{ incident.final_score | int }}</td></tr>
           <tr><th class="text-muted">Escalado</th><td>{% if incident.escalated %}<span class="text-danger">Sí</span>{% else %}No{% endif %}</td></tr>
           <tr><th class="text-muted">Analista</th><td>{{ incident.analyst_name or '—' }}</td></tr>
+          {% if incident.assigned_to %}
+          <tr><th class="text-muted">Asignado a</th><td class="text-info">{{ incident.assigned_to }}</td></tr>
+          {% endif %}
           {% if incident.resolution %}
           <tr><th class="text-muted">Resolución</th><td>{{ incident.resolution }}</td></tr>
           {% endif %}
@@ -42,12 +50,12 @@
     </div>
   </div>
 
-  <!-- Resolution card -->
+  <!-- Resolution + Assignment card -->
   <div class="col-md-8">
     <div class="card border-secondary h-100">
       <div class="card-header"><i class="bi bi-pencil-square me-2"></i>Actualizar Resolución</div>
       <div class="card-body">
-        <form method="post" action="/incident/{{ incident.id }}/resolve" class="row g-3">
+        <form method="post" action="/incident/{{ incident.id }}/resolve" class="row g-3 mb-3">
           <div class="col-md-5">
             <label class="form-label small">Resultado del Caso</label>
             <select name="resolution" class="form-select bg-dark text-light border-secondary">
@@ -67,13 +75,109 @@
             <button type="submit" class="btn btn-primary w-100">Guardar</button>
           </div>
         </form>
+
+        <hr class="border-secondary my-2">
+
+        <!-- Assignment form -->
+        <form method="post" action="/incident/{{ incident.id }}/assign" class="row g-2 align-items-end">
+          <div class="col-auto">
+            <label class="form-label small mb-1"><i class="bi bi-person-check me-1"></i>Asignar a Analista</label>
+            <select name="assigned_to" class="form-select form-select-sm bg-dark text-light border-secondary" style="min-width:180px">
+              <option value="">— Sin asignar —</option>
+              {% for a in analysts %}
+              <option value="{{ a.username }}" {% if incident.assigned_to == a.username %}selected{% endif %}>
+                {{ a.username }}{% if a.role == 'admin' %} ★{% endif %}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-auto">
+            <button type="submit" class="btn btn-sm btn-outline-info">
+              <i class="bi bi-person-check me-1"></i>Asignar
+            </button>
+          </div>
+          {% if incident.assigned_to %}
+          <div class="col-auto">
+            <span class="text-muted small">
+              Asignado a: <span class="text-info fw-semibold">{{ incident.assigned_to }}</span>
+            </span>
+          </div>
+          {% endif %}
+        </form>
       </div>
     </div>
   </div>
 </div>
 
+<!-- TI adjustment success banner -->
+{% if msg == 'ti_adjusted' %}
+<div class="alert alert-success alert-dismissible fade show mb-3" role="alert">
+  <i class="bi bi-shield-fill-check me-2"></i>
+  <strong>Ajuste TI aplicado.</strong> El score y la clasificación han sido actualizados según los indicadores de Threat Intelligence.
+  <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endif %}
+
+<!-- Contexto de Red -->
+{% if network_ctx %}
+{% set sv = network_ctx.get('ti_summary', 'LIMPIO') %}
+<div class="card border-info mb-3">
+  <div class="card-header text-info d-flex align-items-center gap-2">
+    <i class="bi bi-diagram-3"></i>
+    <span>Contexto de Red</span>
+    {% if incident.ti_adjusted %}
+    <span class="badge bg-warning text-dark ms-1 small">Ajuste TI aplicado</span>
+    {% endif %}
+    <span class="badge ms-1 small
+      {% if sv == 'MALICIOSO' %}bg-danger
+      {% elif sv == 'SOSPECHOSO' %}bg-warning text-dark
+      {% else %}bg-success{% endif %}">
+      TI: {{ sv }}
+    </span>
+    {% if sv in ('MALICIOSO', 'SOSPECHOSO') and not incident.ti_adjusted %}
+    <form method="post" action="/incident/{{ incident.id }}/apply-ti-adjustment" class="ms-auto">
+      <button type="submit" class="btn btn-{{ 'danger' if sv == 'MALICIOSO' else 'warning' }} btn-sm">
+        <i class="bi bi-shield-fill-exclamation me-1"></i>Aplicar ajuste TI
+      </button>
+    </form>
+    {% endif %}
+  </div>
+  <div class="card-body">
+    <!-- Flujo de red -->
+    <div class="d-flex align-items-center gap-2 mb-3 font-monospace flex-wrap">
+      {% if network_ctx.ip_src %}
+      <span class="badge bg-secondary fs-6">{{ network_ctx.ip_src }}</span>
+      {% endif %}
+      <span class="fs-5 text-muted">
+        {% if network_ctx.direction == 'outbound' %}→
+        {% elif network_ctx.direction == 'inbound' %}←
+        {% elif network_ctx.direction == 'bidirectional' %}↔
+        {% else %}?{% endif %}
+      </span>
+      {% if network_ctx.ip_dst %}
+      <span class="badge bg-secondary fs-6">{{ network_ctx.ip_dst }}</span>
+      {% endif %}
+      {% if network_ctx.url %}
+      <span class="text-muted small ms-2 text-break">| URL: {{ network_ctx.url }}</span>
+      {% endif %}
+      {% if network_ctx.mac %}
+      <span class="text-muted small ms-2">| MAC: {{ network_ctx.mac }}</span>
+      {% endif %}
+    </div>
+    <div class="text-muted small">
+      <i class="bi bi-shield-lock me-1"></i>
+      Veredicto TI:
+      <strong class="
+        {% if sv == 'MALICIOSO' %}text-danger
+        {% elif sv == 'SOSPECHOSO' %}text-warning
+        {% else %}text-success{% endif %}">{{ sv }}</strong>
+    </div>
+  </div>
+</div>
+{% endif %}
+
 <!-- Answers by module -->
-<div class="card border-secondary">
+<div class="card border-secondary mb-3">
   <div class="card-header"><i class="bi bi-list-check me-2"></i>Respuestas por Módulo</div>
   <div class="card-body p-0">
     <div class="accordion accordion-flush" id="answersAccordion">
@@ -118,10 +222,60 @@
   </div>
 </div>
 
+<!-- MITRE ATT&CK Techniques -->
+{% if mitre_techniques %}
+<div class="card border-secondary mb-3">
+  <div class="card-header d-flex align-items-center gap-2">
+    <i class="bi bi-shield-shaded text-danger"></i>
+    <strong>MITRE ATT&CK</strong>
+    <span class="badge bg-secondary ms-1">{{ mitre_techniques | length }} técnicas</span>
+    <a href="https://attack.mitre.org/" target="_blank" rel="noopener"
+       class="btn btn-sm btn-link ms-auto p-0 text-muted text-decoration-none small">
+      attack.mitre.org <i class="bi bi-box-arrow-up-right ms-1"></i>
+    </a>
+    <button class="btn btn-sm btn-link p-0 text-muted"
+            data-bs-toggle="collapse" data-bs-target="#mitreCollapse">
+      <i class="bi bi-chevron-down"></i>
+    </button>
+  </div>
+  <div class="collapse show" id="mitreCollapse">
+    <div class="card-body pb-2">
+      {# Group techniques by tactic using namespace to track group changes #}
+      {% set ns = namespace(current_tactic='', open_group=false) %}
+      {% for tech in mitre_techniques %}
+        {% if tech.tactic != ns.current_tactic %}
+          {% if ns.open_group %}
+            </div></div>
+          {% endif %}
+          {% set ns.current_tactic = tech.tactic %}
+          {% set ns.open_group = true %}
+          <div class="mb-3">
+            <div class="text-muted small fw-semibold mb-2 text-uppercase" style="letter-spacing:.05em">
+              <i class="bi bi-arrow-right-short"></i>{{ tech.tactic }}
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+        {% endif %}
+        <a href="https://attack.mitre.org/techniques/{{ tech.id | replace('.', '/') }}/"
+           target="_blank" rel="noopener"
+           class="badge text-decoration-none border text-light py-2 px-2
+                  {% if tech.color == 'danger' %}bg-danger bg-opacity-25 border-danger
+                  {% elif tech.color == 'warning' %}bg-warning bg-opacity-25 border-warning
+                  {% else %}bg-info bg-opacity-25 border-info{% endif %}"
+           title="{{ tech.tactic }}">
+          <span class="font-monospace" style="font-size:.75rem">{{ tech.id }}</span>
+          <span class="ms-1" style="font-size:.78rem">{{ tech.name }}</span>
+        </a>
+      {% endfor %}
+      {% if ns.open_group %}</div></div>{% endif %}
+    </div>
+  </div>
+</div>
+{% endif %}
+
 <!-- Playbook de respuesta -->
 {% set pb = playbook if playbook is defined else {} %}
 {% if pb %}
-<div class="card border-{{ pb.color | default('secondary') }} mt-3 mb-3">
+<div class="card border-{{ pb.color | default('secondary') }} mb-3">
   <div class="card-header d-flex align-items-center gap-2 {% if pb.color == 'danger' %}text-danger{% elif pb.color == 'warning' %}text-warning{% else %}text-success{% endif %}">
     <i class="bi {{ pb.icon | default('bi-journal-text') }}"></i>
     <strong>Playbook de Respuesta</strong>
@@ -167,4 +321,231 @@
   </div>
 </div>
 {% endif %}
+
+<!-- Comments section (#45) -->
+<div class="card border-secondary mb-4" id="comments">
+  <div class="card-header d-flex align-items-center gap-2">
+    <i class="bi bi-chat-left-text"></i>
+    <strong>Comentarios del Equipo</strong>
+    <span class="badge bg-secondary ms-1">{{ incident.comments | length }}</span>
+  </div>
+  <div class="card-body">
+    {% if incident.comments %}
+    <div class="mb-4">
+      {% for c in incident.comments %}
+      <div class="d-flex gap-3 mb-3">
+        <div class="flex-shrink-0">
+          <div class="rounded-circle bg-secondary d-flex align-items-center justify-content-center fw-bold"
+               style="width:36px;height:36px;font-size:.85rem;">
+            {{ c.author[0] | upper }}
+          </div>
+        </div>
+        <div class="flex-grow-1">
+          <div class="d-flex align-items-baseline gap-2 mb-1">
+            <span class="fw-semibold small">{{ c.author }}</span>
+            <span class="text-muted" style="font-size:.75rem">
+              {{ c.created_at.strftime('%d/%m/%Y %H:%M') }}
+            </span>
+          </div>
+          <div class="bg-dark border border-secondary rounded px-3 py-2 small">
+            {{ c.text | e }}
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-muted small mb-3">No hay comentarios aún.</p>
+    {% endif %}
+
+    <form method="post" action="/incident/{{ incident.id }}/comment"
+          class="d-flex gap-2 align-items-end">
+      <div class="flex-grow-1">
+        <label class="form-label small mb-1">
+          <i class="bi bi-plus-circle me-1"></i>Añadir comentario
+        </label>
+        <input type="text" name="text"
+               class="form-control bg-dark text-light border-secondary"
+               placeholder="Escribe tu observación..." required maxlength="1000">
+      </div>
+      <div class="flex-shrink-0">
+        <button type="submit" class="btn btn-outline-primary">
+          <i class="bi bi-send me-1"></i>Enviar
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Timeline gráfico (#47) -->
+<div class="card border-secondary mb-4" id="timeline">
+  <div class="card-header d-flex align-items-center gap-2">
+    <i class="bi bi-clock-history text-info"></i>
+    <strong>Timeline del Incidente</strong>
+    <button class="btn btn-sm btn-link ms-auto p-0 text-muted"
+            data-bs-toggle="collapse" data-bs-target="#timelineCollapse">
+      <i class="bi bi-chevron-down"></i>
+    </button>
+  </div>
+  <div class="collapse show" id="timelineCollapse">
+    <div class="card-body">
+      {# Build events list: creation + comments + resolution #}
+      {% set events = [] %}
+      {# We build the list and render it directly #}
+
+      {# Event: created #}
+      <div class="d-flex gap-3 mb-3">
+        <div class="d-flex flex-column align-items-center" style="min-width:32px">
+          <div class="rounded-circle bg-primary d-flex align-items-center justify-content-center"
+               style="width:28px;height:28px;font-size:.8rem;flex-shrink:0">
+            <i class="bi bi-plus-lg"></i>
+          </div>
+          {% if incident.comments or incident.resolution %}
+          <div class="bg-secondary flex-grow-1 mt-1" style="width:2px;min-height:20px"></div>
+          {% endif %}
+        </div>
+        <div class="pb-3">
+          <div class="fw-semibold small">Incidente creado</div>
+          <div class="text-muted" style="font-size:.75rem">
+            {{ incident.timestamp.strftime('%d/%m/%Y %H:%M') }}
+            — por <span class="text-light">{{ incident.analyst_name or 'Anónimo' }}</span>
+            — Score: <span class="text-warning">{{ incident.final_score | int }}</span>
+          </div>
+        </div>
+      </div>
+
+      {# Events: comments (sorted by creation) #}
+      {% set total_events = incident.comments | length + (1 if incident.resolution else 0) %}
+      {% for c in incident.comments %}
+      <div class="d-flex gap-3 mb-3">
+        <div class="d-flex flex-column align-items-center" style="min-width:32px">
+          <div class="rounded-circle bg-secondary d-flex align-items-center justify-content-center fw-bold"
+               style="width:28px;height:28px;font-size:.75rem;flex-shrink:0">
+            {{ c.author[0] | upper }}
+          </div>
+          {% if not loop.last or incident.resolution %}
+          <div class="bg-secondary flex-grow-1 mt-1" style="width:2px;min-height:20px"></div>
+          {% endif %}
+        </div>
+        <div class="pb-3">
+          <div class="fw-semibold small">
+            Comentario — <span class="text-info">{{ c.author }}</span>
+          </div>
+          <div class="text-muted" style="font-size:.75rem">
+            {{ c.created_at.strftime('%d/%m/%Y %H:%M') }}
+          </div>
+          <div class="bg-dark border border-secondary rounded px-3 py-2 small mt-1">
+            {{ c.text | e }}
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+
+      {# Event: resolution (if set) #}
+      {% if incident.resolution %}
+      {% set res_labels = {
+        'tp_escalated': ('✅ Verdadero Positivo — Escalado', 'success'),
+        'tp_resolved':  ('✅ Verdadero Positivo — Resuelto', 'success'),
+        'fp':           ('❌ Falso Positivo', 'warning'),
+        'ongoing':      ('⏳ En Curso', 'info'),
+      } %}
+      {% set res_info = res_labels.get(incident.resolution, (incident.resolution, 'secondary')) %}
+      <div class="d-flex gap-3 mb-3">
+        <div class="d-flex flex-column align-items-center" style="min-width:32px">
+          <div class="rounded-circle bg-{{ res_info[1] }} d-flex align-items-center justify-content-center"
+               style="width:28px;height:28px;font-size:.8rem;flex-shrink:0">
+            <i class="bi bi-check2"></i>
+          </div>
+        </div>
+        <div>
+          <div class="fw-semibold small text-{{ res_info[1] }}">{{ res_info[0] }}</div>
+          {% if incident.analyst_notes %}
+          <div class="text-muted small mt-1">{{ incident.analyst_notes }}</div>
+          {% endif %}
+        </div>
+      </div>
+      {% endif %}
+
+    </div>
+  </div>
+</div>
+
+<!-- Incidentes Similares (#43/#44) -->
+{% if similar_incidents %}
+<div class="card border-secondary mb-4">
+  <div class="card-header d-flex align-items-center gap-2">
+    <i class="bi bi-diagram-3 text-warning"></i>
+    <strong>Incidentes Similares</strong>
+    <span class="badge bg-secondary ms-1">{{ similar_incidents | length }}</span>
+    <button class="btn btn-sm btn-link ms-auto p-0 text-muted"
+            data-bs-toggle="collapse" data-bs-target="#similarCollapse">
+      <i class="bi bi-chevron-down"></i>
+    </button>
+  </div>
+  <div class="collapse show" id="similarCollapse">
+    <div class="card-body p-0">
+      <table class="table table-dark table-hover table-sm mb-0">
+        <thead>
+          <tr>
+            <th>Similitud</th>
+            <th>#ID</th>
+            <th>Clasificación</th>
+            <th>Score</th>
+            <th>Fecha</th>
+            <th>Resolución</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in similar_incidents %}
+          {% set other = s.incident %}
+          {% set t2 = thresholds[other.classification] %}
+          <tr>
+            <td>
+              <div class="d-flex align-items-center gap-2">
+                <div class="progress flex-grow-1" style="height:6px;max-width:80px">
+                  <div class="progress-bar
+                    {% if s.score >= 80 %}bg-danger{% elif s.score >= 60 %}bg-warning{% else %}bg-info{% endif %}"
+                    style="width:{{ s.score }}%"></div>
+                </div>
+                <span class="small fw-bold">{{ s.score }}%</span>
+              </div>
+            </td>
+            <td>
+              <a href="/incidentes/{{ other.id }}" class="text-decoration-none text-light">
+                #{{ other.id }}
+              </a>
+            </td>
+            <td>
+              <span class="badge badge-cls-{{ other.classification }}">
+                {{ t2.emoji }} {{ t2.label }}
+              </span>
+            </td>
+            <td class="fw-bold text-warning">{{ other.final_score | int }}</td>
+            <td class="small text-muted">{{ other.timestamp.strftime('%d/%m/%Y') }}</td>
+            <td class="small">
+              {% if other.resolution %}
+                {% if other.resolution in ('tp_escalated', 'tp_resolved') %}
+                  <span class="text-success">✅ {{ other.resolution }}</span>
+                {% elif other.resolution == 'fp' %}
+                  <span class="text-warning">❌ FP</span>
+                {% else %}
+                  <span class="text-info">⏳ {{ other.resolution }}</span>
+                {% endif %}
+              {% else %}
+                <span class="text-muted">—</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <div class="px-3 py-2 text-muted small border-top border-secondary">
+        <i class="bi bi-info-circle me-1"></i>
+        Similitud calculada por coseno sobre vectores de score por módulo.
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
 {% endblock %}

@@ -1,6 +1,6 @@
 # SOC Assist — Guía de Desarrollo y Roadmap
 
-> **Estado actual:** v1.4 — Motor ponderado + TI + Webhooks + Auth roles + Playbooks + Heatmap + CSV + Filtros
+> **Estado actual:** v1.8 — Motor ponderado + TI + Webhooks + Auth + Playbooks + Heatmap + CSV + Filtros + MITRE ATT&CK + Comentarios + Asignación + Audit Log + Docker + REST API + Similitud + Timeline + Rate Limit + Backup + PostgreSQL + Nginx + Contexto de Red + TI Enrichment Híbrido + Gestión de Usuarios
 > **Repositorio:** https://github.com/jvarela90/SOC-Assist
 > **Última actualización:** 2026-02
 
@@ -13,8 +13,8 @@
 | 1 | Core — Motor + Formulario | ✅ Completado |
 | 2 | UX — Bloques temáticos + sesgo neutral | ✅ Completado |
 | 3 | Integraciones externas | ✅ Completado |
-| 4 | Analítica avanzada + Colaboración | 🔄 En Progreso |
-| 5 | Producción + Seguridad | ⬜ Pendiente |
+| 4 | Analítica avanzada + Colaboración | ✅ Completado |
+| 5 | Producción + Seguridad | ✅ Completado |
 
 ---
 
@@ -91,34 +91,48 @@
 
 | # | Feature | Estado |
 |---|---------|--------|
-| 37 | Mapeo MITRE ATT&CK — etiquetar respuestas con técnica (T1059, T1003…) | ⬜ |
+| 37 | Mapeo MITRE ATT&CK — etiquetar respuestas con técnica (T1059, T1003…) | ✅ |
 | 38 | Playbooks de respuesta — lista de pasos por tipo de incidente | ✅ |
 | 39 | Heatmap temporal (hora del día × día de semana) de incidentes | ✅ |
-| 40 | REST API documentada (OpenAPI) para integración con SIEMs externos | ⬜ |
-| 41 | Exportación de reportes a PDF (wkhtmltopdf o weasyprint) | ⬜ |
+| 40 | REST API documentada (OpenAPI) para integración con SIEMs externos | ✅ |
+| 41 | Exportación de reportes a PDF (print CSS + botón imprimir) | ✅ |
 | 42 | Exportación a CSV/Excel del historial | ✅ |
-| 43 | Comparación de incidentes similares (clustering por vectores de respuesta) | ⬜ |
-| 44 | Score de similitud — "Este incidente se parece a ID-42 en un 78%" | ⬜ |
-| 45 | Comentarios colaborativos por incidente (varios analistas) | ⬜ |
-| 46 | Asignación de incidentes a analista específico | ⬜ |
-| 47 | Timeline gráfico del incidente (hora de detección → resolución) | ⬜ |
+| 43 | Comparación de incidentes similares (coseno sobre vectores de módulo) | ✅ |
+| 44 | Score de similitud — "Este incidente se parece a ID-42 en un 78%" | ✅ |
+| 45 | Comentarios colaborativos por incidente (varios analistas) | ✅ |
+| 46 | Asignación de incidentes a analista específico | ✅ |
+| 47 | Timeline gráfico del incidente (creación → comentarios → resolución) | ✅ |
 | 48 | Adjuntar evidencia (screenshots, logs, pcap) al incidente | ⬜ |
 | 49 | Búsqueda full-text en historial de incidentes | ✅ |
 | 50 | Filtros avanzados en historial: por fecha, nivel, módulo, analista | ✅ |
 
 ---
 
-## Fase 5 — Producción y Seguridad (Pendiente ⬜)
+## Fase 5 — Producción y Seguridad (Completado ✅)
 
 | # | Feature | Estado |
 |---|---------|--------|
-| 51 | Migración a PostgreSQL (multi-usuario, concurrencia) | ⬜ |
-| 52 | Docker + docker-compose para despliegue en un comando | ⬜ |
-| 53 | HTTPS / TLS con Nginx reverse proxy | ⬜ |
-| 54 | Audit log de todas las acciones de administrador | ⬜ |
-| 55 | Backup automático de base de datos y configuración | ⬜ |
-| 56 | Rate limiting en endpoints de evaluación | ⬜ |
+| 51 | Soporte PostgreSQL vía DATABASE_URL env var | ✅ |
+| 52 | Docker + docker-compose para despliegue en un comando | ✅ |
+| 53 | HTTPS / TLS con Nginx reverse proxy (nginx/nginx.conf) | ✅ |
+| 54 | Audit log de todas las acciones de administrador | ✅ |
+| 55 | Backup de BD + config descargable como ZIP desde /admin | ✅ |
+| 56 | Rate limiting en /evaluar (20 req/min por IP, in-memory) | ✅ |
 | 57 | Modo multi-tenant (varias organizaciones en una instancia) | ⬜ |
+
+---
+
+## Fase 6 — Contexto de Red + TI Enrichment Híbrido (Completado ✅)
+
+| # | Feature | Estado |
+|---|---------|--------|
+| 58 | Bloque 0 "Contexto del Evento" antes del wizard (IP src/dir/dst, URL, MAC) | ✅ |
+| 59 | Lookups TI inline en Bloque 0 (botón Analizar por campo) con badge LIMPIO/SOSPECHOSO/MALICIOSO | ✅ |
+| 60 | 3 preguntas nuevas: q_064 (comunicación exitosa), q_065 (usuario identificado), q_066 (función crítica) | ✅ |
+| 61 | TI enrichment server-side en POST /evaluar (asyncio.gather, timeout 8s) | ✅ |
+| 62 | Banner TI en resultado: score ajustado sugerido + botón "Aplicar ajuste TI" (flujo híbrido) | ✅ |
+| 63 | POST /incident/{id}/apply-ti-adjustment — analista confirma ajuste, audit log registra acción | ✅ |
+| 64 | Tarjeta "Contexto de Red" en incident_detail con flujo IP→→IP, veredicto TI, badge ajuste aplicado | ✅ |
 
 ---
 
@@ -128,28 +142,31 @@
 SOC-Assist/
 ├── run.py                    # Punto de entrada (uvicorn)
 ├── requirements.txt          # Dependencias Python
+├── Dockerfile                # Imagen Docker Python 3.13-slim
+├── docker-compose.yml        # Despliegue con volumen persistente
 ├── config_engine.json        # Scoring: pesos, umbrales, multiplicadores, reglas
 ├── ti_config.json            # Threat Intelligence: API keys (NO commitear con claves reales)
+├── playbooks.json            # Playbooks de respuesta por nivel de clasificación
 ├── questions.json            # 63 preguntas + bloques temáticos
 ├── ROADMAP.md                # Este archivo
 └── app/
-    ├── main.py               # FastAPI app + routers
-    ├── core/
-    │   ├── engine.py         # Motor de scoring ponderado
-    │   └── calibration.py    # Auto-calibración basada en TP/FP
-    ├── models/
-    │   └── database.py       # SQLAlchemy + SQLite (tablas: Incident, IncidentAnswer…)
-    ├── routes/
-    │   ├── auth.py           # Login / logout (sesión con cookies firmadas)
-    │   ├── form.py           # Formulario wizard por bloques
-    │   ├── dashboard.py      # Dashboard + historial de incidentes
-    │   ├── admin.py          # Panel admin (pesos, umbrales, calibración, TI keys, usuarios)
-    │   └── ti.py             # API de Threat Intelligence y MAC OUI lookup
+    ├── main.py               # FastAPI app + routers + /health endpoint
     ├── core/
     │   ├── engine.py         # Motor de scoring ponderado
     │   ├── calibration.py    # Auto-calibración basada en TP/FP
     │   └── auth.py           # Hashing bcrypt + dependencias require_auth / require_admin
+    ├── models/
+    │   └── database.py       # SQLAlchemy + SQLite (Incident, IncidentAnswer,
+    │                         #   IncidentComment, AuditLog, User, WeightHistory…)
+    ├── routes/
+    │   ├── auth.py           # Login / logout (sesión con cookies firmadas)
+    │   ├── form.py           # Formulario wizard + comentarios + asignación
+    │   ├── dashboard.py      # Dashboard + historial + exportación CSV
+    │   ├── admin.py          # Panel admin (pesos, umbrales, calibración, TI keys,
+    │                         #   usuarios, webhooks) con audit log completo
+    │   └── ti.py             # API de Threat Intelligence y MAC OUI lookup
     ├── services/
+    │   ├── mitre.py          # Mapeo MITRE ATT&CK (módulos + hard rules → técnicas)
     │   ├── threat_intel.py   # VirusTotal / AbuseIPDB / IBM X-Force + validación IP privada
     │   ├── mac_oui.py        # Lookup fabricante por prefijo MAC (OUI database local)
     │   └── notifications.py  # Webhooks Teams / Slack — dispatch fire-and-forget

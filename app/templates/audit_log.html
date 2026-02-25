@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}Audit Log{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center mb-4">
+  <a href="/admin" class="btn btn-sm btn-outline-secondary me-3">
+    <i class="bi bi-arrow-left"></i>
+  </a>
+  <h4 class="mb-0"><i class="bi bi-journal-bookmark me-2 text-warning"></i>Audit Log</h4>
+  <span class="badge bg-secondary ms-3">{{ total }} entradas</span>
+  <a href="/admin/backup" class="btn btn-sm btn-outline-success ms-auto">
+    <i class="bi bi-download me-1"></i>Backup ZIP
+  </a>
+</div>
+
+<div class="card border-secondary">
+  <div class="card-body p-0">
+    {% if logs %}
+    <div class="table-responsive">
+      <table class="table table-dark table-hover table-sm mb-0">
+        <thead class="table-secondary">
+          <tr>
+            <th style="width:150px">Fecha (UTC)</th>
+            <th style="width:120px">Usuario</th>
+            <th>Acción</th>
+            <th>Objetivo</th>
+            <th>Detalles</th>
+            <th style="width:120px">IP</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for log in logs %}
+          <tr>
+            <td class="small text-muted font-monospace">
+              {{ log.timestamp.strftime('%d/%m/%Y %H:%M:%S') }}
+            </td>
+            <td>
+              <span class="badge bg-secondary">{{ log.username }}</span>
+            </td>
+            <td>
+              <span class="font-monospace small
+                {% if 'deleted' in log.action or 'cleared' in log.action %}text-danger
+                {% elif 'created' in log.action or 'added' in log.action %}text-success
+                {% elif 'updated' in log.action or 'changed' in log.action %}text-warning
+                {% else %}text-info{% endif %}">
+                {{ log.action }}
+              </span>
+            </td>
+            <td class="small text-muted">{{ log.target or '—' }}</td>
+            <td class="small">{{ log.details or '—' }}</td>
+            <td class="small font-monospace text-muted">{{ log.ip_address or '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if pages > 1 %}
+    <div class="d-flex justify-content-center gap-2 py-3">
+      {% if page > 1 %}
+      <a href="/admin/audit-log?page={{ page - 1 }}" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-chevron-left"></i> Anterior
+      </a>
+      {% endif %}
+      <span class="btn btn-sm btn-secondary disabled">
+        Página {{ page }} / {{ pages }}
+      </span>
+      {% if page < pages %}
+      <a href="/admin/audit-log?page={{ page + 1 }}" class="btn btn-sm btn-outline-secondary">
+        Siguiente <i class="bi bi-chevron-right"></i>
+      </a>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div class="text-center py-5 text-muted">
+      <i class="bi bi-journal-x" style="font-size:2.5rem"></i>
+      <p class="mt-2">No hay entradas en el audit log aún.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -16,7 +16,7 @@ init_db()
 app = FastAPI(
     title="SOC Assist",
     description="Plataforma de Alerta Temprana en Ciberseguridad",
-    version="1.6.0",
+    version="1.8.0",
     docs_url="/docs",
     redoc_url="/redoc",
 )

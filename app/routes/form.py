@@ -15,6 +15,7 @@ from app.core.engine import engine_instance
 from app.core.auth import require_auth
 from app.core.rate_limit import rate_limit_evaluar
 from app.services.notifications import notify_incident
+from app.services.mailer import send_incident_alert
 from app.services.mitre import get_techniques_for_incident
 from app.services.threat_intel import lookup as ti_lookup, is_private_ip, is_valid_ip
 from app.routes.assets import lookup_asset_by_identifier, CRITICALITY_MULTIPLIERS, CRITICALITY_LABELS
@@ -276,6 +277,16 @@ async def evaluar_submit(request: Request, db: Session = Depends(get_db), _user:
         base_url=base_url,
     ))
 
+    # Fire-and-forget email alert for critical/breach (#32)
+    asyncio.create_task(asyncio.to_thread(
+        send_incident_alert,
+        incident.id,
+        result["classification"],
+        result["final_score"],
+        analyst_name,
+        base_url,
+    ))
+
     mod_labels = {m["id"]: m["label"] for m in engine_instance.modules}
 
     playbook = _load_playbooks().get(result["classification"], {})
@@ -353,6 +364,12 @@ async def resolve_incident(incident_id: int, request: Request, db: Session = Dep
         incident.resolution = form_data.get("resolution")
         incident.analyst_notes = form_data.get("notes", "")
         incident.escalated = incident.resolution in ("tp_escalated",)
+        # SLA: set resolved_at on first resolution; clear if resolution removed
+        from datetime import datetime as _dt
+        if incident.resolution and not old_res:
+            incident.resolved_at = _dt.utcnow()
+        elif not incident.resolution:
+            incident.resolved_at = None
         audit(db, user["username"], "resolve_incident",
               target=f"incident/{incident_id}",
               details=f"{old_res} → {incident.resolution}")

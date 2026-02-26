@@ -64,6 +64,12 @@
         <input type="date" name="to_date" value="{{ f.to_date }}"
                class="form-control form-control-sm bg-dark text-light border-secondary">
       </div>
+      <div class="col-6 col-md-2">
+        <label class="form-label form-label-sm text-muted mb-1">Etiqueta</label>
+        <input type="text" name="tag" value="{{ f.tag if f.tag is defined else '' }}"
+               class="form-control form-control-sm bg-dark text-light border-secondary"
+               placeholder="ej. phishing">
+      </div>
       <div class="col-12 col-md-1 d-flex gap-1">
         <button type="submit" class="btn btn-sm btn-primary flex-fill" title="Aplicar filtros">
           <i class="bi bi-funnel-fill"></i>
@@ -89,6 +95,7 @@
         <th>Score</th>
         <th>Multiplicador</th>
         <th>Analista</th>
+        <th>Etiquetas</th>
         <th>Resolución</th>
         <th>Escalado</th>
         <th></th>
@@ -112,6 +119,19 @@
           {% if inc.multiplier > 1 %}×{{ inc.multiplier }}{% else %}—{% endif %}
         </td>
         <td class="small text-muted">{{ inc.analyst_name or '—' }}</td>
+        <td>
+          {% if inc.tags %}
+          {% set _tags = inc.tags | fromjson %}
+          <div class="d-flex flex-wrap gap-1">
+            {% for tag in _tags %}
+            <a href="/incidentes?tag={{ tag | urlencode }}"
+               class="badge bg-info text-dark text-decoration-none" style="font-size:0.7rem;">{{ tag }}</a>
+            {% endfor %}
+          </div>
+          {% else %}
+          <span class="text-muted">—</span>
+          {% endif %}
+        </td>
         <td>
           {% if inc.resolution == 'fp' %}
           <span class="badge bg-secondary">❌ Falso Positivo</span>

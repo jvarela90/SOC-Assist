@@ -346,6 +346,94 @@
       </div>
     </div>
 
+    <!-- ═══ Email SMTP ══════════════════════════════════════════════════ -->
+    {% set sm = smtp if smtp is defined else {} %}
+    <div class="card border-secondary mb-3">
+      <div class="card-header d-flex align-items-center">
+        <i class="bi bi-envelope-fill me-2"></i>Notificaciones por Email
+        <small class="text-muted ms-2">Alertas SMTP en Crítico / Brecha</small>
+        {% if sm.get('enabled') %}
+        <span class="badge bg-success ms-auto" style="font-size:0.65rem;">ACTIVO</span>
+        {% else %}
+        <span class="badge bg-secondary ms-auto" style="font-size:0.65rem;">INACTIVO</span>
+        {% endif %}
+      </div>
+      <div class="card-body">
+        {% if request.query_params.get('msg') == 'smtp_saved' %}
+        <div class="alert alert-success py-2 small"><i class="bi bi-check-circle me-1"></i>Config. SMTP guardada.</div>
+        {% endif %}
+
+        <form method="post" action="/admin/smtp" id="smtpForm">
+          <!-- Enable toggle -->
+          <div class="form-check form-switch mb-3">
+            <input class="form-check-input" type="checkbox" name="smtp_enabled" id="smtp-enabled-toggle"
+                   {% if sm.get('enabled') %}checked{% endif %}>
+            <label class="form-check-label small" for="smtp-enabled-toggle">Habilitar alertas por email</label>
+          </div>
+
+          <div class="row g-2 mb-2">
+            <div class="col-md-8">
+              <label class="form-label small text-muted">Servidor SMTP</label>
+              <input type="text" name="smtp_host" class="form-control form-control-sm bg-dark text-light border-secondary"
+                     placeholder="smtp.gmail.com" value="{{ sm.get('smtp_host','') }}">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small text-muted">Puerto</label>
+              <input type="number" name="smtp_port" class="form-control form-control-sm bg-dark text-light border-secondary"
+                     placeholder="587" value="{{ sm.get('smtp_port', 587) }}">
+            </div>
+          </div>
+
+          <div class="mb-2">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" name="smtp_tls" id="smtp-tls-toggle"
+                     {% if sm.get('smtp_tls', True) %}checked{% endif %}>
+              <label class="form-check-label small text-muted" for="smtp-tls-toggle">Usar TLS/STARTTLS (puerto 587) — desactivar solo para SSL implícito 465</label>
+            </div>
+          </div>
+
+          <div class="row g-2 mb-2">
+            <div class="col-md-6">
+              <label class="form-label small text-muted">Usuario SMTP</label>
+              <input type="text" name="smtp_user" class="form-control form-control-sm bg-dark text-light border-secondary"
+                     placeholder="alertas@empresa.com" value="{{ sm.get('smtp_user','') }}">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small text-muted">Contraseña SMTP</label>
+              <input type="password" name="smtp_password" class="form-control form-control-sm bg-dark text-light border-secondary"
+                     placeholder="••••••••" value="{{ sm.get('smtp_password','') }}">
+            </div>
+          </div>
+
+          <div class="mb-2">
+            <label class="form-label small text-muted">Email remitente (From)</label>
+            <input type="email" name="smtp_from" class="form-control form-control-sm bg-dark text-light border-secondary"
+                   placeholder="soc-alerts@empresa.com" value="{{ sm.get('smtp_from','') }}">
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label small text-muted">Destinatarios (separados por coma)</label>
+            <input type="text" name="notify_emails" class="form-control form-control-sm bg-dark text-light border-secondary"
+                   placeholder="soc@empresa.com, ciso@empresa.com"
+                   value="{{ sm.get('notify_emails','') }}">
+            <div class="form-text text-muted" style="font-size:0.7rem;">
+              Se envía alerta automática cuando un incidente se clasifica como <strong>Crítico</strong> o <strong>Brecha</strong>.
+            </div>
+          </div>
+
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-outline-secondary btn-sm flex-grow-1">
+              <i class="bi bi-save me-1"></i>Guardar SMTP
+            </button>
+            <button type="button" class="btn btn-outline-info btn-sm" onclick="testSmtp()">
+              <i class="bi bi-plug me-1"></i>Probar conexión
+            </button>
+          </div>
+        </form>
+        <div id="smtp-test-result" class="mt-2 small"></div>
+      </div>
+    </div>
+
     <!-- ═══ TI Lookup Widget ═══════════════════════════════════════════ -->
     <div class="card border-secondary mb-3">
       <div class="card-header">
@@ -615,5 +703,19 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 function runTiLookup()  { TIWidget.lookupTI('ti-indicator-input','ti-type-select','ti-result','ti-loading'); }
 function runMacLookup() { TIWidget.lookupMAC('mac-input','ti-result'); }
+
+async function testSmtp() {
+  const div = document.getElementById('smtp-test-result');
+  div.innerHTML = '<span class="text-muted"><i class="bi bi-hourglass-split me-1"></i>Probando conexión...</span>';
+  try {
+    const r = await fetch('/admin/smtp/test', { method: 'POST' });
+    const d = await r.json();
+    div.innerHTML = d.ok
+      ? `<span class="text-success"><i class="bi bi-check-circle me-1"></i>${d.message}</span>`
+      : `<span class="text-danger"><i class="bi bi-x-circle me-1"></i>${d.message}</span>`;
+  } catch(e) {
+    div.innerHTML = '<span class="text-danger"><i class="bi bi-x-circle me-1"></i>Error de red.</span>';
+  }
+}
 </script>
 {% endblock %}

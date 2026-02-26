@@ -8,12 +8,12 @@ import re
 from datetime import datetime, timedelta
 from collections import defaultdict
 from pathlib import Path
-from fastapi import APIRouter, Request, Depends
-from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi import APIRouter, Request, Depends, HTTPException
+from fastapi.responses import HTMLResponse, StreamingResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from sqlalchemy import func, or_
-from app.models.database import get_db, Incident, IncidentAnswer, User, Notification, get_visible_org_ids
+from app.models.database import get_db, Incident, IncidentAnswer, User, Notification, get_visible_org_ids, audit
 from app.core.engine import engine_instance
 from app.core.auth import require_auth
 from app.services.mitre import get_techniques_for_incident
@@ -21,6 +21,7 @@ from app.services.similarity import find_similar_incidents
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
+templates.env.filters["fromjson"] = json.loads  # used in incidents.html for tags
 
 CLASSIFICATION_ORDER = ["informativo", "sospechoso", "incidente", "critico", "brecha"]
 _BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -125,6 +126,42 @@ async def dashboard(request: Request, db: Session = Depends(get_db), _user: dict
     # Recent 10 incidents for table
     recent_incidents = all_incidents[:10]
 
+    # ── SLA Metrics (Fase 10) ─────────────────────────────────────────────────
+    # MTTR by classification (only resolved incidents)
+    mttr_by_cls: dict[str, list[float]] = defaultdict(list)
+    for inc in all_incidents:
+        if inc.resolved_at and inc.timestamp:
+            hours = (inc.resolved_at - inc.timestamp).total_seconds() / 3600
+            mttr_by_cls[inc.classification].append(hours)
+
+    mttr_summary = {}
+    for cls in CLASSIFICATION_ORDER:
+        vals = mttr_by_cls.get(cls, [])
+        mttr_summary[cls] = round(sum(vals) / len(vals), 1) if vals else None
+
+    mttr_overall = None
+    all_mttr_vals = [h for v in mttr_by_cls.values() for h in v]
+    if all_mttr_vals:
+        mttr_overall = round(sum(all_mttr_vals) / len(all_mttr_vals), 1)
+
+    # Closure rate
+    resolved_count = sum(1 for i in all_incidents if i.resolution)
+    closure_rate = round(resolved_count / total * 100) if total else 0
+
+    # Open incidents by age bucket
+    open_incidents = [i for i in all_incidents if not i.resolution]
+    age_buckets = {"<1h": 0, "1-24h": 0, "1-7d": 0, ">7d": 0}
+    for inc in open_incidents:
+        age_h = (now - inc.timestamp).total_seconds() / 3600
+        if age_h < 1:
+            age_buckets["<1h"] += 1
+        elif age_h < 24:
+            age_buckets["1-24h"] += 1
+        elif age_h < 168:
+            age_buckets["1-7d"] += 1
+        else:
+            age_buckets[">7d"] += 1
+
     return templates.TemplateResponse("dashboard.html", {
         "request": request,
         "total": total,
@@ -145,6 +182,13 @@ async def dashboard(request: Request, db: Session = Depends(get_db), _user: dict
         "heatmap": heatmap,
         "heatmap_max": heatmap_max,
         "day_names": DAY_NAMES,
+        # SLA
+        "mttr_summary": mttr_summary,
+        "mttr_overall": mttr_overall,
+        "closure_rate": closure_rate,
+        "resolved_count": resolved_count,
+        "open_count": len(open_incidents),
+        "age_buckets": age_buckets,
     })
 
 
@@ -155,6 +199,7 @@ async def incidents_list(request: Request, db: Session = Depends(get_db), _user:
     from_date = request.query_params.get("from_date", "")
     to_date   = request.query_params.get("to_date", "")
     resolution = request.query_params.get("resolution", "")
+    tag_filter = request.query_params.get("tag", "").strip()
 
     total_all = db.query(Incident).count()
     query = db.query(Incident)
@@ -186,17 +231,25 @@ async def incidents_list(request: Request, db: Session = Depends(get_db), _user:
 
     incidents = query.order_by(Incident.timestamp.desc()).all()
 
+    # Tag filter — applied in Python since tags is JSON in SQLite
+    if tag_filter:
+        incidents = [
+            i for i in incidents
+            if i.tags and tag_filter.lower() in [t.lower() for t in json.loads(i.tags or "[]")]
+        ]
+
     return templates.TemplateResponse("incidents.html", {
         "request": request,
         "incidents": incidents,
         "thresholds": engine_instance.thresholds,
         "total": total_all,
         "filtered": len(incidents),
-        "active_filters": bool(q or level or from_date or to_date or resolution),
+        "active_filters": bool(q or level or from_date or to_date or resolution or tag_filter),
         "filters": {
             "q": q, "level": level,
             "from_date": from_date, "to_date": to_date,
             "resolution": resolution,
+            "tag": tag_filter,
         },
     })
 
@@ -274,6 +327,14 @@ async def incident_detail(incident_id: int, request: Request, db: Session = Depe
         except Exception:
             pass
 
+    # Parse tags JSON
+    tags_list: list[str] = []
+    if incident.tags:
+        try:
+            tags_list = json.loads(incident.tags)
+        except Exception:
+            pass
+
     msg = request.query_params.get("msg", "")
 
     return templates.TemplateResponse("incident_detail.html", {
@@ -288,5 +349,62 @@ async def incident_detail(incident_id: int, request: Request, db: Session = Depe
         "analysts": analysts,
         "similar_incidents": similar,
         "network_ctx": network_ctx,
+        "tags_list": tags_list,
         "msg": msg,
     })
+
+
+# ── Tag management (Fase 10) ──────────────────────────────────────────────────
+
+@router.post("/incidentes/{incident_id}/tags/add")
+async def add_tag(incident_id: int, request: Request,
+                  db: Session = Depends(get_db), user: dict = Depends(require_auth)):
+    """Add a tag to an incident."""
+    form = await request.form()
+    new_tag = (form.get("tag") or "").strip()[:50]
+    if not new_tag:
+        return RedirectResponse(url=f"/incidentes/{incident_id}?msg=tag_empty#tags", status_code=303)
+
+    incident = db.query(Incident).filter(Incident.id == incident_id).first()
+    if not incident:
+        raise HTTPException(status_code=404)
+
+    tags: list[str] = []
+    if incident.tags:
+        try:
+            tags = json.loads(incident.tags)
+        except Exception:
+            pass
+    if new_tag not in tags:
+        tags.append(new_tag)
+        incident.tags = json.dumps(tags, ensure_ascii=False)
+        audit(db, user["username"], "tag_added",
+              target=f"incident/{incident_id}", details=new_tag)
+        db.commit()
+    return RedirectResponse(url=f"/incidentes/{incident_id}?msg=tag_added#tags", status_code=303)
+
+
+@router.post("/incidentes/{incident_id}/tags/remove")
+async def remove_tag(incident_id: int, request: Request,
+                     db: Session = Depends(get_db), user: dict = Depends(require_auth)):
+    """Remove a tag from an incident."""
+    form = await request.form()
+    tag_to_remove = (form.get("tag") or "").strip()
+
+    incident = db.query(Incident).filter(Incident.id == incident_id).first()
+    if not incident:
+        raise HTTPException(status_code=404)
+
+    tags: list[str] = []
+    if incident.tags:
+        try:
+            tags = json.loads(incident.tags)
+        except Exception:
+            pass
+    if tag_to_remove in tags:
+        tags.remove(tag_to_remove)
+        incident.tags = json.dumps(tags, ensure_ascii=False) if tags else None
+        audit(db, user["username"], "tag_removed",
+              target=f"incident/{incident_id}", details=tag_to_remove)
+        db.commit()
+    return RedirectResponse(url=f"/incidentes/{incident_id}?msg=tag_removed#tags", status_code=303)

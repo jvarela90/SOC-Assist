@@ -4,6 +4,7 @@ Gestión de activos críticos de la organización con criticidad bidireccional.
 """
 import csv
 import io
+import ipaddress
 import json
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -152,6 +153,7 @@ async def assets_list(request: Request, db: Session = Depends(get_db),
         "overdue_count": overdue_count,
         "upcoming_count": upcoming_count,
         "total": len(assets),
+        "now": now,
         "msg": msg,
         "user": user,
     })
@@ -596,13 +598,48 @@ def lookup_asset_by_identifier(identifier: str, org_ids: list[int] | None,
     """
     Look up an active asset matching the given identifier (IP, hostname, etc.)
     within the visible organizations. Returns the highest-criticality match.
+
+    Matching strategy (in priority order):
+    1. Exact string match (case-insensitive) — all asset types
+    2. CIDR containment — if identifier is a valid IP and asset type is
+       'network_segment' with a CIDR notation identifier (e.g. 10.0.0.0/8)
+    The highest-criticality result across both strategies is returned.
     """
     if not identifier:
         return None
-    query = db.query(Asset).filter(
-        Asset.identifier == identifier,
-        Asset.is_active == True,
-    )
+
+    base_q = db.query(Asset).filter(Asset.is_active == True)
     if org_ids is not None:
-        query = query.filter(Asset.organization_id.in_(org_ids))
-    return query.order_by(Asset.criticality.desc()).first()
+        base_q = base_q.filter(Asset.organization_id.in_(org_ids))
+
+    # 1. Exact match (case-insensitive for hostnames/domains)
+    exact = (
+        base_q.filter(Asset.identifier.ilike(identifier))
+        .order_by(Asset.criticality.desc())
+        .first()
+    )
+
+    # 2. CIDR containment — only when identifier is a valid IP address
+    cidr_match: Asset | None = None
+    try:
+        ip_obj = ipaddress.ip_address(identifier)
+        segments = base_q.filter(Asset.asset_type == "network_segment").all()
+        best: Asset | None = None
+        for seg in segments:
+            if not seg.identifier:
+                continue
+            try:
+                network = ipaddress.ip_network(seg.identifier, strict=False)
+                if ip_obj in network:
+                    if best is None or seg.criticality > best.criticality:
+                        best = seg
+            except ValueError:
+                pass  # identifier is not a valid CIDR — skip
+        cidr_match = best
+    except ValueError:
+        pass  # identifier is not a valid IP — skip CIDR check
+
+    # Return highest criticality between exact and CIDR match
+    if exact and cidr_match:
+        return exact if exact.criticality >= cidr_match.criticality else cidr_match
+    return exact or cidr_match

@@ -186,10 +186,15 @@ class Incident(Base):
     # Asset linkage
     asset_id                 = Column(Integer, ForeignKey("assets.id"), nullable=True)
     asset_criticality_applied = Column(Boolean, default=False)
+    # SLA + tagging (Fase 10)
+    resolved_at = Column(DateTime, nullable=True)   # set when resolution is first assigned
+    tags        = Column(Text, nullable=True)        # JSON list of free-form tag strings
 
-    answers      = relationship("IncidentAnswer",  back_populates="incident", cascade="all, delete-orphan")
-    comments     = relationship("IncidentComment", back_populates="incident", cascade="all, delete-orphan",
+    answers      = relationship("IncidentAnswer",      back_populates="incident", cascade="all, delete-orphan")
+    comments     = relationship("IncidentComment",     back_populates="incident", cascade="all, delete-orphan",
                                 order_by="IncidentComment.created_at")
+    attachments  = relationship("IncidentAttachment",  back_populates="incident", cascade="all, delete-orphan",
+                                order_by="IncidentAttachment.created_at")
     organization = relationship("Organization", back_populates="incidents")
     asset        = relationship("Asset", back_populates="incidents")
 
@@ -218,6 +223,23 @@ class IncidentComment(Base):
     created_at  = Column(DateTime, default=datetime.utcnow)
 
     incident = relationship("Incident", back_populates="comments")
+
+
+class IncidentAttachment(Base):
+    """Evidence files attached to an incident (#48)."""
+    __tablename__ = "incident_attachments"
+
+    id          = Column(Integer, primary_key=True, index=True)
+    incident_id = Column(Integer, ForeignKey("incidents.id"), nullable=False)
+    uploaded_by = Column(String(100), nullable=False)
+    filename    = Column(String(300), nullable=False)    # original display name
+    stored_name = Column(String(300), nullable=False)    # UUID-based on-disk name
+    file_size   = Column(Integer, nullable=False)        # bytes
+    mime_type   = Column(String(100), nullable=True)
+    description = Column(String(500), nullable=True)
+    created_at  = Column(DateTime, default=datetime.utcnow)
+
+    incident = relationship("Incident", back_populates="attachments")
 
 
 class AuditLog(Base):
@@ -363,6 +385,9 @@ def _run_migrations():
         ("incidents", "asset_criticality_applied",  "BOOLEAN DEFAULT 0"),
         ("users",     "organization_id",            "INTEGER"),
         ("audit_log", "organization_id",            "INTEGER"),
+        # Fase 10 — SLA + tags
+        ("incidents", "resolved_at",               "TIMESTAMP"),
+        ("incidents", "tags",                      "TEXT"),
     ]
     with engine.connect() as conn:
         for table, col, ddl in _new_cols:
@@ -412,7 +437,7 @@ def _seed_default_org():
 
 
 def _ensure_default_admin():
-    """Create default admin/admin123 on first run if no users exist."""
+    """Create default super_admin on first run if no users exist."""
     db = SessionLocal()
     try:
         if db.query(User).count() == 0:
@@ -420,7 +445,7 @@ def _ensure_default_admin():
             db.add(User(
                 username="admin",
                 password_hash=_bcrypt.hashpw(b"admin123", _bcrypt.gensalt()).decode(),
-                role="admin",
+                role="super_admin",
                 organization_id=org.id if org else None,
             ))
             db.commit()

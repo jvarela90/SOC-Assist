@@ -322,6 +322,138 @@
 </div>
 {% endif %}
 
+<!-- Evidence Attachments (#48) -->
+<div class="card border-secondary mb-3" id="evidencia">
+  <div class="card-header d-flex align-items-center gap-2">
+    <i class="bi bi-paperclip text-warning"></i>
+    <strong>Evidencia Adjunta</strong>
+    <span class="badge bg-secondary ms-1">{{ incident.attachments | length }}</span>
+    <button class="btn btn-sm btn-link ms-auto p-0 text-muted"
+            data-bs-toggle="collapse" data-bs-target="#evidenciaCollapse">
+      <i class="bi bi-chevron-down"></i>
+    </button>
+  </div>
+  <div class="collapse show" id="evidenciaCollapse">
+    <div class="card-body">
+
+      {# Attachment list #}
+      {% if incident.attachments %}
+      <div class="list-group list-group-flush mb-3">
+        {% for att in incident.attachments %}
+        {% set ext = att.filename.rsplit('.', 1)[-1].lower() if '.' in att.filename else '' %}
+        {% set icon_map = {
+          'pdf': 'bi-file-earmark-pdf text-danger',
+          'jpg': 'bi-file-earmark-image text-info',
+          'jpeg':'bi-file-earmark-image text-info',
+          'png': 'bi-file-earmark-image text-info',
+          'gif': 'bi-file-earmark-image text-info',
+          'webp':'bi-file-earmark-image text-info',
+          'txt': 'bi-file-earmark-text text-muted',
+          'log': 'bi-file-earmark-text text-warning',
+          'csv': 'bi-file-earmark-spreadsheet text-success',
+          'json':'bi-filetype-json text-warning',
+          'xml': 'bi-file-earmark-code text-info',
+          'zip': 'bi-file-earmark-zip text-secondary',
+          'gz':  'bi-file-earmark-zip text-secondary',
+          'pcap':'bi-file-earmark-binary text-primary',
+        } %}
+        {% set icon_cls = icon_map.get(ext, 'bi-file-earmark text-muted') %}
+        <div class="list-group-item list-group-item-action bg-dark border-secondary d-flex align-items-center gap-3 py-2">
+          <i class="bi {{ icon_cls }} fs-4 flex-shrink-0"></i>
+          <div class="flex-grow-1 overflow-hidden">
+            <div class="fw-semibold small text-truncate">{{ att.filename }}</div>
+            <div class="text-muted" style="font-size:0.72rem;">
+              {% if att.description %}<span>{{ att.description }}</span> &nbsp;·&nbsp;{% endif %}
+              {{ (att.file_size / 1024) | round(1) }} KB
+              &nbsp;·&nbsp; {{ att.uploaded_by }}
+              &nbsp;·&nbsp; {{ att.created_at.strftime('%d/%m/%Y %H:%M') }}
+            </div>
+          </div>
+          <div class="d-flex gap-1 flex-shrink-0">
+            <a href="/adjuntos/{{ att.id }}" target="_blank"
+               class="btn btn-sm btn-outline-secondary" title="Descargar">
+              <i class="bi bi-download"></i>
+            </a>
+            {% set _u = request.session.get('user') %}
+            {% if _u and _u.role in ('admin', 'super_admin') %}
+            <form method="post" action="/adjuntos/{{ att.id }}/eliminar" class="d-inline">
+              <button type="submit" class="btn btn-sm btn-outline-danger" title="Eliminar"
+                      onclick="return confirm('Eliminar {{ att.filename }}?')">
+                <i class="bi bi-trash3"></i>
+              </button>
+            </form>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="text-muted small mb-3">No hay archivos adjuntos.</p>
+      {% endif %}
+
+      {# Upload form #}
+      <form method="post" action="/incidentes/{{ incident.id }}/adjuntar"
+            enctype="multipart/form-data" class="border border-secondary rounded p-3 bg-dark">
+        <div class="small text-muted mb-2">
+          <i class="bi bi-upload me-1"></i>
+          <strong>Adjuntar archivo</strong>
+          <span class="ms-2" style="font-size:0.7rem;">
+            JPG, PNG, PDF, TXT, LOG, CSV, JSON, PCAP, ZIP — máx. 10 MB
+          </span>
+        </div>
+        <div class="row g-2 align-items-end">
+          <div class="col-md-5">
+            <input type="file" name="file" class="form-control form-control-sm bg-dark text-light border-secondary"
+                   accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.txt,.log,.csv,.json,.xml,.zip,.gz,.pcap,.pcapng">
+          </div>
+          <div class="col-md-5">
+            <input type="text" name="description"
+                   class="form-control form-control-sm bg-dark text-light border-secondary"
+                   placeholder="Descripción breve (opcional)" maxlength="200">
+          </div>
+          <div class="col-md-2">
+            <button type="submit" class="btn btn-sm btn-warning w-100">
+              <i class="bi bi-upload me-1"></i>Adjuntar
+            </button>
+          </div>
+        </div>
+      </form>
+
+    </div>
+  </div>
+</div>
+
+<!-- Tags (Fase 10) -->
+<div class="card border-secondary mb-3" id="tags">
+  <div class="card-header d-flex align-items-center gap-2">
+    <i class="bi bi-tags text-info"></i>
+    <strong>Etiquetas</strong>
+    <span class="badge bg-secondary ms-1">{{ tags_list | length }}</span>
+  </div>
+  <div class="card-body">
+    <div class="d-flex flex-wrap gap-2 mb-3 align-items-center">
+      {% for tag in tags_list %}
+      <span class="badge bg-info text-dark d-inline-flex align-items-center gap-1" style="font-size:0.85rem;">
+        {{ tag }}
+        <form method="post" action="/incidentes/{{ incident.id }}/tags/remove" class="d-inline">
+          <input type="hidden" name="tag" value="{{ tag }}">
+          <button type="submit" class="btn-close" style="font-size:0.6rem;filter:invert(1);" title="Eliminar etiqueta"></button>
+        </form>
+      </span>
+      {% else %}
+      <span class="text-muted small">Sin etiquetas — añade la primera.</span>
+      {% endfor %}
+    </div>
+    <form method="post" action="/incidentes/{{ incident.id }}/tags/add" class="d-flex gap-2" style="max-width:400px;">
+      <input type="text" name="tag" class="form-control form-control-sm bg-dark text-light border-secondary"
+             placeholder="Nueva etiqueta…" maxlength="50" required>
+      <button type="submit" class="btn btn-sm btn-outline-info text-nowrap">
+        <i class="bi bi-plus-lg me-1"></i>Añadir
+      </button>
+    </form>
+  </div>
+</div>
+
 <!-- Comments section (#45) -->
 <div class="card border-secondary mb-4" id="comments">
   <div class="card-header d-flex align-items-center gap-2">

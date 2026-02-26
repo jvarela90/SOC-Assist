@@ -1,6 +1,6 @@
 # SOC Assist — Guía de Desarrollo y Roadmap
 
-> **Estado actual:** v1.8 — Motor ponderado + TI + Webhooks + Auth + Playbooks + Heatmap + CSV + Filtros + MITRE ATT&CK + Comentarios + Asignación + Audit Log + Docker + REST API + Similitud + Timeline + Rate Limit + Backup + PostgreSQL + Nginx + Contexto de Red + TI Enrichment Híbrido + Gestión de Usuarios
+> **Estado actual:** v1.10 — Multi-Tenant + CMDB + Adjuntos + SMTP + SLA Tracking + Etiquetas
 > **Repositorio:** https://github.com/jvarela90/SOC-Assist
 > **Última actualización:** 2026-02
 
@@ -17,6 +17,9 @@
 | 5 | Producción + Seguridad | ✅ Completado |
 | 6 | Contexto de Red + TI Enrichment Híbrido | ✅ Completado |
 | 7 | Gestión de Usuarios + Trazabilidad | ✅ Completado |
+| 8 | Multi-Tenant + CMDB de Activos | ✅ Completado |
+| 9 | Adjuntos de Evidencia + Notificaciones SMTP | ✅ Completado |
+| 10 | SLA Tracking + Etiquetas de Incidentes | ✅ Completado |
 
 ---
 
@@ -58,7 +61,7 @@
 
 ## Fase 3 — Integraciones Externas (Completado ✅)
 
-### 3.1 — Threat Intelligence (implementado en esta versión)
+### 3.1 — Threat Intelligence
 
 | # | Feature | Estado |
 |---|---------|--------|
@@ -70,16 +73,16 @@
 | 28 | Base de datos OUI local para identificar fabricante/dispositivo por MAC | ✅ |
 | 29 | Widget de consulta TI en formulario (campo IP origen/destino) | ✅ |
 
-### 3.2 — Notificaciones (Parcialmente completado)
+### 3.2 — Notificaciones
 
 | # | Feature | Estado |
 |---|---------|--------|
 | 30 | Webhook a Microsoft Teams al clasificar como Crítico o Brecha | ✅ |
 | 31 | Webhook a Slack con resumen del incidente | ✅ |
-| 32 | Notificación por email (SMTP configurable) | ⬜ |
+| 32 | Notificación por email (SMTP configurable) | ✅ |
 | 33 | Configuración de webhooks desde panel admin | ✅ |
 
-### 3.3 — Autenticación básica (Completado ✅)
+### 3.3 — Autenticación básica
 
 | # | Feature | Estado |
 |---|---------|--------|
@@ -89,7 +92,7 @@
 
 ---
 
-## Fase 4 — Analítica Avanzada + Colaboración (🔄 En Progreso)
+## Fase 4 — Analítica Avanzada + Colaboración (Completado ✅)
 
 | # | Feature | Estado |
 |---|---------|--------|
@@ -104,7 +107,7 @@
 | 45 | Comentarios colaborativos por incidente (varios analistas) | ✅ |
 | 46 | Asignación de incidentes a analista específico | ✅ |
 | 47 | Timeline gráfico del incidente (creación → comentarios → resolución) | ✅ |
-| 48 | Adjuntar evidencia (screenshots, logs, pcap) al incidente | ⬜ |
+| 48 | Adjuntar evidencia (screenshots, logs, pcap) al incidente | ✅ |
 | 49 | Búsqueda full-text en historial de incidentes | ✅ |
 | 50 | Filtros avanzados en historial: por fecha, nivel, módulo, analista | ✅ |
 
@@ -120,7 +123,7 @@
 | 54 | Audit log de todas las acciones de administrador | ✅ |
 | 55 | Backup de BD + config descargable como ZIP desde /admin | ✅ |
 | 56 | Rate limiting en /evaluar (20 req/min por IP, in-memory) | ✅ |
-| 57 | Modo multi-tenant (varias organizaciones en una instancia) | ⬜ |
+| 57 | Modo multi-tenant (varias organizaciones en una instancia) | ✅ |
 
 ---
 
@@ -138,6 +141,62 @@
 
 ---
 
+## Fase 7 — Gestión de Usuarios + Trazabilidad (Completado ✅)
+
+| # | Feature | Estado |
+|---|---------|--------|
+| 65 | CRUD de usuarios desde /admin/usuarios (crear, editar rol, activar/desactivar) | ✅ |
+| 66 | Roles: analyst / admin / super_admin con permisos jerárquicos | ✅ |
+| 67 | Trazabilidad: último login, conteo de logins, fecha de último análisis | ✅ |
+| 68 | Códigos de recuperación de contraseña de un solo uso (/recuperar) | ✅ |
+| 69 | Historial de cambios de contraseña (password_changed_at) | ✅ |
+| 70 | Notas internas por usuario (visibles solo para admin) | ✅ |
+
+---
+
+## Fase 8 — Multi-Tenant + CMDB de Activos (Completado ✅)
+
+| # | Feature | Estado |
+|---|---------|--------|
+| 71 | Organizaciones jerárquicas: central > regional > provincial > local | ✅ |
+| 72 | BFS para determinar orgs descendientes visibles por rol | ✅ |
+| 73 | super_admin ve TODAS las orgs; admin ve su subárbol | ✅ |
+| 74 | Inventario de activos (CMDB): IP, hostname, servidor, red, usuario crítico | ✅ |
+| 75 | Criticidad del activo (1–5) como multiplicador de score de incidente (×0.8–×1.5) | ✅ |
+| 76 | Contactos y ubicaciones por activo (responsable, admin, escalación) | ✅ |
+| 77 | Revisión periódica de activos con notificaciones in-app (3/6 meses) | ✅ |
+| 78 | Importación y exportación CSV de activos + plantilla descargable | ✅ |
+| 79 | Lookup automático de activo por IP/hostname en evaluar_submit (CIDR matching) | ✅ |
+
+---
+
+## Fase 9 — Adjuntos de Evidencia + Notificaciones SMTP (Completado ✅)
+
+| # | Feature | Estado |
+|---|---------|--------|
+| 80 | Upload de evidencia por incidente (imágenes, PDF, PCAP, logs, ZIP — máx 10 MB) | ✅ |
+| 81 | Descarga autenticada de adjuntos (/adjuntos/{id}) | ✅ |
+| 82 | Eliminación de adjuntos (solo admin, con audit log) | ✅ |
+| 83 | Almacenamiento con nombre UUID (previene path traversal) | ✅ |
+| 84 | Panel SMTP en /admin: host/port/TLS/credenciales/destinatarios + botón probar | ✅ |
+| 85 | Envío de alerta por email en incidentes Crítico/Brecha (fire-and-forget) | ✅ |
+| 86 | Email con diseño HTML responsive (dark theme) + versión texto plano | ✅ |
+
+---
+
+## Fase 10 — SLA Tracking + Etiquetas de Incidentes (Completado ✅)
+
+| # | Feature | Estado |
+|---|---------|--------|
+| 87 | Campo resolved_at en Incident — timestamp de cierre efectivo | ✅ |
+| 88 | MTTR (Mean Time To Resolve) calculado automáticamente por clasificación | ✅ |
+| 89 | Métricas SLA en dashboard: MTTR promedio, tasa de cierre, incidentes abiertos por antigüedad | ✅ |
+| 90 | Etiquetas libres (tags) en incidentes: agregar/eliminar desde el detalle | ✅ |
+| 91 | Filtro por etiqueta en historial de incidentes (/incidentes?tag=xxx) | ✅ |
+| 92 | Las etiquetas se muestran en historial y detalle con badges visuales | ✅ |
+
+---
+
 ## Arquitectura de Referencia
 
 ```
@@ -148,31 +207,50 @@ SOC-Assist/
 ├── docker-compose.yml        # Despliegue con volumen persistente
 ├── config_engine.json        # Scoring: pesos, umbrales, multiplicadores, reglas
 ├── ti_config.json            # Threat Intelligence: API keys (NO commitear con claves reales)
+├── smtp_config.json          # Configuración SMTP (NO commitear con credenciales reales)
 ├── playbooks.json            # Playbooks de respuesta por nivel de clasificación
-├── questions.json            # 63 preguntas + bloques temáticos
+├── questions.json            # 66 preguntas + bloques temáticos (q_001–q_066)
 ├── ROADMAP.md                # Este archivo
 └── app/
     ├── main.py               # FastAPI app + routers + /health endpoint
     ├── core/
     │   ├── engine.py         # Motor de scoring ponderado
     │   ├── calibration.py    # Auto-calibración basada en TP/FP
-    │   └── auth.py           # Hashing bcrypt + dependencias require_auth / require_admin
+    │   ├── auth.py           # Hashing bcrypt + dependencias require_auth / require_admin
+    │   └── rate_limit.py     # Rate limiter in-memory (20 req/min/IP)
     ├── models/
-    │   └── database.py       # SQLAlchemy + SQLite (Incident, IncidentAnswer,
-    │                         #   IncidentComment, AuditLog, User, WeightHistory…)
+    │   └── database.py       # SQLAlchemy + SQLite/PostgreSQL
     ├── routes/
-    │   ├── auth.py           # Login / logout (sesión con cookies firmadas)
-    │   ├── form.py           # Formulario wizard + comentarios + asignación
-    │   ├── dashboard.py      # Dashboard + historial + exportación CSV
-    │   ├── admin.py          # Panel admin (pesos, umbrales, calibración, TI keys,
-    │                         #   usuarios, webhooks) con audit log completo
-    │   └── ti.py             # API de Threat Intelligence y MAC OUI lookup
+    │   ├── auth.py           # Login / logout / recuperación de contraseña
+    │   ├── form.py           # Formulario wizard + TI enrichment + resolución
+    │   ├── dashboard.py      # Dashboard + historial + SLA + tags + CSV
+    │   ├── admin.py          # Panel admin + SMTP + usuarios + audit log + backup
+    │   ├── api.py            # REST API v1 (/api/v1/...)
+    │   ├── ti.py             # /api/ti/lookup + /api/mac/lookup
+    │   ├── orgs.py           # CRUD organizaciones (/admin/orgs)
+    │   ├── assets.py         # CMDB activos + CSV import/export (/activos)
+    │   └── attachments.py    # Adjuntos de evidencia (/incidentes/{id}/adjuntar, /adjuntos/{id})
     ├── services/
-    │   ├── mitre.py          # Mapeo MITRE ATT&CK (módulos + hard rules → técnicas)
-    │   ├── threat_intel.py   # VirusTotal / AbuseIPDB / IBM X-Force + validación IP privada
-    │   ├── mac_oui.py        # Lookup fabricante por prefijo MAC (OUI database local)
-    │   └── notifications.py  # Webhooks Teams / Slack — dispatch fire-and-forget
+    │   ├── mitre.py          # Mapeo MITRE ATT&CK
+    │   ├── threat_intel.py   # VirusTotal / AbuseIPDB / IBM X-Force
+    │   ├── notifications.py  # Webhooks Teams / Slack
+    │   ├── mailer.py         # SMTP: alertas por email
+    │   ├── scheduler.py      # Revisión periódica de activos → notificaciones in-app
+    │   ├── similarity.py     # Cosine similarity entre incidentes
+    │   └── mac_oui.py        # Lookup fabricante por prefijo MAC (OUI local)
     ├── templates/            # Jinja2 + Bootstrap 5 (tema oscuro)
+    │   ├── base.html
+    │   ├── dashboard.html
+    │   ├── incidents.html
+    │   ├── incident_detail.html
+    │   ├── form.html
+    │   ├── result.html
+    │   ├── admin.html
+    │   ├── users.html
+    │   ├── assets_list.html
+    │   ├── asset_detail.html
+    │   └── ...
+    ├── uploads/              # Evidencia adjunta (app/uploads/{incident_id}/{uuid}.ext)
     └── static/               # CSS + JS
 ```
 
@@ -194,7 +272,12 @@ fuerza "brecha" como mínimo, pero si el score ya era brecha, sigue siendo brech
 Las IPs en rangos privados (RFC 1918), loopback, link-local y espacio compartido **nunca se envían**
 a fuentes de inteligencia externas. La validación ocurre en el backend, no solo en el cliente.
 
+### SLA Tracking
+`resolved_at` se establece cuando el analista asigna una resolución (TP, FP, TP escalado).
+Si se elimina la resolución, `resolved_at` se borra. MTTR = media de `(resolved_at - timestamp)`
+en horas, agrupado por clasificación.
+
 ### Almacenamiento de API Keys
 Las API keys se guardan en `ti_config.json` (archivo local, fuera del motor de scoring).
-**No commitear `ti_config.json` con claves reales** — está en `.gitignore` como precaución.
+**No commitear `ti_config.json` ni `smtp_config.json` con credenciales reales** — están en `.gitignore`.
 En producción, usar variables de entorno o un vault de secretos.

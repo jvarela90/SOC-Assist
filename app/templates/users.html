@@ -136,7 +136,7 @@ function copyRecoveryCode() {
             {# Avatar #}
             <td class="text-center">
               <div class="rounded-circle d-inline-flex align-items-center justify-content-center
-                           {% if not u.is_active %}bg-secondary{% elif u.role=='admin' %}bg-danger{% else %}bg-info{% endif %} bg-opacity-25"
+                           {% if not u.is_active %}bg-secondary{% elif u.role=='super_admin' %}bg-primary{% elif u.role=='admin' %}bg-danger{% else %}bg-info{% endif %} bg-opacity-25"
                    style="width:32px;height:32px;">
                 <i class="bi bi-person-fill small"></i>
               </div>
@@ -159,15 +159,18 @@ function copyRecoveryCode() {
               <form method="post" action="/admin/users/{{ u.id }}/role" class="d-inline">
                 <select name="role" onchange="this.form.submit()"
                         class="form-select form-select-sm bg-dark border-secondary
-                               {% if u.role == 'admin' %}text-danger{% else %}text-info{% endif %}"
-                        style="width:105px; font-size:0.75rem;">
+                               {% if u.role == 'super_admin' %}text-primary{% elif u.role == 'admin' %}text-danger{% else %}text-info{% endif %}"
+                        style="width:{% if current_user.role == 'super_admin' %}130px{% else %}105px{% endif %}; font-size:0.75rem;">
                   <option value="analyst" {% if u.role=='analyst' %}selected{% endif %}>Analista</option>
                   <option value="admin"   {% if u.role=='admin'   %}selected{% endif %}>Admin</option>
+                  {% if current_user.role == 'super_admin' %}
+                  <option value="super_admin" {% if u.role=='super_admin' %}selected{% endif %}>Super Admin</option>
+                  {% endif %}
                 </select>
               </form>
               {% else %}
-              <span class="badge {% if u.role=='admin' %}bg-danger{% else %}bg-secondary{% endif %}">
-                {{ 'Admin' if u.role == 'admin' else 'Analista' }}
+              <span class="badge {% if u.role=='super_admin' %}bg-primary{% elif u.role=='admin' %}bg-danger{% else %}bg-secondary{% endif %}">
+                {{ 'Super Admin' if u.role == 'super_admin' else ('Admin' if u.role == 'admin' else 'Analista') }}
               </span>
               {% endif %}
             </td>
@@ -348,6 +351,9 @@ function copyRecoveryCode() {
             <select name="role" class="form-select bg-dark text-light border-secondary">
               <option value="analyst" selected>Analista — solo evaluar e historiales</option>
               <option value="admin">Administrador — acceso total</option>
+              {% if current_user.role == 'super_admin' %}
+              <option value="super_admin">Super Admin — acceso completo multitenant</option>
+              {% endif %}
             </select>
           </div>
         </div>

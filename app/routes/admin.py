@@ -20,6 +20,7 @@ from app.core.engine import engine_instance
 from app.core.calibration import run_calibration
 from app.core.auth import require_admin, hash_password
 from app.services.threat_intel import load_ti_config, save_ti_config
+from app.services.mailer import load_smtp_config, save_smtp_config, test_smtp_connection
 
 router = APIRouter(prefix="/admin")
 templates = Jinja2Templates(directory="app/templates")
@@ -89,6 +90,12 @@ async def admin_home(request: Request, db: Session = Depends(get_db), _user: dic
 
     users_list = db.query(User).order_by(User.username).all()
 
+    smtp_cfg = load_smtp_config()
+    # Mask SMTP password for display
+    smtp_display = dict(smtp_cfg)
+    if smtp_display.get("smtp_password"):
+        smtp_display["smtp_password"] = "••••••••"
+
     return templates.TemplateResponse("admin.html", {
         "request": request,
         "config": config,
@@ -99,6 +106,7 @@ async def admin_home(request: Request, db: Session = Depends(get_db), _user: dic
         "thresholds": engine_instance.thresholds,
         "ti_display": ti_display,
         "webhooks": webhooks,
+        "smtp": smtp_display,
         "users_list": users_list,
     })
 
@@ -299,6 +307,47 @@ async def save_webhooks(request: Request, db: Session = Depends(get_db), _user: 
     return RedirectResponse(url="/admin?msg=webhooks_saved", status_code=303)
 
 
+# ── SMTP Email config ─────────────────────────────────────────────────────────
+
+@router.post("/smtp")
+async def save_smtp(request: Request, db: Session = Depends(get_db),
+                    _user: dict = Depends(require_admin)):
+    """Save SMTP email notification settings."""
+    form = await request.form()
+    existing = load_smtp_config()
+
+    enabled = "smtp_enabled" in form
+    password = form.get("smtp_password", "").strip()
+    # Keep existing password if the masked placeholder was sent
+    if password == "••••••••":
+        password = existing.get("smtp_password", "")
+
+    cfg = {
+        "enabled":       enabled,
+        "smtp_host":     form.get("smtp_host", "").strip(),
+        "smtp_port":     int(form.get("smtp_port", "587") or "587"),
+        "smtp_tls":      "smtp_tls" in form,
+        "smtp_user":     form.get("smtp_user", "").strip(),
+        "smtp_password": password,
+        "smtp_from":     form.get("smtp_from", "").strip(),
+        "notify_emails": form.get("notify_emails", "").strip(),
+    }
+    save_smtp_config(cfg)
+    audit(db, _user.get("username", "?"), "smtp_config_saved",
+          details=f"enabled={enabled}, host={cfg['smtp_host']}",
+          ip=request.client.host if request.client else None)
+    db.commit()
+    return RedirectResponse(url="/admin?msg=smtp_saved", status_code=303)
+
+
+@router.post("/smtp/test")
+async def test_smtp(request: Request, _user: dict = Depends(require_admin)):
+    """Test SMTP connection with current config."""
+    cfg = load_smtp_config()
+    ok, msg = test_smtp_connection(cfg)
+    return JSONResponse({"ok": ok, "message": msg})
+
+
 # ── User management ──────────────────────────────────────────────────────────
 
 @router.post("/users/add")
@@ -310,7 +359,8 @@ async def add_user(request: Request, db: Session = Depends(get_db), _user: dict 
 
     if not username or not password:
         return RedirectResponse(url="/admin?msg=user_error&tab=users", status_code=303)
-    if role not in ("analyst", "admin"):
+    allowed_roles = ("analyst", "admin", "super_admin") if _user.get("role") == "super_admin" else ("analyst", "admin")
+    if role not in allowed_roles:
         role = "analyst"
     if db.query(User).filter(User.username == username).first():
         return RedirectResponse(url="/admin?msg=user_exists&tab=users", status_code=303)
@@ -440,13 +490,14 @@ async def change_user_role(
     db: Session = Depends(get_db),
     current_user: dict = Depends(require_admin),
 ):
-    """Change a user's role (analyst ↔ admin)."""
+    """Change a user's role (analyst / admin / super_admin)."""
     if user_id == current_user.get("id"):
         return RedirectResponse(url="/admin/usuarios?msg=user_self_role", status_code=303)
 
     form = await request.form()
     new_role = form.get("role", "analyst")
-    if new_role not in ("analyst", "admin"):
+    allowed_roles = ("analyst", "admin", "super_admin") if current_user.get("role") == "super_admin" else ("analyst", "admin")
+    if new_role not in allowed_roles:
         new_role = "analyst"
 
     user = db.query(User).filter(User.id == user_id).first()

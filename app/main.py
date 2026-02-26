@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 from app.models.database import init_db
 from app.routes import form, dashboard, admin, ti, auth, api
-from app.routes import orgs, assets
+from app.routes import orgs, assets, attachments
 from app.core.auth import NotAuthenticatedException, NotAdminException, NotSuperAdminException
 
 # Initialize database tables (creates default admin on first run)
@@ -17,7 +17,7 @@ init_db()
 app = FastAPI(
     title="SOC Assist",
     description="Plataforma de Alerta Temprana en Ciberseguridad",
-    version="1.8.0",
+    version="1.10.0",
     docs_url="/docs",
     redoc_url="/redoc",
 )
@@ -59,6 +59,7 @@ app.include_router(ti.router)
 app.include_router(api.router)          # REST API v1 — /api/v1/...
 app.include_router(orgs.router)         # Org management — /admin/orgs/...
 app.include_router(assets.router)       # Asset inventory — /activos/...
+app.include_router(attachments.router)  # Evidence attachments — /incidentes/{id}/adjuntar, /adjuntos/...
 
 
 # ── Startup: run review check once on startup ────────────────────────────────

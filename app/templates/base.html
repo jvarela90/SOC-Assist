@@ -32,7 +32,7 @@
     <a class="navbar-brand d-flex align-items-center gap-2" href="/">
       <i class="bi bi-shield-shaded text-danger fs-4"></i>
       <span class="fw-bold">SOC<span class="text-danger">Assist</span></span>
-      <small class="text-muted fs-6 ms-1">v1.9</small>
+      <small class="text-muted fs-6 ms-1">v1.10</small>
     </a>
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu">
@@ -148,6 +148,12 @@
   {% elif msg == 'ti_keys_saved' %}Claves de Threat Intelligence guardadas correctamente.
   {% elif msg == 'ti_keys_cleared' %}Claves de Threat Intelligence eliminadas.
   {% elif msg == 'webhooks_saved' %}Configuración de webhooks guardada correctamente.
+  {% elif msg == 'smtp_saved' %}Configuración SMTP guardada correctamente.
+  {% elif msg == 'file_uploaded' %}Archivo adjunto correctamente.
+  {% elif msg == 'file_deleted' %}Archivo eliminado.
+  {% elif msg == 'no_file' %}No se seleccionó ningún archivo.
+  {% elif msg == 'file_type' %}Tipo de archivo no permitido.
+  {% elif msg == 'file_too_large' %}Archivo demasiado grande (máx. 10 MB).
   {% elif msg == 'user_added' %}Usuario creado correctamente.
   {% elif msg == 'user_deleted' %}Usuario eliminado.
   {% elif msg == 'password_changed' %}Contraseña actualizada correctamente.
@@ -163,6 +169,9 @@
   {% elif msg == 'contact_added' %}Contacto agregado correctamente.
   {% elif msg == 'location_added' %}Ubicación agregada correctamente.
   {% elif 'imported_' in msg %}{{ msg.split('_')[1] }} activo(s) importado(s) correctamente.
+  {% elif msg == 'tag_added' %}Etiqueta añadida correctamente.
+  {% elif msg == 'tag_removed' %}Etiqueta eliminada.
+  {% elif msg == 'tag_empty' %}La etiqueta no puede estar vacía.
   {% else %}Operación completada.{% endif %}
   <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
 </div>
@@ -178,7 +187,7 @@
   <small>
     <i class="bi bi-shield-shaded text-danger"></i>
     <strong>SOC Assist</strong> — Plataforma de Alerta Temprana en Ciberseguridad
-    &nbsp;|&nbsp; Motor v1.5 &nbsp;|&nbsp; Para uso interno
+    &nbsp;|&nbsp; v1.10 &nbsp;|&nbsp; Para uso interno
   </small>
 </footer>
 

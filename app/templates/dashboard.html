@@ -170,6 +170,58 @@
   </div>
   {% endif %}
 </div>
+<!-- SLA Metrics (Fase 10) -->
+{% if total > 0 %}
+<div class="card border-info mb-3">
+  <div class="card-header text-info">
+    <i class="bi bi-stopwatch me-2"></i>SLA / Tiempos de Respuesta
+  </div>
+  <div class="card-body">
+    <div class="row g-3">
+      <!-- MTTR overall -->
+      <div class="col-md-3 col-6 text-center">
+        <div class="fs-2 fw-bold text-info">
+          {% if mttr_overall is not none %}{{ mttr_overall }}h{% else %}&mdash;{% endif %}
+        </div>
+        <div class="text-muted small">MTTR Promedio</div>
+        <div class="text-muted" style="font-size:0.7rem;">(Mean Time To Resolve)</div>
+      </div>
+      <!-- Closure rate -->
+      <div class="col-md-3 col-6 text-center">
+        <div class="fs-2 fw-bold {% if closure_rate >= 70 %}text-success{% elif closure_rate >= 40 %}text-warning{% else %}text-danger{% endif %}">
+          {{ closure_rate }}%
+        </div>
+        <div class="text-muted small">Tasa de Cierre</div>
+        <div class="text-muted" style="font-size:0.7rem;">{{ resolved_count }} de {{ total }} resueltos</div>
+      </div>
+      <!-- Open by age -->
+      <div class="col-md-6">
+        <div class="small text-muted mb-1">Incidentes abiertos por antigüedad ({{ open_count }} total)</div>
+        <div class="d-flex gap-2 flex-wrap">
+          <span class="badge bg-success">&lt;1h: {{ age_buckets['<1h'] }}</span>
+          <span class="badge bg-warning text-dark">1–24h: {{ age_buckets['1-24h'] }}</span>
+          <span class="badge bg-danger">1–7d: {{ age_buckets['1-7d'] }}</span>
+          <span class="badge bg-dark border border-danger">&gt;7d: {{ age_buckets['>7d'] }}</span>
+        </div>
+        <!-- MTTR by classification -->
+        <div class="small text-muted mt-2 mb-1">MTTR por clasificación</div>
+        <div class="d-flex flex-wrap gap-2">
+          {% for cls in ['informativo','sospechoso','incidente','critico','brecha'] %}
+            {% set v = mttr_summary.get(cls) %}
+            {% if v is not none %}
+            <span class="badge border" style="background:transparent;
+              {% if cls == 'informativo' %}border-color:#198754!important;color:#198754{% elif cls == 'sospechoso' %}border-color:#ffc107!important;color:#ffc107{% elif cls == 'incidente' %}border-color:#fd7e14!important;color:#fd7e14{% elif cls == 'critico' %}border-color:#dc3545!important;color:#dc3545{% else %}border-color:#7f1d1d!important;color:#f87171{% endif %}">
+              {{ thresholds[cls]['label'] }}: {{ v }}h
+            </span>
+            {% endif %}
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
 <!-- Heatmap: hour-of-day × day-of-week -->
 {% if total > 0 %}
 <div class="card border-secondary mb-3">

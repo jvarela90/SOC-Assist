@@ -1,6 +1,7 @@
 """
 SOC Assist — Authentication helpers
 Session-based auth with bcrypt passwords.
+Roles: analyst | admin | super_admin
 """
 import bcrypt
 from fastapi import Request
@@ -22,6 +23,10 @@ class NotAdminException(Exception):
     pass
 
 
+class NotSuperAdminException(Exception):
+    pass
+
+
 async def require_auth(request: Request) -> dict:
     """FastAPI dependency: requires any authenticated user."""
     user = request.session.get("user")
@@ -31,10 +36,20 @@ async def require_auth(request: Request) -> dict:
 
 
 async def require_admin(request: Request) -> dict:
-    """FastAPI dependency: requires authenticated user with role='admin'."""
+    """FastAPI dependency: requires admin or super_admin role."""
     user = request.session.get("user")
     if not user:
         raise NotAuthenticatedException()
-    if user.get("role") != "admin":
+    if user.get("role") not in ("admin", "super_admin"):
+        raise NotAdminException()
+    return user
+
+
+async def require_super_admin(request: Request) -> dict:
+    """FastAPI dependency: requires super_admin role only."""
+    user = request.session.get("user")
+    if not user:
+        raise NotAuthenticatedException()
+    if user.get("role") != "super_admin":
         raise NotAdminException()
     return user

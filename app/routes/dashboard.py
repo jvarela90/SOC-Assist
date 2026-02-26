@@ -13,7 +13,7 @@ from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from sqlalchemy import func, or_
-from app.models.database import get_db, Incident, IncidentAnswer, User
+from app.models.database import get_db, Incident, IncidentAnswer, User, Notification, get_visible_org_ids
 from app.core.engine import engine_instance
 from app.core.auth import require_auth
 from app.services.mitre import get_techniques_for_incident
@@ -38,7 +38,11 @@ def _load_playbooks() -> dict:
 
 @router.get("/dashboard", response_class=HTMLResponse)
 async def dashboard(request: Request, db: Session = Depends(get_db), _user: dict = Depends(require_auth)):
-    all_incidents = db.query(Incident).order_by(Incident.timestamp.desc()).all()
+    org_ids = get_visible_org_ids(_user, db)
+    inc_query = db.query(Incident)
+    if org_ids is not None:
+        inc_query = inc_query.filter(Incident.organization_id.in_(org_ids))
+    all_incidents = inc_query.order_by(Incident.timestamp.desc()).all()
     total = len(all_incidents)
 
     # KPI cards

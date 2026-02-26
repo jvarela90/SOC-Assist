@@ -46,6 +46,7 @@ async def login(request: Request, db: Session = Depends(get_db)):
         "id": user.id,
         "username": user.username,
         "role": user.role,
+        "org_id": user.organization_id,
     }
 
     next_url = request.query_params.get("next", "/")

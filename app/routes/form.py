@@ -10,13 +10,14 @@ from fastapi import APIRouter, Request, Depends, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
-from app.models.database import get_db, Incident, IncidentAnswer, IncidentComment, audit
+from app.models.database import get_db, Incident, IncidentAnswer, IncidentComment, audit, get_visible_org_ids
 from app.core.engine import engine_instance
 from app.core.auth import require_auth
 from app.core.rate_limit import rate_limit_evaluar
 from app.services.notifications import notify_incident
 from app.services.mitre import get_techniques_for_incident
 from app.services.threat_intel import lookup as ti_lookup, is_private_ip, is_valid_ip
+from app.routes.assets import lookup_asset_by_identifier, CRITICALITY_MULTIPLIERS, CRITICALITY_LABELS
 
 _PLAYBOOKS_PATH = Path(__file__).resolve().parent.parent.parent / "playbooks.json"
 
@@ -84,8 +85,24 @@ def _build_weighted_options(questions_by_block: dict) -> dict:
 
 
 @router.get("/", response_class=HTMLResponse)
-async def index(request: Request, _user: dict = Depends(require_auth)):
-    return templates.TemplateResponse("index.html", {"request": request})
+async def index(request: Request, db: Session = Depends(get_db), _user: dict = Depends(require_auth)):
+    from app.models.database import Notification
+    from datetime import datetime as _dt
+
+    org_id = _user.get("org_id")
+    now = _dt.utcnow()
+    notifications = []
+    if org_id:
+        notifications = db.query(Notification).filter(
+            Notification.organization_id == org_id,
+            Notification.is_read == False,
+            (Notification.expires_at == None) | (Notification.expires_at > now),
+        ).order_by(Notification.created_at.desc()).all()
+
+    return templates.TemplateResponse("index.html", {
+        "request": request,
+        "notifications": notifications,
+    })
 
 
 @router.get("/evaluar", response_class=HTMLResponse)
@@ -179,6 +196,43 @@ async def evaluar_submit(request: Request, db: Session = Depends(get_db), _user:
 
     ctx["ti_summary"] = ti_summary
 
+    # ── Asset lookup: match IPs/hostnames against org inventory ─────────────────
+    org_ids = get_visible_org_ids(_user, db)
+    matched_asset = None
+    asset_mult = 1.0
+    asset_ctx = {}
+
+    for candidate in [ctx["ip_src"], ctx["ip_dst"]]:
+        if candidate:
+            found = lookup_asset_by_identifier(candidate, org_ids, db)
+            if found:
+                matched_asset = found
+                break
+
+    if matched_asset:
+        asset_mult = CRITICALITY_MULTIPLIERS.get(matched_asset.criticality, 1.0)
+        adj_final  = round(result["final_score"] * asset_mult, 2)
+        adj_mult   = round(result["multiplier"] * asset_mult, 3)
+        adj_cls    = engine_instance._classify(adj_final) if hasattr(engine_instance, "_classify") else result["classification"]
+        if asset_mult > 1.0:
+            adj_cls = _max_severity(adj_cls, result["classification"])
+        crit_label, crit_color = CRITICALITY_LABELS.get(matched_asset.criticality, ("Medio", "info"))
+        asset_ctx = {
+            "asset_id":    matched_asset.id,
+            "asset_name":  matched_asset.name,
+            "asset_type":  matched_asset.asset_type,
+            "criticality": matched_asset.criticality,
+            "crit_label":  crit_label,
+            "crit_color":  crit_color,
+            "multiplier":  asset_mult,
+            "adj_score":   adj_final,
+            "adj_cls":     adj_cls,
+        }
+        # Apply multiplier to result for persistence
+        result["final_score"] = adj_final
+        result["multiplier"]  = adj_mult
+        result["classification"] = adj_cls
+
     # ── Persist incident ────────────────────────────────────────────────────────
     incident = Incident(
         base_score=result["base_score"],
@@ -190,6 +244,9 @@ async def evaluar_submit(request: Request, db: Session = Depends(get_db), _user:
         analyst_name=analyst_name,
         network_context=json.dumps(ctx, ensure_ascii=False),
         ti_enrichment=json.dumps(ti_results, ensure_ascii=False, default=str),
+        organization_id=_user.get("org_id"),
+        asset_id=matched_asset.id if matched_asset else None,
+        asset_criticality_applied=bool(matched_asset and asset_mult != 1.0),
     )
     db.add(incident)
     db.flush()
@@ -238,7 +295,41 @@ async def evaluar_submit(request: Request, db: Session = Depends(get_db), _user:
         "ti_summary": ti_summary,
         "ti_adjustment": ti_adjustment,
         "thresholds": engine_instance.thresholds,
+        "asset_ctx": asset_ctx,
     })
+
+
+@router.post("/api/notifications/mark-read")
+async def mark_notifications_read(request: Request, db: Session = Depends(get_db),
+                                   _user: dict = Depends(require_auth)):
+    """Mark all org notifications as read."""
+    from app.models.database import Notification
+    org_id = _user.get("org_id")
+    if org_id:
+        db.query(Notification).filter(
+            Notification.organization_id == org_id,
+            Notification.is_read == False,
+        ).update({"is_read": True}, synchronize_session=False)
+        db.commit()
+    return JSONResponse({"ok": True})
+
+
+@router.get("/api/notifications/count")
+async def notifications_count(request: Request, db: Session = Depends(get_db),
+                               _user: dict = Depends(require_auth)):
+    """Return count of unread notifications for the user's org."""
+    from app.models.database import Notification
+    from datetime import datetime as _dt
+    org_id = _user.get("org_id")
+    if not org_id:
+        return JSONResponse({"count": 0})
+    now = _dt.utcnow()
+    count = db.query(Notification).filter(
+        Notification.organization_id == org_id,
+        Notification.is_read == False,
+        (Notification.expires_at == None) | (Notification.expires_at > now),
+    ).count()
+    return JSONResponse({"count": count})
 
 
 @router.post("/api/score-preview", response_class=JSONResponse)

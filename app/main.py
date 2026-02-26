@@ -8,7 +8,8 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 from app.models.database import init_db
 from app.routes import form, dashboard, admin, ti, auth, api
-from app.core.auth import NotAuthenticatedException, NotAdminException
+from app.routes import orgs, assets
+from app.core.auth import NotAuthenticatedException, NotAdminException, NotSuperAdminException
 
 # Initialize database tables (creates default admin on first run)
 init_db()
@@ -40,7 +41,11 @@ async def not_authenticated(request: Request, exc: NotAuthenticatedException):
 
 @app.exception_handler(NotAdminException)
 async def not_admin(request: Request, exc: NotAdminException):
-    # Authenticated but not admin — redirect to home
+    return RedirectResponse(url="/", status_code=302)
+
+
+@app.exception_handler(NotSuperAdminException)
+async def not_super_admin(request: Request, exc: NotSuperAdminException):
     return RedirectResponse(url="/", status_code=302)
 
 
@@ -52,6 +57,19 @@ app.include_router(dashboard.router)
 app.include_router(admin.router)
 app.include_router(ti.router)
 app.include_router(api.router)          # REST API v1 — /api/v1/...
+app.include_router(orgs.router)         # Org management — /admin/orgs/...
+app.include_router(assets.router)       # Asset inventory — /activos/...
+
+
+# ── Startup: run review check once on startup ────────────────────────────────
+
+@app.on_event("startup")
+async def startup_tasks():
+    """Run asset review check on startup to populate notifications."""
+    import asyncio
+    from app.services.scheduler import check_asset_reviews
+    loop = asyncio.get_event_loop()
+    loop.run_in_executor(None, check_asset_reviews)
 
 
 # ── Health check (used by Docker HEALTHCHECK) ────────────────────────────────

@@ -1,0 +1,217 @@
+{% extends "base.html" %}
+{% block title %}Organizaciones{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h2 class="mb-0"><i class="bi bi-diagram-3-fill text-info me-2"></i>Gestión de Organizaciones</h2>
+    <small class="text-muted">Estructura jerárquica multi-tenant</small>
+  </div>
+  {% if user.role == "super_admin" or user.role == "admin" %}
+  <button class="btn btn-info" data-bs-toggle="modal" data-bs-target="#modalNuevaOrg">
+    <i class="bi bi-plus-circle me-1"></i>Nueva Organización
+  </button>
+  {% endif %}
+</div>
+
+<!-- Flash messages -->
+{% if msg %}
+<div class="alert alert-{{ 'success' if msg in ('org_created','org_updated','org_toggled') else 'warning' }} alert-dismissible fade show mb-3" role="alert">
+  {% if msg == 'org_created' %}Organización creada correctamente.
+  {% elif msg == 'org_updated' %}Organización actualizada.
+  {% elif msg == 'org_toggled' %}Estado de la organización cambiado.
+  {% elif msg == 'cannot_deactivate_default' %}No se puede desactivar la organización por defecto.
+  {% elif msg == 'name_required' %}El nombre es obligatorio.
+  {% else %}Operación completada.{% endif %}
+  <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endif %}
+
+<!-- Legend -->
+<div class="d-flex gap-3 mb-3 flex-wrap">
+  {% set type_icons = {
+    'central':    ('bi-globe2', 'danger'),
+    'regional':   ('bi-map', 'warning'),
+    'provincial': ('bi-building', 'info'),
+    'local':      ('bi-geo-alt', 'secondary'),
+    'flat':       ('bi-circle', 'light'),
+    'shift':      ('bi-clock-history', 'success'),
+  } %}
+  {% for t, (icon, color) in type_icons.items() %}
+  <span class="badge bg-{{ color }} text-{{ 'dark' if color in ('warning','light') else 'white' }}">
+    <i class="bi {{ icon }} me-1"></i>{{ t|capitalize }}
+  </span>
+  {% endfor %}
+</div>
+
+<!-- Org Tree -->
+{% if tree %}
+<div class="card border-secondary mb-4">
+  <div class="card-header border-secondary">
+    <i class="bi bi-diagram-3 me-2"></i>Jerarquía de Organizaciones
+  </div>
+  <div class="card-body p-0">
+    <div class="list-group list-group-flush" id="orgTree">
+      {% macro render_node(node, depth) %}
+      {% set o = node.org %}
+      {% set s = stats.get(o.id, {}) %}
+      {% set type_info = type_icons.get(o.org_type, ('bi-circle','secondary')) %}
+      <div class="list-group-item list-group-item-action bg-transparent border-secondary"
+           style="padding-left: {{ depth * 2 + 1 }}rem;">
+        <div class="d-flex align-items-center gap-3">
+          <!-- Connector lines for depth -->
+          {% if depth > 0 %}
+          <span class="text-muted" style="font-family: monospace; white-space: pre;">{{ '│  ' * (depth - 1) }}├─ </span>
+          {% endif %}
+          <i class="bi {{ type_info[0] }} text-{{ type_info[1] }} fs-5"></i>
+          <div class="flex-grow-1">
+            <span class="fw-semibold">{{ o.name }}</span>
+            <span class="badge bg-secondary ms-2" style="font-size:0.65rem;">{{ o.org_type }}</span>
+            {% if not o.is_active %}
+            <span class="badge bg-danger ms-1" style="font-size:0.65rem;">Inactiva</span>
+            {% endif %}
+            {% if o.description %}
+            <div class="text-muted small">{{ o.description }}</div>
+            {% endif %}
+          </div>
+          <!-- Stats pills -->
+          <div class="d-flex gap-2 align-items-center d-none d-md-flex">
+            <span class="badge bg-dark border border-secondary" title="Usuarios">
+              <i class="bi bi-person me-1"></i>{{ s.users or 0 }}
+            </span>
+            <span class="badge bg-dark border border-secondary" title="Incidentes">
+              <i class="bi bi-shield-exclamation me-1"></i>{{ s.incidents or 0 }}
+            </span>
+            <span class="badge bg-dark border border-secondary" title="Activos">
+              <i class="bi bi-cpu me-1"></i>{{ s.assets or 0 }}
+            </span>
+          </div>
+          <!-- Actions -->
+          <div class="d-flex gap-1">
+            <button class="btn btn-sm btn-outline-secondary" title="Editar"
+                    data-bs-toggle="modal" data-bs-target="#modalEditOrg{{ o.id }}">
+              <i class="bi bi-pencil"></i>
+            </button>
+            {% if user.role == "super_admin" and o.slug != 'default' %}
+            <form method="post" action="/admin/orgs/{{ o.id }}/toggle-active" class="d-inline">
+              <button type="submit" class="btn btn-sm btn-outline-{{ 'warning' if o.is_active else 'success' }}"
+                      title="{{ 'Desactivar' if o.is_active else 'Activar' }}">
+                <i class="bi bi-{{ 'pause-circle' if o.is_active else 'play-circle' }}"></i>
+              </button>
+            </form>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      <!-- Edit modal for this org -->
+      <div class="modal fade" id="modalEditOrg{{ o.id }}" tabindex="-1">
+        <div class="modal-dialog">
+          <form method="post" action="/admin/orgs/{{ o.id }}/editar" class="modal-content bg-dark border-secondary">
+            <div class="modal-header border-secondary">
+              <h5 class="modal-title">Editar: {{ o.name }}</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+              <div class="mb-3">
+                <label class="form-label small">Nombre</label>
+                <input type="text" name="name" class="form-control bg-dark text-light border-secondary"
+                       value="{{ o.name }}" required>
+              </div>
+              <div class="mb-3">
+                <label class="form-label small">Tipo</label>
+                <select name="org_type" class="form-select bg-dark text-light border-secondary">
+                  {% for t, label in org_types %}
+                  <option value="{{ t }}" {{ 'selected' if o.org_type == t }}>{{ label }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              {% if user.role == "super_admin" %}
+              <div class="mb-3">
+                <label class="form-label small">Organización Padre</label>
+                <select name="parent_id" class="form-select bg-dark text-light border-secondary">
+                  <option value="">— Sin padre (nivel raíz) —</option>
+                  {% for ao in all_orgs %}
+                  {% if ao.id != o.id %}
+                  <option value="{{ ao.id }}" {{ 'selected' if o.parent_id == ao.id }}>{{ ao.name }}</option>
+                  {% endif %}
+                  {% endfor %}
+                </select>
+              </div>
+              {% endif %}
+              <div class="mb-3">
+                <label class="form-label small">Descripción</label>
+                <textarea name="description" class="form-control bg-dark text-light border-secondary"
+                          rows="2">{{ o.description or '' }}</textarea>
+              </div>
+            </div>
+            <div class="modal-footer border-secondary">
+              <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+              <button type="submit" class="btn btn-primary">Guardar</button>
+            </div>
+          </form>
+        </div>
+      </div>
+      <!-- Render children recursively -->
+      {% for child in node.children %}
+        {{ render_node(child, depth + 1) }}
+      {% endfor %}
+      {% endmacro %}
+
+      {% for node in tree %}
+        {{ render_node(node, 0) }}
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% else %}
+<div class="alert alert-info">
+  <i class="bi bi-info-circle me-2"></i>No hay organizaciones configuradas. Crea la primera usando el botón de arriba.
+</div>
+{% endif %}
+
+<!-- Modal: Nueva Organización -->
+<div class="modal fade" id="modalNuevaOrg" tabindex="-1">
+  <div class="modal-dialog">
+    <form method="post" action="/admin/orgs/nueva" class="modal-content bg-dark border-secondary">
+      <div class="modal-header border-secondary">
+        <h5 class="modal-title"><i class="bi bi-plus-circle text-info me-2"></i>Nueva Organización</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label small">Nombre <span class="text-danger">*</span></label>
+          <input type="text" name="name" class="form-control bg-dark text-light border-secondary"
+                 placeholder="ej. Sede Regional NORTE" required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label small">Tipo de Organización</label>
+          <select name="org_type" class="form-select bg-dark text-light border-secondary">
+            {% for t, label in org_types %}
+            <option value="{{ t }}">{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label small">Organización Padre (opcional)</label>
+          <select name="parent_id" class="form-select bg-dark text-light border-secondary">
+            <option value="">— Sin padre (nivel raíz) —</option>
+            {% for ao in all_orgs %}
+            <option value="{{ ao.id }}">{{ ao.name }}</option>
+            {% endfor %}
+          </select>
+          <div class="form-text text-muted">Deja vacío para crear una organización raíz independiente.</div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label small">Descripción</label>
+          <textarea name="description" class="form-control bg-dark text-light border-secondary"
+                    rows="2" placeholder="Descripción opcional..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer border-secondary">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="submit" class="btn btn-info">Crear Organización</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -1,10 +1,10 @@
 {
   "virustotal": {
-    "api_key": "",
+    "api_key": "604decfbd54726365d79ae4988cca4f7c4ec985706ef0751626873b012a0d67a",
     "note": "Free tier: 4 req/min, 500 req/day. https://www.virustotal.com/gui/sign-in"
   },
   "abuseipdb": {
-    "api_key": "",
+    "api_key": "db4f59a01bf3591b8c7b7ede16b0ecc57602e0f19e8bbd0f756a4b78ca0332abbce1b221de02e029",
     "note": "Free tier: 1000 req/day. https://www.abuseipdb.com/register"
   },
   "xforce": {

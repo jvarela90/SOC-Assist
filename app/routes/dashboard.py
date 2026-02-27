@@ -4,7 +4,6 @@ SOC Assist — Dashboard ejecutivo y historial de incidentes
 import csv
 import io
 import json
-import re
 from datetime import datetime, timedelta
 from collections import defaultdict
 from pathlib import Path
@@ -12,18 +11,18 @@ from fastapi import APIRouter, Request, Depends, HTTPException
 from fastapi.responses import HTMLResponse, StreamingResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
-from sqlalchemy import func, or_
+from sqlalchemy import func, or_, desc
 from app.models.database import get_db, Incident, IncidentAnswer, User, Notification, get_visible_org_ids, audit
 from app.core.engine import engine_instance
 from app.core.auth import require_auth
 from app.services.mitre import get_techniques_for_incident
 from app.services.similarity import find_similar_incidents
+from app.services.config_loader import load_json_file, CLASSIFICATION_ORDER
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
 templates.env.filters["fromjson"] = json.loads  # used in incidents.html for tags
 
-CLASSIFICATION_ORDER = ["informativo", "sospechoso", "incidente", "critico", "brecha"]
 _BASE_DIR = Path(__file__).resolve().parent.parent.parent
 _PLAYBOOKS_PATH = _BASE_DIR / "playbooks.json"
 
@@ -31,10 +30,7 @@ DAY_NAMES = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
 
 
 def _load_playbooks() -> dict:
-    if _PLAYBOOKS_PATH.exists():
-        raw = _PLAYBOOKS_PATH.read_text(encoding="utf-8")
-        return json.loads(re.sub(r'//[^\n]*', '', raw))
-    return {}
+    return load_json_file(_PLAYBOOKS_PATH)
 
 
 @router.get("/dashboard", response_class=HTMLResponse)
@@ -86,32 +82,51 @@ async def dashboard(request: Request, db: Session = Depends(get_db), _user: dict
         vals = daily_scores.get(day, [])
         trend_data.append(round(sum(vals) / len(vals), 1) if vals else 0)
 
-    # Top risk factors (questions with highest total contribution)
-    factor_contributions: dict[str, float] = defaultdict(float)
-    factor_labels_map: dict[str, str] = {}
+    # Top risk factors — aggregated in DB with org filter (fixes N+1)
     questions_map = engine_instance.questions_map
 
-    for ans in db.query(IncidentAnswer).all():
-        factor_contributions[ans.question_id] += ans.contribution
-        if ans.question_id in questions_map:
-            factor_labels_map[ans.question_id] = questions_map[ans.question_id]["text"][:50]
+    top_factors_q = (
+        db.query(
+            IncidentAnswer.question_id,
+            func.sum(IncidentAnswer.contribution).label("total_contribution"),
+        )
+        .join(Incident, IncidentAnswer.incident_id == Incident.id)
+    )
+    if org_ids is not None:
+        top_factors_q = top_factors_q.filter(Incident.organization_id.in_(org_ids))
+    top_factors = (
+        top_factors_q
+        .group_by(IncidentAnswer.question_id)
+        .order_by(desc("total_contribution"))
+        .limit(10)
+        .all()
+    )
+    factor_bar_labels = [
+        questions_map.get(qid, {}).get("text", qid)[:50]
+        for qid, _ in top_factors
+    ]
+    factor_bar_data = [round(float(contrib or 0), 1) for _, contrib in top_factors]
 
-    top_factors = sorted(factor_contributions.items(), key=lambda x: x[1], reverse=True)[:10]
-    factor_bar_labels = [factor_labels_map.get(qid, qid) for qid, _ in top_factors]
-    factor_bar_data = [round(val, 1) for _, val in top_factors]
-
-    # Module contribution averages
-    module_contrib: dict[str, list] = defaultdict(list)
-    for ans in db.query(IncidentAnswer).all():
-        module_contrib[ans.module].append(ans.contribution)
-
+    # Module contribution averages — aggregated in DB with org filter (fixes N+1)
     mod_labels = {m["id"]: m["label"] for m in engine_instance.modules}
+
+    module_avgs_q = (
+        db.query(
+            IncidentAnswer.module,
+            func.avg(IncidentAnswer.contribution).label("avg_contribution"),
+        )
+        .join(Incident, IncidentAnswer.incident_id == Incident.id)
+    )
+    if org_ids is not None:
+        module_avgs_q = module_avgs_q.filter(Incident.organization_id.in_(org_ids))
+    module_avgs_rows = module_avgs_q.group_by(IncidentAnswer.module).all()
+    module_avgs_dict = {row.module: float(row.avg_contribution or 0) for row in module_avgs_rows}
+
     module_avg_labels = []
     module_avg_data = []
     for mod in engine_instance.module_weights:
-        vals = module_contrib.get(mod, [])
         module_avg_labels.append(mod_labels.get(mod, mod))
-        module_avg_data.append(round(sum(vals) / len(vals), 2) if vals else 0)
+        module_avg_data.append(round(module_avgs_dict.get(mod, 0), 2))
 
     # Heatmap: day-of-week × hour-of-day incident counts
     heatmap = [[0] * 24 for _ in range(7)]

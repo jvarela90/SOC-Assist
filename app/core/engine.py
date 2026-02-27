@@ -6,18 +6,14 @@ import json
 import os
 from pathlib import Path
 from typing import Any
+from app.services.config_loader import load_json_file
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 
 def _load_json(filename: str) -> dict:
-    """Load JSON file from the project root, stripping // comments."""
-    path = BASE_DIR / filename
-    raw = path.read_text(encoding="utf-8")
-    # Strip JavaScript-style single-line comments
-    import re
-    clean = re.sub(r'//[^\n]*', '', raw)
-    return json.loads(clean)
+    """Load JSON file from the project root. Delegates to shared loader."""
+    return load_json_file(BASE_DIR / filename)
 
 
 class IncidentEngine:

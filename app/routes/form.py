@@ -4,7 +4,6 @@ Navegación por bloques temáticos (no por módulos).
 """
 import asyncio
 import json
-import re
 from pathlib import Path
 from fastapi import APIRouter, Request, Depends, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
@@ -19,15 +18,15 @@ from app.services.mailer import send_incident_alert
 from app.services.mitre import get_techniques_for_incident
 from app.services.threat_intel import lookup as ti_lookup, is_private_ip, is_valid_ip
 from app.routes.assets import lookup_asset_by_identifier, CRITICALITY_MULTIPLIERS, CRITICALITY_LABELS
+from app.services.config_loader import load_json_file, CLASSIFICATION_ORDER
 
-_PLAYBOOKS_PATH = Path(__file__).resolve().parent.parent.parent / "playbooks.json"
+_BASE_DIR = Path(__file__).resolve().parent.parent.parent
+_PLAYBOOKS_PATH = _BASE_DIR / "playbooks.json"
+_QUESTIONS_PATH = _BASE_DIR / "questions.json"
 
 
 def _load_playbooks() -> dict:
-    if _PLAYBOOKS_PATH.exists():
-        raw = _PLAYBOOKS_PATH.read_text(encoding="utf-8")
-        return json.loads(re.sub(r'//[^\n]*', '', raw))
-    return {}
+    return load_json_file(_PLAYBOOKS_PATH)
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -44,10 +43,7 @@ def _build_blocks_data() -> tuple[list, dict]:
     block_defs = getattr(engine_instance, '_q_data_blocks', [])
 
     # Reload blocks from raw data each time (engine may have reloaded)
-    import json, re
-    from pathlib import Path
-    raw = (Path(__file__).parent.parent.parent / "questions.json").read_text(encoding="utf-8")
-    data = json.loads(re.sub(r'//[^\n]*', '', raw))
+    data = load_json_file(_QUESTIONS_PATH)
     block_defs = data.get("blocks", [])
     blocks_ordered = sorted(block_defs, key=lambda b: b["id"])
 
@@ -122,14 +118,11 @@ async def evaluar_form(request: Request, _user: dict = Depends(require_auth)):
     })
 
 
-_SEVERITY_ORDER = ["informativo", "sospechoso", "incidente", "critico", "brecha"]
-
-
 def _max_severity(a: str, b: str) -> str:
     """Return the higher severity of the two classification strings."""
-    ia = _SEVERITY_ORDER.index(a) if a in _SEVERITY_ORDER else 0
-    ib = _SEVERITY_ORDER.index(b) if b in _SEVERITY_ORDER else 0
-    return _SEVERITY_ORDER[max(ia, ib)]
+    ia = CLASSIFICATION_ORDER.index(a) if a in CLASSIFICATION_ORDER else 0
+    ib = CLASSIFICATION_ORDER.index(b) if b in CLASSIFICATION_ORDER else 0
+    return CLASSIFICATION_ORDER[max(ia, ib)]
 
 
 async def _run_ti_lookups(indicators: list[str]) -> list[dict]:

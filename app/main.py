@@ -23,9 +23,16 @@ app = FastAPI(
 )
 
 # Session middleware (signed cookies via itsdangerous)
-# In production, set SECRET_KEY from environment variable
 import os
-_SECRET = os.environ.get("SOC_SECRET_KEY", "soc-assist-change-this-in-production-2026")
+import logging as _logging
+_SECRET = os.environ.get("SOC_SECRET_KEY", "")
+if not _SECRET:
+    _SECRET = "soc-assist-change-this-in-production-2026"
+    _logging.getLogger("soc_assist").warning(
+        "SOC_SECRET_KEY no está configurada. Usando clave por defecto — "
+        "INSEGURO en producción. Configurar con: "
+        "export SOC_SECRET_KEY=$(python -c 'import secrets; print(secrets.token_urlsafe(32))')"
+    )
 app.add_middleware(SessionMiddleware, secret_key=_SECRET)
 
 # Static files

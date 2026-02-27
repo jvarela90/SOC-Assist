@@ -4,7 +4,6 @@ Edición de pesos, umbrales, calibración manual, claves de TI y gestión de usu
 """
 import io
 import json
-import re
 import secrets
 import string
 import zipfile
@@ -21,6 +20,7 @@ from app.core.calibration import run_calibration
 from app.core.auth import require_admin, hash_password
 from app.services.threat_intel import load_ti_config, save_ti_config
 from app.services.mailer import load_smtp_config, save_smtp_config, test_smtp_connection
+from app.services.config_loader import load_json_file
 
 router = APIRouter(prefix="/admin")
 templates = Jinja2Templates(directory="app/templates")
@@ -30,12 +30,6 @@ CONFIG_PATH = BASE_DIR / "config_engine.json"
 QUESTIONS_PATH = BASE_DIR / "questions.json"
 
 
-def _load_json(path: Path) -> dict:
-    raw = path.read_text(encoding="utf-8")
-    clean = re.sub(r'//[^\n]*', '', raw)
-    return json.loads(clean)
-
-
 def _save_json(path: Path, data: dict):
     path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
 
@@ -43,8 +37,8 @@ def _save_json(path: Path, data: dict):
 @router.get("", response_class=HTMLResponse)
 @router.get("/", response_class=HTMLResponse)
 async def admin_home(request: Request, db: Session = Depends(get_db), _user: dict = Depends(require_admin)):
-    config = _load_json(CONFIG_PATH)
-    q_data = _load_json(QUESTIONS_PATH)
+    config = load_json_file(CONFIG_PATH)
+    q_data = load_json_file(QUESTIONS_PATH)
     ti_config = load_ti_config()
 
     cal_logs = db.query(CalibrationLog).order_by(CalibrationLog.run_at.desc()).limit(5).all()
@@ -114,7 +108,7 @@ async def admin_home(request: Request, db: Session = Depends(get_db), _user: dic
 @router.post("/module-weights")
 async def update_module_weights(request: Request, db: Session = Depends(get_db), _user: dict = Depends(require_admin)):
     form = await request.form()
-    config = _load_json(CONFIG_PATH)
+    config = load_json_file(CONFIG_PATH)
 
     for mod in config["module_weights"]:
         key = f"weight_{mod}"
@@ -146,7 +140,7 @@ async def update_module_weights(request: Request, db: Session = Depends(get_db),
 @router.post("/thresholds")
 async def update_thresholds(request: Request, db: Session = Depends(get_db), _user: dict = Depends(require_admin)):
     form = await request.form()
-    config = _load_json(CONFIG_PATH)
+    config = load_json_file(CONFIG_PATH)
 
     for key in config["thresholds"]:
         min_key = f"thresh_{key}_min"
@@ -174,7 +168,7 @@ async def update_question_weight(
     _user: dict = Depends(require_admin),
 ):
     form = await request.form()
-    q_data = _load_json(QUESTIONS_PATH)
+    q_data = load_json_file(QUESTIONS_PATH)
 
     for q in q_data["questions"]:
         if q["id"] == question_id:

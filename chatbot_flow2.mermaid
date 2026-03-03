@@ -1,0 +1,1566 @@
+%%{init: {"theme": "dark", "flowchart": {"curve": "basis", "nodeSpacing": 40, "rankSpacing": 60}}}%%
+flowchart TD
+
+%% ============================================================
+%% SOC Assist — Chat Analista v2.0
+%% Pool ampliado: 200 preguntas para USUARIOS NO EXPERTOS
+%% Víctimas de ciberdelitos / principiantes sin vocabulario técnico
+%%
+%% BLOQUES:
+%%   GW  N001–N015  Gateway — ¿Qué te pasó?         (15 Qs)
+%%   A   N016–N035  Tu Dispositivo y entorno         (20 Qs)
+%%   B   N036–N055  Acceso a cuentas                 (20 Qs)
+%%   C   N056–N075  Phishing / Engaño / Estafa       (20 Qs)
+%%   D   N076–N090  Fraude Financiero                (15 Qs)
+%%   E   N091–N110  Acoso Digital / Sextorsión       (20 Qs)
+%%   F   N111–N125  Robo de Identidad / Suplantación (15 Qs)
+%%   G   N126–N140  Ransomware / Archivos Bloqueados (15 Qs)
+%%   H   N141–N155  Virus / Malware / Comportamiento (15 Qs)
+%%   I   N156–N165  Seguridad de Menores             (10 Qs)
+%%   J   N166–N180  Incidente Organizacional         (15 Qs)
+%%   K   N181–N193  Evidencia y Acciones             (13 Qs)
+%%   L   N194–N200  Evaluación de Urgencia Final      (7 Qs)
+%%                                            TOTAL: 200 Qs
+%% ============================================================
+
+%% ─────── ESTILOS ────────────────────────────────────────────
+classDef gateway   fill:#1a237e,stroke:#5c6bc0,color:#fff,font-size:12px
+classDef route     fill:#0d47a1,stroke:#42a5f5,color:#fff,font-size:11px
+classDef blqA      fill:#263238,stroke:#78909c,color:#cfd8dc,font-size:11px
+classDef blqB      fill:#1b2838,stroke:#546e7a,color:#b0bec5,font-size:11px
+classDef blqC      fill:#3e2723,stroke:#ff7043,color:#ffccbc,font-size:11px
+classDef blqD      fill:#4a148c,stroke:#ce93d8,color:#f3e5f5,font-size:11px
+classDef blqE      fill:#880e4f,stroke:#f48fb1,color:#fce4ec,font-size:11px
+classDef blqF      fill:#1b5e20,stroke:#81c784,color:#e8f5e9,font-size:11px
+classDef blqG      fill:#b71c1c,stroke:#ef9a9a,color:#ffebee,font-size:11px
+classDef blqH      fill:#bf360c,stroke:#ffab91,color:#fbe9e7,font-size:11px
+classDef blqI      fill:#01579b,stroke:#81d4fa,color:#e1f5fe,font-size:11px
+classDef blqJ      fill:#33691e,stroke:#aed581,color:#f1f8e9,font-size:11px
+classDef blqK      fill:#37474f,stroke:#90a4ae,color:#eceff1,font-size:11px
+classDef blqL      fill:#e65100,stroke:#ffcc02,color:#fff8e1,font-size:12px
+classDef critico   fill:#b71c1c,stroke:#ff1744,color:#fff,font-weight:bold,font-size:13px
+classDef alto      fill:#e65100,stroke:#ff6d00,color:#fff,font-weight:bold,font-size:13px
+classDef medio     fill:#f57f17,stroke:#ffca28,color:#1a1a1a,font-weight:bold,font-size:13px
+classDef bajo      fill:#1b5e20,stroke:#4caf50,color:#fff,font-weight:bold,font-size:13px
+classDef cross     fill:#311b92,stroke:#b39ddb,color:#ede7f6,font-size:10px,stroke-dasharray:4 2
+
+%% ════════════════════════════════════════════════════════════
+%% ENTRADA
+%% ════════════════════════════════════════════════════════════
+
+START(["🛡️ BIENVENIDO AL ASISTENTE DE CIBERSEGURIDAD
+Responde las preguntas con calma.
+Te guiaremos paso a paso para entender
+qué ocurrió y cómo puedes protegerte.
+No necesitas saber de tecnología."]):::gateway
+
+START --> N001
+
+%% ════════════════════════════════════════════════════════════
+%% BLOQUE GW — GATEWAY: ¿Qué te pasó? N001–N015
+%% ════════════════════════════════════════════════════════════
+
+subgraph BLQ_GW["🚦  GATEWAY — ¿Qué te ocurrió?   N001 – N015"]
+direction TB
+
+N001{"N001 ¿Eres una persona particular
+o representas una empresa?
+💡 Si el problema es en tu PC o teléfono
+personal → Particular
+Si afecta equipos o datos del trabajo → Empresa"}:::gateway
+
+N002{"N002 ¿Qué dispositivo está afectado?
+💡 Ej: computadora, laptop, teléfono,
+tableta, router, consola de videojuegos"}:::gateway
+
+N003{"N003 ¿Cuándo notaste por primera
+vez que algo estaba mal?
+💡 Hoy / Esta semana / Hace más tiempo"}:::gateway
+
+N004{"N004 ¿El problema sigue activo
+ahora mismo mientras hablamos?
+💡 Si aún ocurre es más urgente"}:::gateway
+
+N005{"N005 ¿Otras personas de tu familia
+o trabajo tienen el mismo problema?
+💡 Puede indicar ataque masivo"}:::gateway
+
+N006{"N006 ¿Recibiste un mensaje, email
+o llamada sospechosa ANTES de que
+empezara el problema?
+💡 Algo que no esperabas o que te
+pareció raro en ese momento"}:::gateway
+
+N007{"N007 ¿Hiciste clic en algún enlace
+o descargaste algún archivo
+poco antes del incidente?
+💡 Por email, WhatsApp, redes sociales,
+SMS o cualquier aplicación"}:::gateway
+
+N008{"N008 ¿Todo funciona normal ahora
+o notas algo diferente?
+💡 Velocidad, acceso a archivos,
+cuentas, pantalla, mensajes"}:::gateway
+
+N009{"N009 ¿Tienes dinero que salió
+de tus cuentas sin que tú lo
+enviaras, o cargos que no reconoces?
+💡 En tarjeta de crédito, débito,
+cuenta bancaria o billetera digital"}:::gateway
+
+N010{"N010 ¿Alguien te está amenazando,
+acosando o exigiendo dinero
+a través de internet o mensajes?
+💡 Puede ser por WhatsApp, email,
+redes sociales, o llamadas"}:::gateway
+
+N011{"N011 ¿Crees que alguien entró
+a tu dispositivo o a una de tus
+cuentas sin tu permiso?
+💡 Ves cosas que tú no hiciste:
+mensajes enviados, compras, cambios"}:::gateway
+
+N012{"N012 ¿Tus archivos (fotos, documentos,
+música) tienen nombres raros
+o ya no puedes abrirlos?
+💡 Terminan en .locked, .enc, .crypted,
+.ransom u otra extensión desconocida"}:::gateway
+
+N013{"N013 ¿Hay un niño o adolescente
+involucrado en lo que pasó?
+💡 Fue contactado por desconocidos,
+recibió contenido inapropiado o fue
+presionado en línea"}:::gateway
+
+N014{"N014 ¿Alguien está usando tu nombre,
+foto o datos para hacerse pasar
+por ti sin tu permiso?
+💡 Perfiles falsos en redes sociales,
+deudas a tu nombre, suplantación"}:::gateway
+
+N015{"N015 ¿Ves en tu pantalla publicidad
+excesiva, ventanas que se abren solas
+o mensajes de que tienes un virus?
+💡 Tu navegador abre páginas raras
+o el antivirus da alertas constantes"}:::gateway
+
+end
+
+%% ─── Flujo interno del Gateway ───────────────────────────────
+N001 -->|"Empresa / Organización"| N001_ORG["➡ Ir a BLOQUE J
+Incidente Organizacional"]:::route
+N001 -->|"Particular / Personal"| N002
+N002 --> N003
+N003 --> N004
+N004 --> N005
+N005 --> N006
+N006 --> N007
+N007 --> N008
+N008 --> N009
+N009 -->|"Sí — pérdidas\neconómicas"| ROUTE_D["🔀 RUTA FRAUDE
+BLOQUE D — Fraude Financiero"]:::route
+N009 -->|No| N010
+N010 -->|"Sí — amenaza\no acoso"| ROUTE_E["🔀 RUTA ACOSO
+BLOQUE E — Acoso / Sextorsión"]:::route
+N010 -->|No| N011
+N011 --> N012
+N012 -->|"Sí — archivos\nbloqueados"| ROUTE_G["🔀 RUTA RANSOMWARE ⚠️
+BLOQUE G — Archivos Bloqueados"]:::route
+N012 -->|No| N013
+N013 -->|"Sí — menor\ninvolucrado"| ROUTE_I["🔀 RUTA MENORES ⚠️
+BLOQUE I — Seguridad de Menores"]:::route
+N013 -->|No| N014
+N014 -->|"Sí — suplantación\nde identidad"| ROUTE_F["🔀 RUTA IDENTIDAD
+BLOQUE F — Robo de Identidad"]:::route
+N014 -->|No| N015
+N015 -->|"Sí — virus\no comportamiento raro"| ROUTE_H["🔀 RUTA MALWARE
+BLOQUE H — Virus / Malware"]:::route
+N015 -->|No| CHKPH
+
+CHKPH{"N006=Sí o N007=Sí
+¿Recibió msg sospechoso
+o hizo clic en algo?"}:::gateway
+CHKPH -->|Sí| ROUTE_C["🔀 RUTA PHISHING / ESTAFA
+BLOQUE C — Engaño Digital"]:::route
+CHKPH -->|No| ROUTE_B["🔀 RUTA ACCESO NO AUTORIZADO
+BLOQUE B — Cuentas comprometidas"]:::route
+
+N001_ORG --> BLQ_J
+
+%% ════════════════════════════════════════════════════════════
+%% BLOQUE A — Tu Dispositivo y Entorno   N016–N035
+%% ════════════════════════════════════════════════════════════
+
+subgraph BLQ_A["💻  BLOQUE A — Tu Dispositivo y Entorno   N016 – N035  (base, siempre se pregunta)"]
+direction LR
+
+A1["N016 ¿Qué sistema operativo tiene
+tu dispositivo?
+💡 Windows (PC), macOS (Mac),
+Android (teléfono Samsung/Xiaomi etc.),
+iOS (iPhone), o no sabes
+
+N017 ¿Tu computadora o teléfono va
+más lento de lo normal sin razón?
+💡 Tarda en abrir apps, en apagar,
+o se congela seguido
+
+N018 ¿Aparecieron programas, apps
+o iconos que tú no instalaste?
+💡 Cosas nuevas en el escritorio
+o en la lista de aplicaciones
+
+N019 ¿Tu dispositivo se reinicia solo
+o se apaga sin que tú lo hagas?
+💡 Ocurre sin apretar ningún botón
+
+N020 ¿La cámara o el micrófono
+parecen activarse solos?
+💡 La luz de cámara enciende sola,
+se oye ruido del micrófono"]:::blqA
+
+A2["N021 ¿Tu conexión a internet va
+más lenta de lo normal sin razón?
+💡 Páginas que antes cargaban rápido
+ahora tardan mucho
+
+N022 ¿Ves mensajes de error raros
+o pantallas azules / negras?
+💡 Mensajes con códigos de error,
+o el dispositivo crashea
+
+N023 ¿Tienes un antivirus instalado
+y actualizado en tu dispositivo?
+💡 Ej: Windows Defender, Avast,
+Norton, Kaspersky, ESET
+
+N024 ¿Conectaste recientemente un
+USB, disco externo u otro dispositivo
+de alguien que no conoces bien?
+💡 Pendrive encontrado, prestado,
+o recibido como regalo sospechoso
+
+N025 ¿Alguien tuvo acceso físico
+a tu dispositivo sin supervisión?
+💡 Lo dejaste solo, lo prestaste,
+lo llevaron a reparar sin tu presencia"]:::blqA
+
+A3["N026 ¿Usas redes WiFi públicas
+con frecuencia?
+💡 Café, aeropuerto, hotel,
+biblioteca, sin contraseña
+
+N027 ¿Tu dispositivo tiene muchas
+actualizaciones pendientes
+sin instalar?
+💡 El sistema operativo te avisa
+hace semanas que hay actualizaciones
+
+N028 ¿Tu dispositivo está protegido
+con PIN, contraseña, patrón
+o huella digital?
+💡 Para que nadie lo use si te lo roban
+
+N029 ¿Tienes copias de seguridad
+recientes de tus archivos
+en otro lugar?
+💡 En un disco externo, en la nube
+(Google Drive, iCloud, OneDrive)
+
+N030 ¿Instalaste algún programa
+descargado de un sitio que no era
+el oficial en los últimos meses?
+💡 Software 'crackeado', gratis
+de páginas no conocidas"]:::blqA
+
+A4["N031 ¿Hay otros dispositivos
+conectados a tu red de casa
+(WiFi doméstico)?
+💡 Otros teléfonos, TVs, routers,
+cámaras IP, impresoras
+
+N032 ¿Usas contraseñas diferentes
+para cada cuenta que tienes?
+💡 O usas la misma en email,
+banco, redes sociales y todo
+
+N033 ¿Tienes activada la verificación
+en dos pasos en tus cuentas?
+💡 Cuando entras te piden además
+un código por SMS o app
+
+N034 ¿Cuándo fue la última vez
+que cambiaste tus contraseñas
+más importantes?
+💡 Email, banco, redes sociales
+
+N035 ¿Usas algún programa para
+guardar y generar contraseñas?
+💡 Como LastPass, Bitwarden,
+1Password o el del navegador"]:::blqA
+end
+
+%% ════════════════════════════════════════════════════════════
+%% BLOQUE B — Acceso a Cuentas   N036–N055
+%% ════════════════════════════════════════════════════════════
+
+subgraph BLQ_B["🔐  BLOQUE B — Acceso a Cuentas   N036 – N055"]
+direction LR
+
+B1["N036 ¿Qué tipo de cuentas crees
+que están comprometidas?
+💡 Email, banco, redes sociales,
+trabajo, streaming, compras online
+
+N037 ¿Puedes entrar normalmente
+a todas tus cuentas?
+💡 O alguna dice que la contraseña
+es incorrecta cuando sí era la tuya
+
+N038 ¿Recibiste un aviso de que
+alguien entró a tu cuenta desde
+un lugar o dispositivo que no reconoces?
+💡 'Nuevo inicio de sesión desde
+España' cuando tú estás en México
+
+N039 ¿Tu contraseña fue cambiada
+sin que tú lo hicieras?
+💡 Ya no puedes entrar con tu
+contraseña habitual
+
+N040 ¿El correo electrónico o
+teléfono de recuperación de
+tus cuentas fue cambiado?
+💡 Donde antes llegaban los códigos
+ahora va a otro lugar"]:::blqB
+
+B2["N041 ¿Ves actividad en tus cuentas
+que no reconoces como tuya?
+💡 Mensajes enviados, compras,
+publicaciones, me-gustas, búsquedas
+
+N042 ¿Recibiste códigos de
+verificación por SMS o email
+que tú no pediste?
+💡 Mensajes del banco o de
+plataformas con código de 6 dígitos
+
+N043 ¿Alguna otra persona tiene
+o tuvo tu contraseña?
+💡 Pareja, familiar, ex, compañero
+de trabajo, o alguien que ayudó
+
+N044 ¿Guardas contraseñas escritas
+en el navegador, en notas
+del teléfono o en papel?
+💡 El navegador que las recuerda
+o un bloc de notas digital
+
+N045 ¿Usas la misma contraseña
+en el email que en otras cuentas?
+💡 Si hackean el email y tiene
+la misma clave que el banco"]:::blqB
+
+B3["N046 ¿Tu cuenta de email sirve
+para recuperar o acceder
+a otras cuentas?
+💡 Si alguien controla tu email,
+puede controlar todo lo demás
+
+N047 ¿Ingresaste tu usuario y
+contraseña en un sitio web que
+después resultó ser falso?
+💡 Parecía el banco o Google
+pero era una copia falsa
+
+N048 ¿Hiciste clic en un enlace
+de un email de 'verificación'
+y pusiste tus datos ahí?
+💡 'Tu cuenta fue suspendida,
+verifica aquí' y tú lo hiciste
+
+N049 ¿Alguna de tus cuentas
+fue eliminada o suspendida
+sin que recibieras explicación?
+💡 Intentas entrar y dice
+que la cuenta no existe
+
+N050 ¿Hay dispositivos desconocidos
+con acceso activo a tus cuentas?
+💡 En configuración de seguridad
+ves teléfonos o PCs que no reconoces"]:::blqB
+
+B4["N051 ¿Tu cuenta de redes sociales
+está publicando cosas que
+tú no pusiste?
+💡 Amigos te avisan de publicaciones
+o mensajes que no hiciste
+
+N052 ¿Tus contactos te dicen que
+tu cuenta les está enviando mensajes
+raros o spam?
+💡 Les llegan mensajes 'de ti'
+pidiendo dinero o links extraños
+
+N053 ¿Tu correo electrónico principal
+está afectado o inaccesible?
+💡 El que usas para todo y para
+recuperar otras contraseñas
+
+N054 ¿Tienes acceso al teléfono
+o email de recuperación de
+tus cuentas ahora mismo?
+💡 Para poder recuperar cuentas
+necesitas acceder a ese teléfono/email
+
+N055 ¿Las cuentas afectadas
+contienen fotos íntimas, datos
+bancarios u otra información sensible?
+💡 Información que sería grave
+que alguien más viera o usara"]:::blqB
+end
+
+%% ════════════════════════════════════════════════════════════
+%% BLOQUE C — Phishing / Engaño / Estafa   N056–N075
+%% ════════════════════════════════════════════════════════════
+
+subgraph BLQ_C["🎣  BLOQUE C — Phishing / Engaño / Estafa   N056 – N075"]
+direction LR
+
+C1["N056 ¿Recibiste un email, SMS
+o mensaje con un enlace que
+te pedía hacer clic?
+💡 'Tu paquete está retenido',
+'Ganaste un premio', 'Verifica tu cuenta'
+
+N057 ¿El mensaje parecía venir
+de alguien que conoces pero
+te pedía algo inusual?
+💡 Tu banco, tu jefe o un amigo
+pero algo no cuadraba
+
+N058 ¿Alguien te contactó haciéndose
+pasar por el banco, la policía,
+una empresa famosa o el gobierno?
+💡 Decían ser de Microsoft, Hacienda,
+tu banco, la policía, Amazon
+
+N059 ¿Te dijeron que ganaste un
+premio o que debes pagar algo
+con urgencia o perderás algo?
+💡 Crean urgencia para que no
+pienses con calma antes de actuar
+
+N060 ¿Alguien te pidió instalar
+un programa en tu PC para
+'arreglarlo' o 'revisarlo' de forma remota?
+💡 Teamviewer, AnyDesk, QuickAssist
+instalados por indicación de alguien"]:::blqC
+
+C2["N061 ¿Le diste acceso remoto
+a tu computadora a alguien
+que no conocías en persona?
+💡 Podían ver y controlar tu pantalla
+como si estuvieran sentados contigo
+
+N062 ¿Te pidieron que compraras
+tarjetas de regalo para pagar algo?
+💡 Google Play, Steam, Amazon, iTunes
+son pedidos clásicos de estafadores
+
+N063 ¿Te prometieron ganancias,
+inversiones muy rentables
+o trabajo bien pagado pidiendo
+dinero o datos primero?
+💡 Señal de estafa: el dinero real
+va en sentido contrario
+
+N064 ¿Conociste a alguien en internet
+que después de un tiempo empezó
+a pedirte dinero o favores?
+💡 Puede ser romance scam o estafa
+de amistad/relación sentimental
+
+N065 ¿Te dijeron que tu dispositivo
+está gravemente infectado y debes
+llamar a un número de teléfono urgente?
+💡 Ventanas de alerta falsas en el
+navegador que 'no puedes cerrar'"]:::blqC
+
+C3["N066 ¿Ingresaste los datos de tu
+tarjeta (número, fecha, código CVV)
+en un sitio que ahora sospechas?
+💡 Si ingresaste esos datos en
+un sitio falso pueden usarlos
+
+N067 ¿El sitio web falso tenía un
+diseño muy parecido al de tu banco
+u otra empresa que conoces?
+💡 Logo casi igual, colores similares,
+pero la URL era distinta
+
+N068 ¿El enlace que recibiste era
+muy largo, tenía errores ortográficos
+o usaba un dominio raro?
+💡 Ej: banco-seguro-verificacion.com
+en vez de mibancoreal.com
+
+N069 ¿Te pidieron tu número de
+documento, pasaporte, seguridad
+social u otro dato de identidad?
+💡 Para 'verificarte' o 'acceder
+a tu premio'
+
+N070 ¿Recibiste una factura o
+cobro por un servicio que
+no contrataste?
+💡 Email de suscripción o compra
+que tú nunca hiciste"]:::blqC
+
+C4["N071 ¿Alguien se hizo pasar por
+soporte técnico de Microsoft,
+Apple, Google u otra empresa?
+💡 'Llamamos porque tu Windows
+tiene un virus grave'
+
+N072 ¿Te ofrecieron un trabajo y
+pedían dinero para materiales,
+registro o uniformes primero?
+💡 Los empleos reales nunca
+te cobran para empezar
+
+N073 ¿Te propusieron invertir en
+criptomonedas con ganancias
+muy altas y sin riesgo?
+💡 Si prometen ganancias seguras
+del 30-50%, es estafa
+
+N074 ¿Te pidieron una foto de
+tu documento de identidad para
+'verificar' tu identidad en internet?
+💡 Pueden usarlo para suplantarte
+o sacar créditos a tu nombre
+
+N075 ¿A través de qué canal ocurrió
+principalmente el engaño?
+💡 WhatsApp / Telegram / Email /
+Llamada telefónica / Sitio web /
+Redes sociales / SMS"]:::blqC
+end
+
+%% ════════════════════════════════════════════════════════════
+%% BLOQUE D — Fraude Financiero   N076–N090
+%% ════════════════════════════════════════════════════════════
+
+subgraph BLQ_D["💳  BLOQUE D — Fraude Financiero   N076 – N090"]
+direction LR
+
+D1["N076 ¿Tienes cargos no reconocidos
+en tu tarjeta de crédito o débito?
+💡 Compras, suscripciones o retiros
+que tú no hiciste
+
+N077 ¿Cuánto dinero perdiste
+aproximadamente?
+💡 El monto nos ayuda a determinar
+la urgencia y el tipo de acción
+
+N078 ¿La pérdida fue en dinero
+bancario tradicional o en
+criptomonedas?
+💡 Bitcoin, Ethereum, USDT, etc.
+son mucho más difíciles de recuperar
+
+N079 ¿Realizaste transferencias
+bancarias a cuentas de personas
+que no conoces en persona?
+💡 Aunque haya sido 'voluntariamente'
+puede ser resultado de un engaño
+
+N080 ¿Te pidieron el número,
+la fecha de vencimiento y el
+código CVV de tu tarjeta?
+💡 El CVV son los 3 o 4 dígitos
+al reverso de tu tarjeta"]:::blqD
+
+D2["N081 ¿Compartiste el usuario y
+contraseña de tu banca online?
+💡 Los bancos reales NUNCA te
+piden la clave por email o teléfono
+
+N082 ¿Ya le avisaste a tu banco
+que hubo un fraude?
+💡 Mientras más rápido lo reportes,
+más posibilidades de recuperar el dinero
+
+N083 ¿Tienes capturas o comprobantes
+de las transacciones fraudulentas?
+💡 Capturas del resumen de cuenta,
+emails de confirmación, recibos
+
+N084 ¿El dinero fue enviado a una
+cuenta de otro país o en moneda
+extranjera?
+💡 Complica la recuperación
+pero igual se debe reportar
+
+N085 ¿El fraude ocurrió al hacer
+una compra en internet?
+💡 Tienda online, marketplace,
+sitio que resultó ser falso"]:::blqD
+
+D3["N086 ¿Pagaste por algo online
+que nunca llegó o que era falso?
+💡 Producto que no existe,
+vendedor que desapareció
+
+N087 ¿Te pidieron pagar con métodos
+que no se pueden recuperar
+(criptomonedas, giros postales,
+tarjetas de regalo)?
+💡 Estos métodos son favoritos de
+los estafadores por eso irreversibles
+
+N088 ¿El estafador te dio algún
+comprobante o recibo del pago?
+💡 Puede ser un comprobante falso
+pero sirve como evidencia
+
+N089 ¿Hace cuántos días ocurrió
+el fraude?
+💡 Cuanto antes se reporta,
+más posibilidades de actuar
+
+N090 ¿Existe alguna posibilidad de
+que sea un cargo legítimo que
+simplemente no recuerdas haber hecho?
+💡 A veces son cargos de suscripciones
+o servicios que olvidamos"]:::blqD
+end
+
+%% ════════════════════════════════════════════════════════════
+%% BLOQUE E — Acoso Digital / Sextorsión   N091–N110
+%% ════════════════════════════════════════════════════════════
+
+subgraph BLQ_E["👁️  BLOQUE E — Acoso Digital / Sextorsión   N091 – N110"]
+direction LR
+
+E1["N091 ¿Alguien te envía mensajes
+ofensivos, amenazantes o que
+tú no pediste y no quieres recibir?
+💡 Pueden ser insultos, amenazas,
+fotos inapropiadas o mensajes repetidos
+
+N092 ¿El acosador es alguien que
+conoces en persona o es
+un completo desconocido?
+💡 Puede ser ex pareja, compañero
+de trabajo, o alguien de internet
+
+N093 ¿Los mensajes vienen de
+muchas cuentas diferentes o
+siempre de la misma persona?
+💡 Si crea nuevas cuentas para
+seguir contactándote es más grave
+
+N094 ¿Te están amenazando con
+publicar fotos o videos tuyos
+si no haces algo?
+💡 Eso se llama sextorsión y
+es un delito grave
+
+N095 ¿Compartiste imágenes íntimas
+con alguien y ahora esa persona
+amenaza con difundirlas?
+💡 Es muy común y es un delito
+en la mayoría de los países"]:::blqE
+
+E2["N096 ¿Ya compartieron imágenes
+tuyas sin tu permiso en internet
+o por WhatsApp?
+💡 Si ya ocurrió hay que actuar
+muy rápido para limitar el daño
+
+N097 ¿El acoso tiene contenido
+sexual o la persona intenta
+una relación que tú no quieres?
+💡 Mensajes sexuales no deseados
+o presión para una relación
+
+N098 ¿Conociste a esta persona
+en una aplicación de citas,
+red social o juego online?
+💡 Tinder, Instagram, Facebook,
+Roblox, Fortnite, etc.
+
+N099 ¿El acosador sabe dónde vives,
+dónde trabajas o estudias,
+o datos de tu familia?
+💡 Si sabe dónde encontrarte
+físicamente es urgente
+
+N100 ¿Ya bloqueaste al acosador
+pero sigue contactándote
+desde otras cuentas o números?
+💡 Crear nuevas cuentas para
+evadir bloqueos es acoso persistente"]:::blqE
+
+E3["N101 ¿Alguien está publicando
+información privada tuya para
+dañarte o avergonzarte?
+💡 Eso se llama 'doxing':
+publicar datos personales a propósito
+
+N102 ¿Sientes que alguien puede
+estar espiándote a través de
+tu teléfono o computadora?
+💡 Sabe cosas que solo sabrías
+si tuviera acceso a tus mensajes
+
+N103 ¿Crees que alguien pudo
+instalar una aplicación espía
+en tu teléfono sin que te dieras cuenta?
+💡 Stalkerware / spyware: app oculta
+que envía tus mensajes a otro
+
+N104 ¿Tu ex pareja, pareja actual
+o alguien muy cercano tiene
+acceso a tus cuentas o dispositivos?
+💡 Sabe contraseñas, tiene
+tu teléfono desbloqueado, etc.
+
+N105 ¿Estás guardando capturas de
+pantalla de los mensajes de acoso
+como evidencia?
+💡 MUY IMPORTANTE: no borres nada,
+guarda todo antes de bloquear"]:::blqE
+
+E4["N106 ¿Ya denunciaste el acoso
+a la plataforma donde ocurre?
+💡 Facebook, Instagram, WhatsApp,
+TikTok, Twitter/X tienen botones de denuncia
+
+N107 ¿El acosador te hace
+llamadas telefónicas repetidas
+o a deshoras?
+💡 Acoso telefónico también
+es delito denunciable
+
+N108 ¿El acoso ha pasado a
+ocurrir también en persona,
+en tu trabajo o en tu domicilio?
+💡 Cuando hay acoso físico además
+del digital la urgencia es máxima
+
+N109 ¿Hay menores de edad
+involucrados en el contenido
+de sextorsión?
+💡 Si hay imágenes de menores
+es un delito gravísimo —  llama a la policía YA
+
+N110 ¿Conoces el nombre real,
+el número de teléfono u otros
+datos del acosador?
+💡 Eso nos ayuda a orientarte
+sobre las denuncias posibles"]:::blqE
+end
+
+%% ════════════════════════════════════════════════════════════
+%% BLOQUE F — Robo de Identidad / Suplantación   N111–N125
+%% ════════════════════════════════════════════════════════════
+
+subgraph BLQ_F["👤  BLOQUE F — Robo de Identidad / Suplantación   N111 – N125"]
+direction LR
+
+F1["N111 ¿Alguien creó perfiles en redes
+sociales con tu nombre y tus fotos
+sin tu permiso?
+💡 Para engañar a tus contactos
+o dañar tu reputación
+
+N112 ¿Ves publicaciones en redes
+sociales con tu nombre que
+definitivamente tú no hiciste?
+💡 Fotos, videos, comentarios
+que no son tuyos pero aparecen como tuyos
+
+N113 ¿Tus contactos reciben mensajes
+que aparecen como si fueran de ti
+pero tú no los enviaste?
+💡 Pueden estar usando tu cuenta
+o un perfil falso con tu nombre
+
+N114 ¿Alguien contrató servicios,
+sacó créditos o cometió delitos
+usando tus datos personales?
+💡 Préstamos, tarjetas, contratos
+que aparecen a tu nombre
+
+N115 ¿Tu documento de identidad
+fue robado, lo perdiste o lo
+mostraste a alguien sospechoso?
+💡 Con tu DNI/pasaporte pueden
+hacer muchos trámites a tu nombre"]:::blqF
+
+F2["N116 ¿Encontraste deudas o
+préstamos registrados a tu
+nombre que tú no pediste?
+💡 En tu historial crediticio o
+te llegan cobros de deudas que no son tuyas
+
+N117 ¿Recibes correspondencia de
+empresas, bancos o servicios
+con los que no tienes ninguna relación?
+💡 Facturas, estados de cuenta,
+cobros de servicios que no conoces
+
+N118 ¿Tu nombre aparece en listas
+de deudores o morosos sin
+que tengas deudas reales?
+💡 Puede afectar tu historial
+crediticio y tu vida diaria
+
+N119 ¿Alguien intentó hacer trámites
+usando tu número de seguridad
+social, CURP u otro identificador oficial?
+💡 Para acceder a servicios de salud,
+pensiones, o trámites gubernamentales
+
+N120 ¿Perdiste el acceso a tu
+cuenta de correo electrónico principal?
+💡 Si no puedes entrar a tu email
+es una emergencia: notifícalo"]:::blqF
+
+F3["N121 ¿Sospechas que tus datos
+personales estuvieron en una
+filtración masiva de datos?
+💡 A veces empresas como LinkedIn,
+Facebook, etc. sufren hackeos masivos
+
+N122 ¿Verificaste si tu email
+o contraseñas aparecen en
+listas de datos filtrados?
+💡 Puedes revisar en haveibeenpwned.com
+sin riesgo y de forma gratuita
+
+N123 ¿Recibes avisos de inicio de
+sesión desde países o dispositivos
+que no reconoces?
+💡 'Nuevo inicio de sesión desde
+Rusia' cuando tú no viajaste
+
+N124 ¿Alguien realizó compras,
+reservas de hoteles o vuelos
+a tu nombre sin tu permiso?
+💡 Usando tus datos o tarjetas
+guardados en alguna cuenta
+
+N125 ¿El robo de tu identidad
+ya te generó pérdidas económicas
+reales o deudas?
+💡 Dinero que salió, cargos que tienes
+que pagar, créditos a tu nombre"]:::blqF
+end
+
+%% ════════════════════════════════════════════════════════════
+%% BLOQUE G — Ransomware / Archivos Bloqueados   N126–N140
+%% ════════════════════════════════════════════════════════════
+
+subgraph BLQ_G["🔒  BLOQUE G — Ransomware / Archivos Bloqueados   N126 – N140   ⚠️ URGENTE"]
+direction LR
+
+G1["N126 ¿Los archivos de tu computadora
+tienen una extensión (terminación)
+extraña que no reconoces?
+💡 Ej: factura.pdf se convirtió en
+factura.pdf.encrypted o .locked
+
+N127 ¿Apareció un mensaje en pantalla
+exigiendo dinero para recuperar
+tus archivos?
+💡 Una ventana que ocupa toda la
+pantalla con instrucciones de pago
+
+N128 ¿El mensaje pedía que pagaras
+en Bitcoin u otra criptomoneda?
+💡 Las criptomonedas son difíciles de
+rastrear, por eso las prefieren los criminales
+
+N129 ¿Todavía puedes abrir tus
+documentos, fotos y videos
+con normalidad?
+💡 Si no puedes abrirlos ni con
+sus programas normales, están cifrados
+
+N130 ¿El problema comenzó después
+de abrir un archivo adjunto
+que llegó por email?
+💡 Facturas, currículums, fotos,
+documentos Word con macros activadas"]:::blqG
+
+G2["N131 ¿El problema comenzó después
+de conectar un USB, disco
+externo u otro dispositivo?
+💡 Los USB encontrados o de origen
+desconocido pueden contener malware
+
+N132 ¿El bloqueo afecta solo
+algunos archivos específicos
+o toda la computadora completa?
+💡 Solo documentos: ransomware parcial
+Todo el sistema: ransomware total (Locker)
+
+N133 ¿Otros equipos de tu misma
+red de casa o trabajo también
+tienen el mismo problema?
+💡 El ransomware puede propagarse
+por la red a todos los equipos conectados
+
+N134 ¿Apagaste la computadora o
+la desconectaste de internet
+cuando notaste el problema?
+💡 MUY IMPORTANTE hacerlo cuanto
+antes para limitar el daño y propagación
+
+N135 ¿Tienes copias de tus archivos
+guardadas en otro lugar?
+💡 Disco externo desconectado,
+Google Drive, OneDrive, iCloud, pendrive"]:::blqG
+
+G3["N136 ¿Cuánto tiempo llevas sin
+poder acceder a tus archivos?
+💡 Si es muy reciente hay más
+opciones técnicas disponibles
+
+N137 ¿Qué tan importantes son
+los archivos bloqueados?
+💡 Fotos de familia / Trabajo urgente
+/ Toda mi vida estaba ahí
+
+N138 ¿Tienes una foto o copia
+del mensaje de rescate
+para compartir?
+💡 El texto completo nos ayuda a
+identificar la familia de ransomware
+
+N139 ¿El mismo problema tiene
+alguien más de tu empresa
+o de tu familia?
+💡 Si son varios equipos afectados
+es una infección de red más grave
+
+N140 ¿Ya pagaste o estás
+pensando en pagar el rescate?
+💡 IMPORTANTE: pagar no garantiza
+recuperar los archivos —
+consulta antes con un experto"]:::blqG
+end
+
+%% ════════════════════════════════════════════════════════════
+%% BLOQUE H — Virus / Malware / Comportamiento Extraño   N141–N155
+%% ════════════════════════════════════════════════════════════
+
+subgraph BLQ_H["🦠  BLOQUE H — Virus / Malware / Comportamiento Extraño   N141 – N155"]
+direction LR
+
+H1["N141 ¿Tu antivirus detectó una
+amenaza pero dice que no puede
+eliminarla o sigue apareciendo?
+💡 Puede ser un virus más sofisticado
+que evita ser borrado por el antivirus
+
+N142 ¿Ves publicidad excesiva en
+todas las páginas o ventanas
+emergentes que no puedes cerrar?
+💡 Eso se llama 'adware': programa
+que muestra anuncios sin parar
+
+N143 ¿Tu navegador abre páginas
+que tú no pediste
+al iniciar o navegar?
+💡 Aparecen páginas de publicidad,
+apuestas o desconocidas solas
+
+N144 ¿El navegador instaló extensiones
+o complementos que tú
+no pediste?
+💡 Barras de herramientas nuevas,
+extensiones en la lista que no reconoces
+
+N145 ¿El buscador predeterminado
+de tu navegador cambió solo
+a uno que no reconoces?
+💡 En vez de Google aparece
+'Search Marquis', 'Bing' forzado u otro"]:::blqH
+
+H2["N146 ¿Tu correo electrónico está
+enviando mensajes de spam
+a tus contactos sin que tú lo hagas?
+💡 Tus amigos te avisan que reciben
+emails tuyos con links o publicidad rara
+
+N147 ¿Tu antivirus está desactivado
+y cuando intentas activarlo
+no puedes?
+💡 Algunos virus desactivan el antivirus
+para no ser detectados
+
+N148 ¿Tu computadora intenta
+conectarse a internet de manera
+constante sin razón aparente?
+💡 La luz del router parpadea todo
+el tiempo aunque no estés usando nada
+
+N149 ¿Ves procesos o programas
+desconocidos en el administrador
+de tareas que consumen mucho?
+💡 Ctrl+Alt+Supr → Administrador de tareas
+→ procesos raros usando mucha CPU
+
+N150 ¿Encontraste programas
+relacionados con minería de
+criptomonedas que no instalaste?
+💡 Usan tu computadora para
+generar dinero para otro sin tu permiso"]:::blqH
+
+H3["N151 ¿Tu dispositivo emite
+sonidos raros, la pantalla
+parpadea o actúa como si
+alguien lo controlara?
+💡 El cursor se mueve solo, ventanas
+se abren y cierran sin que toques nada
+
+N152 ¿Aparecen archivos nuevos
+creados solos en tu escritorio
+o en carpetas del sistema?
+💡 Archivos con nombres raros como
+README.txt, DECRYPT_MY_FILES, etc.
+
+N153 ¿Notaste mucho tráfico de
+red inusual en tu router?
+💡 Las luces parpadean mucho cuando
+nadie está usando internet activamente
+
+N154 ¿Tus contraseñas guardadas
+en el navegador fueron
+usadas en otro lugar sin tu permiso?
+💡 El navegador recuerda las claves
+y si hay malware puede robarlas
+
+N155 ¿Tu teléfono gasta mucho más
+batería o datos móviles
+de lo normal sin explicación?
+💡 Puede indicar que hay una app
+funcionando en segundo plano en secreto"]:::blqH
+end
+
+%% ════════════════════════════════════════════════════════════
+%% BLOQUE I — Seguridad de Menores   N156–N165
+%% ════════════════════════════════════════════════════════════
+
+subgraph BLQ_I["👶  BLOQUE I — Seguridad de Menores   N156 – N165   ⚠️ PRIORITARIO"]
+direction LR
+
+I1["N156 ¿El menor fue contactado por
+un desconocido en redes sociales,
+juegos online o apps de mensajería?
+💡 Juegos como Roblox, Minecraft,
+Fortnite; apps como TikTok, Instagram
+
+N157 ¿El desconocido le pidió datos
+personales, fotos, o le pidió
+mantener el contacto en secreto?
+💡 Pedir secreto a un menor es
+señal de alerta gravísima — grooming
+
+N158 ¿El menor recibió imágenes,
+videos o mensajes de contenido
+inapropiado, sexual o violento?
+💡 Enviar material así a menores
+es un delito grave en todos los países
+
+N159 ¿El menor compartió fotos
+o imágenes personales/íntimas
+con alguien que no conoce en persona?
+💡 Aunque el menor lo haya hecho
+voluntariamente, está en peligro
+
+N160 ¿El menor fue presionado,
+amenazado o chantajeado
+en línea para hacer algo?
+💡 'Si no me mandas una foto
+le digo a tus padres lo que hiciste'"]:::blqI
+
+I2["N161 ¿El menor accede a internet
+sin supervisión de adultos
+o sin control parental?
+💡 Sin filtros ni supervisión los
+menores quedan expuestos
+
+N162 ¿El menor tiene dispositivos
+propios (teléfono, tablet) sin
+restricciones de uso?
+💡 Dispositivos con acceso libre
+a todo tipo de contenido y contactos
+
+N163 ¿Sabes con quién se comunica
+habitualmente el menor
+en sus dispositivos?
+💡 Conoces a sus amigos online
+o son personas que el menor oculta
+
+N164 ¿El menor ha cambiado
+su comportamiento de manera
+notable (tristeza, miedo, secretismo)?
+💡 Se asusta cuando lo ven con
+el teléfono, llora sin explicar por qué
+
+N165 ¿Ya reportaste el contacto
+o contenido inapropiado a
+la plataforma donde ocurrió?
+💡 Todas las plataformas tienen
+botón de denuncia para contenido con menores"]:::blqI
+end
+
+%% ════════════════════════════════════════════════════════════
+%% BLOQUE J — Incidente Organizacional / Empresa   N166–N180
+%% ════════════════════════════════════════════════════════════
+
+subgraph BLQ_J["🏢  BLOQUE J — Incidente Organizacional / Empresa   N166 – N180"]
+direction LR
+
+J1["N166 ¿Cuántos empleados o equipos
+de la empresa están afectados?
+💡 Solo mi PC / Un departamento /
+Toda la empresa / Varios sitios
+
+N167 ¿Sistemas críticos están
+comprometidos?
+💡 Servidores, base de datos de
+clientes, sistema de facturación,
+producción o sistemas de control
+
+N168 ¿Se expusieron datos personales
+de clientes, empleados o
+proveedores?
+💡 Nombres, DNIs, emails, teléfonos,
+datos bancarios de terceros
+
+N169 ¿La empresa tiene un equipo
+o responsable de tecnología
+o seguridad informática?
+💡 IT, sistemas, o alguien que
+gestiona las computadoras
+
+N170 ¿Hay evidencia de accesos
+no autorizados a sistemas
+o aplicaciones de la empresa?
+💡 Logins de cuentas en horarios
+raros, accesos desde IPs desconocidas"]:::blqJ
+
+J2["N171 ¿Hay evidencia de que datos
+de la empresa fueron copiados
+o enviados fuera?
+💡 Archivos descargados masivamente,
+emails con adjuntos enviados a externos
+
+N172 ¿Podría alguien de dentro
+de la empresa ser responsable
+del incidente?
+💡 Empleado descontento, alguien
+que tuvo acceso indebido a datos
+
+N173 ¿El incidente afecta la
+capacidad de operar normalmente
+del negocio?
+💡 No pueden atender clientes,
+el sistema está caído, hay pérdidas
+
+N174 ¿La empresa tiene políticas
+de seguridad o procedimientos
+para responder a incidentes?
+💡 Manual de crisis, contactos de
+emergencia, proveedor de ciberseguridad
+
+N175 ¿Hay regulación legal que
+exija notificar la brecha?
+💡 GDPR (Europa), LOPD (España),
+LGPD (Brasil) u otras leyes locales"]:::blqJ
+
+J3["N176 ¿Ya contactaron a abogados
+o a las autoridades competentes?
+💡 Dependiendo del país: policía,
+fiscalía especializada, regulador
+
+N177 ¿Tienen registros o logs
+del sistema para analizar?
+💡 Historial de accesos, eventos
+del servidor, logs de firewall
+
+N178 ¿El ataque parece estar
+dirigido específicamente a
+esta empresa?
+💡 O parece ser un ataque masivo
+que afectó a muchas empresas
+
+N179 ¿La empresa tiene contrato
+con alguna empresa de
+ciberseguridad o seguro cibernético?
+💡 Proveedor MSSP, SOC externo,
+seguro que cubra incidentes cyber
+
+N180 ¿La dirección o gerencia
+de la empresa está al tanto
+del incidente?
+💡 El nivel directivo debe saber
+para tomar decisiones urgentes"]:::blqJ
+end
+
+%% ════════════════════════════════════════════════════════════
+%% BLOQUE K — Evidencia y Acciones Tomadas   N181–N193
+%% ════════════════════════════════════════════════════════════
+
+subgraph BLQ_K["📋  BLOQUE K — Evidencia y Acciones Tomadas   N181 – N193  (siempre)"]
+direction LR
+
+K1["N181 ¿Hiciste capturas de pantalla
+de lo que ocurrió?
+💡 MUY IMPORTANTE: antes de
+cerrar ventanas, borrar mensajes
+o hacer cualquier cambio
+
+N182 ¿Guardaste los emails o
+mensajes sospechosos
+sin borrarlos?
+💡 No los elimines: son evidencia
+para la denuncia policial
+
+N183 ¿Tienes el número de teléfono,
+email o datos del atacante
+o estafador?
+💡 Cualquier dato de contacto
+ayuda a la investigación
+
+N184 ¿Tienes datos de cuentas
+bancarias o billeteras de
+criptomonedas de los atacantes?
+💡 IBANs, CBUs, wallets crypto:
+guárdalas sin borrar nada
+
+N185 ¿Ya cambiaste las contraseñas
+de las cuentas que
+fueron comprometidas?
+💡 Hazlo desde un dispositivo
+limpio y una red segura (no WiFi público)
+
+N186 ¿Ya avisaste a tu banco
+sobre el fraude o acceso
+no autorizado?
+💡 Llama al número del reverso
+de tu tarjeta o ve a la sucursal HOY
+
+N187 ¿Ya hiciste una denuncia
+ante la policía o las
+autoridades competentes?
+💡 Aunque no sepas bien qué pasó,
+la denuncia es importante y gratuita"]:::blqK
+
+K2["N188 ¿Ya reportaste las cuentas
+o contenido a la plataforma
+donde ocurrió?
+💡 Facebook, Instagram, WhatsApp,
+Google, TikTok tienen opciones de denuncia
+
+N189 ¿Desconectaste el equipo
+afectado de internet?
+💡 En ransomware y malware activo:
+cable de red fuera, WiFi apagado
+
+N190 ¿Contrataste o pediste ayuda
+a algún técnico o profesional
+de seguridad informática?
+💡 Si no sabes qué hacer, un técnico
+puede orientarte sin cobrarte mucho
+
+N191 ¿Cuánto tiempo llevas
+intentando resolver este
+problema sin éxito?
+💡 Días, semanas, meses:
+nos indica la urgencia
+
+N192 ¿El problema empeoró, sigue
+igual o mejoró desde que
+lo notaste por primera vez?
+💡 Si empeoró puede estar
+en fase activa de ataque
+
+N193 ¿Hay alguien que haya
+visto lo que ocurrió y pueda
+testificarlo?
+💡 Compañero, familiar, técnico:
+testigos que vieron el incidente"]:::blqK
+end
+
+%% ════════════════════════════════════════════════════════════
+%% BLOQUE L — Evaluación de Urgencia Final   N194–N200
+%% ════════════════════════════════════════════════════════════
+
+subgraph BLQ_L["🚨  BLOQUE L — Evaluación de Urgencia Final   N194 – N200"]
+direction LR
+
+L1["N194 ¿El incidente sigue activo
+en este momento mientras hablamos?
+💡 El atacante aún está dentro,
+el dinero sigue saliendo, el malware activo
+
+N195 ¿Tu seguridad física o la de
+personas de tu familia está
+en riesgo por esto?
+💡 El acosador sabe dónde vives,
+hay amenazas físicas, hay menores en riesgo
+
+N196 ¿Hay dinero que está saliendo
+de tus cuentas activamente
+en este momento?
+💡 Si aún hay transacciones que puedes
+detener llamando al banco AHORA
+
+N197 ¿Hay información muy sensible
+expuesta que podría causarte
+daño grave si se difunde?
+💡 Fotos íntimas, historial médico,
+secretos comerciales, datos de clientes
+
+N198 ¿Este incidente afecta tu
+trabajo o podría ocasionarte
+perder tu empleo?
+💡 Si involucra datos de la empresa
+o sistemas de trabajo
+
+N199 ¿El atacante aún tiene acceso
+activo a tus dispositivos
+o cuentas en este momento?
+💡 Puede ver lo que haces, leer
+tus mensajes o controlar tu equipo
+
+N200 ¿Necesitas orientación sobre
+a qué autoridad o entidad
+específica debes acudir?
+💡 Policía / Banco / Plataforma /
+Fiscalía / Protección de datos / INCIBE"]:::blqL
+end
+
+%% ════════════════════════════════════════════════════════════
+%% CLASIFICACIÓN FINAL Y DERIVACIÓN
+%% ════════════════════════════════════════════════════════════
+
+CLS_P1(["🔴  URGENTE — ACTÚA AHORA  P1
+━━━━━━━━━━━━━━━━━━━━━━━━━
+RANSOMWARE ACTIVO
+→ Apaga el equipo YA, no pagues
+→ Llama a un técnico de confianza
+→ Denuncia en la policía
+
+FRAUDE BANCARIO EN CURSO
+→ Llama a tu banco AHORA al número
+   del reverso de tu tarjeta
+→ Bloquea todas tus tarjetas
+
+MENOR EN RIESGO
+→ Llama a la policía inmediatamente
+→ No borres nada del dispositivo
+
+ATACANTE CON ACCESO ACTIVO
+→ Cambia TODAS tus contraseñas
+   desde otro dispositivo
+→ Cierra sesión en todos los dispositivos"]):::critico
+
+CLS_P2(["🟠  PRIORITARIO — ACTÚA HOY  P2
+━━━━━━━━━━━━━━━━━━━━━━━━━
+CUENTAS COMPROMETIDAS
+→ Cambia contraseñas del email PRIMERO
+→ Activa verificación en dos pasos
+→ Revisa dispositivos con acceso activo
+
+ROBO DE IDENTIDAD CONFIRMADO
+→ Alerta a tu banco y entidades
+→ Presenta denuncia policial hoy
+→ Guarda todas las evidencias
+
+MALWARE PERSISTENTE
+→ No uses el equipo para datos sensibles
+→ Busca ayuda técnica profesional hoy
+→ Cambia contraseñas desde otro dispositivo
+
+DATOS SENSIBLES EXPUESTOS
+→ Denuncia en la plataforma afectada
+→ Notifica a personas involucradas"]):::alto
+
+CLS_P3(["🟡  IMPORTANTE — ACTÚA EN 24-48h  P3
+━━━━━━━━━━━━━━━━━━━━━━━━━━
+ESTAFA / PHISHING COMPLETADO
+→ Documenta todo con capturas
+→ Denuncia ante la policía
+→ Reporta a la plataforma
+→ Alerta a tus contactos
+
+ACOSO DIGITAL ACTIVO
+→ Guarda evidencias sin borrar nada
+→ Bloquea en plataformas y reporta
+→ Considera denuncia policial
+
+FRAUDE MENOR RESUELTO
+→ Presenta denuncia igual
+→ Monitorea tus cuentas las próximas semanas
+
+SOSPECHA SIN CONFIRMAR
+→ Sigue los pasos de verificación
+→ Cambia contraseñas preventivamente"]):::medio
+
+CLS_P4(["🟢  ORIENTACIÓN PREVENTIVA  P4
+━━━━━━━━━━━━━━━━━━━━━━━━━
+CONSULTA DE PRECAUCIÓN
+→ No hay daño confirmado
+→ Revisa tus configuraciones de privacidad
+→ Activa verificación en dos pasos
+
+COMPORTAMIENTO SOSPECHOSO SIN DAÑO
+→ Ejecuta un análisis con antivirus
+→ Revisa apps y extensiones instaladas
+
+GUÍA GENERAL DE SEGURIDAD
+→ Usa contraseñas únicas y largas
+→ Haz copias de seguridad regularmente
+→ Mantén software actualizado
+→ Desconfía de urgencias en mensajes
+
+RECURSOS: INCIBE (España) 017
+          Línea de Ayuda en Ciberseguridad"]):::bajo
+
+%% ════════════════════════════════════════════════════════════
+%% ROUTING PRINCIPAL: Rutas → Bloques de Categoría
+%% ════════════════════════════════════════════════════════════
+
+ROUTE_G  --> BLQ_G
+ROUTE_D  --> BLQ_D
+ROUTE_E  --> BLQ_E
+ROUTE_I  --> BLQ_I
+ROUTE_F  --> BLQ_F
+ROUTE_H  --> BLQ_H
+ROUTE_C  --> BLQ_C
+ROUTE_B  --> BLQ_B
+
+%% Todos los bloques de categoría pasan por Bloque A (dispositivo base)
+BLQ_G --> BLQ_A
+BLQ_D --> BLQ_A
+BLQ_E --> BLQ_A
+BLQ_I --> BLQ_A
+BLQ_F --> BLQ_A
+BLQ_H --> BLQ_A
+BLQ_C --> BLQ_A
+BLQ_B --> BLQ_A
+BLQ_J --> BLQ_A
+
+%% Bloque A → Bloque K (evidencia y acciones — siempre)
+BLQ_A --> BLQ_K
+
+%% Bloque K → Bloque L (evaluación de urgencia final)
+BLQ_K --> BLQ_L
+
+%% ════════════════════════════════════════════════════════════
+%% CLASIFICACIÓN: Bloque L → Output
+%% ════════════════════════════════════════════════════════════
+
+BLQ_L -->|"N194=Sí Y N199=Sí
+Ataque activo con acceso"| CLS_P1
+
+BLQ_L -->|"N195=Sí
+Riesgo físico o menor"| CLS_P1
+
+BLQ_L -->|"N196=Sí
+Dinero saliendo ahora"| CLS_P1
+
+BLQ_L -->|"Daño confirmado
+Sin urgencia activa
+N194=No"| CLS_P2
+
+BLQ_L -->|"N197=Sí
+Datos sensibles expuestos"| CLS_P2
+
+BLQ_L -->|"Daño ya ocurrido
+Sin actividad actual
+N199=No"| CLS_P3
+
+BLQ_L -->|"Solo consulta o
+sospecha sin confirmar
+N194=No Y N199=No"| CLS_P4
+
+%% ════════════════════════════════════════════════════════════
+%% CONEXIONES CRUZADAS (cross-paths)
+%% ════════════════════════════════════════════════════════════
+
+BLQ_D -. "N081=Sí
+Compartió credenciales
+bancarias" .-> BLQ_B:::cross
+
+BLQ_C -. "N066=Sí o N074=Sí
+Ingresó datos personales
+o de tarjeta" .-> BLQ_D:::cross
+
+BLQ_E -. "N109=Sí
+Hay menores en
+contenido de sextorsión" .-> BLQ_I:::cross
+
+BLQ_F -. "N125=Sí
+Hay pérdidas
+económicas reales" .-> BLQ_D:::cross
+
+BLQ_H -. "N147=Sí Y N152=Sí
+Comportamiento de
+ransomware detectado" .-> BLQ_G:::cross
+
+BLQ_G -. "Verificar cuentas por
+posible compromiso
+asociado" .-> BLQ_B:::cross
+
+BLQ_J -. "N172=Sí
+Insider / Empleado
+sospechoso" .-> BLQ_E:::cross
+
+BLQ_C -. "N061=Sí
+Acceso remoto concedido
+→ revisar cuentas" .-> BLQ_B:::cross
+
+BLQ_E -. "N103=Sí
+Posible stalkerware
+→ revisar dispositivo" .-> BLQ_H:::cross
+
+BLQ_F -. "N120=Sí
+Perdió acceso
+al email principal" .-> BLQ_B:::cross
+
+%% ════════════════════════════════════════════════════════════
+%% LEYENDA
+%% ════════════════════════════════════════════════════════════
+
+subgraph LEYENDA["📌  Leyenda"]
+direction LR
+LEG1["🔒 G: Ransomware
+🎣 C: Phishing/Estafa
+💳 D: Fraude Bancario
+👁️ E: Acoso/Sextorsión
+👤 F: Robo de Identidad
+🦠 H: Virus/Malware
+👶 I: Seguridad Menores
+🏢 J: Empresa/Organización
+💻 A: Dispositivo (base)
+🔐 B: Acceso a Cuentas
+📋 K: Evidencia (siempre)
+🚨 L: Urgencia Final"]:::blqK
+LEG2["🔴 P1: Actúa AHORA
+🟠 P2: Actúa HOY
+🟡 P3: Actúa en 24-48h
+🟢 P4: Orientación
+--- Conexiones cruzadas
+    entre categorías"]:::blqK
+end

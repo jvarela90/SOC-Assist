@@ -1540,6 +1540,350 @@ Perdió acceso
 al email principal" .-> BLQ_B:::cross
 
 %% ════════════════════════════════════════════════════════════
+%% MANEJO DE INDETERMINACIÓN
+%%
+%% PROBLEMA: el gateway puede recibir Sí en MÚLTIPLES ramas
+%% (ej: N009 fraude + N012 archivos bloqueados + N015 virus)
+%% PROBLEMA: un bloque de categoría puede no confirmar sus
+%% indicadores clave → no sabemos si la categoría es correcta
+%%
+%% SOLUCIÓN:
+%%   MULTI_GW  → detecta cuando ≥2 categorías son posibles
+%%   DISC_**   → discrimina entre pares de categorías confundibles
+%%   DEPTH_**  → profundiza dentro de la misma familia
+%%               (preguntas del bloque no formuladas aún)
+%%               antes de continuar hacia Bloque A
+%% ════════════════════════════════════════════════════════════
+
+%% ── Detección de respuestas múltiples en gateway ─────────────
+
+MULTI_GW{"¿Respondiste SÍ a DOS O MÁS
+de las siguientes preguntas gateway?
+• N009  pérdidas económicas
+• N010  amenazas / acoso
+• N011  acceso no autorizado
+• N012  archivos bloqueados
+• N014  suplantación de identidad
+• N015  virus / comportamiento raro
+💡 Cuando hay múltiples señales
+necesitamos afinar la categoría"}:::gateway
+
+N012 -->|"También N015=Sí
+archivos bloqueados + virus"| MULTI_GW
+N011 -->|"También N009=Sí
+acceso + pérdidas económicas"| MULTI_GW
+N010 -->|"También N014=Sí
+acoso + suplantación"| MULTI_GW
+
+MULTI_GW -->|"N012=Sí Y N015=Sí
+¿Ransomware o Malware?"| DISC_GH
+MULTI_GW -->|"N009=Sí Y N012=Sí
+¿Fraude bancario Y archivos bloqueados?"| DISC_DG
+MULTI_GW -->|"N009=Sí Y N011=Sí
+¿Fraude Y acceso no autorizado?"| DISC_CD
+MULTI_GW -->|"N010=Sí Y N014=Sí
+¿Acoso Y suplantación?"| DISC_EF
+MULTI_GW -->|"N011=Sí Y N014=Sí
+¿Cuentas Y robo de identidad?"| DISC_BF
+MULTI_GW -->|"N009=Sí Y N010=Sí
+Fraude + Acoso
+→ ambas rutas activas"| ROUTE_D
+
+%% ── Nodos DISC — Discriminación entre pares confundibles ─────
+
+DISC_GH{"🔀 DISC G↔H — ¿Ransomware o Malware?
+Pregunta clave N127:
+¿Apareció un mensaje en pantalla
+exigiendo dinero / pago para
+recuperar tus archivos?
+Y N129: ¿Puedes abrir normalmente
+al menos algunos archivos?"}:::gateway
+
+DISC_CD{"🔀 DISC C↔D — ¿Phishing o Fraude?
+Pregunta clave N066:
+¿Ingresaste datos de tu tarjeta
+(número, CVV, fecha) en un sitio
+que ahora sospechas era falso?
+Y N079: ¿Hiciste transferencias
+a cuentas desconocidas?"}:::gateway
+
+DISC_EF{"🔀 DISC E↔F — ¿Acoso o Suplantación?
+Pregunta clave N094:
+¿Alguien te amenaza con publicar
+fotos o videos tuyos?
+Y N111: ¿Alguien creó un perfil falso
+con tu nombre y fotos en redes?"}:::gateway
+
+DISC_BF{"🔀 DISC B↔F — ¿Cuentas o Identidad?
+Pregunta clave N039:
+¿Tu contraseña fue cambiada
+sin que tú lo hicieras?
+Y N116: ¿Encontraste deudas o
+préstamos a tu nombre
+que no pediste?"}:::gateway
+
+DISC_DG{"🔀 DISC D↔G — ¿Fraude + Ransomware?
+Pregunta clave N127:
+¿Hay mensaje de rescate en pantalla?
+Y N076: ¿Hay cargos no reconocidos
+en tu tarjeta o cuenta bancaria?
+💡 Pueden haber ocurrido ambos:
+el ransomware puede ir acompañado
+de robo de credenciales bancarias"}:::gateway
+
+%% Routing desde discriminadores → bloques
+DISC_GH -->|"N127=Sí
+Hay mensaje de rescate → RANSOMWARE"| ROUTE_G
+DISC_GH -->|"N127=No Y N129=Sí
+Sin rescate, archivos accesibles → MALWARE"| ROUTE_H
+DISC_GH -->|"N127=Sí Y N129=No
+Rescate + cifrado total → RANSOMWARE"| ROUTE_G
+
+DISC_CD -->|"N066=Sí o N079=Sí
+Datos de tarjeta o transferencias → FRAUDE"| ROUTE_D
+DISC_CD -->|"N066=No Y N079=No
+Solo phishing sin pérdida directa → PHISHING"| ROUTE_C
+DISC_CD -->|"N066=Sí Y N079=Sí
+Phishing + fraude confirmados"| ROUTE_D
+
+DISC_EF -->|"N094=Sí
+Amenazan con imágenes → ACOSO/SEXTORSIÓN"| ROUTE_E
+DISC_EF -->|"N094=No Y N111=Sí
+Perfil falso sin amenaza → SUPLANTACIÓN"| ROUTE_F
+DISC_EF -->|"Ambas=Sí
+Acoso + suplantación → empezar por ACOSO"| ROUTE_E
+
+DISC_BF -->|"N039=Sí
+Contraseña cambiada → CUENTAS"| ROUTE_B
+DISC_BF -->|"N039=No Y N116=Sí
+Deudas a tu nombre → IDENTIDAD"| ROUTE_F
+DISC_BF -->|"Ambas=Sí"| ROUTE_B
+
+DISC_DG -->|"N127=Sí
+Hay ransomware → prioridad G"| ROUTE_G
+DISC_DG -->|"N127=No Y N076=Sí
+Solo fraude bancario → D"| ROUTE_D
+
+%% ── Nodos DEPTH — Profundización dentro de la misma familia ──
+%%    Se activan cuando el bloque principal NO confirmó
+%%    sus indicadores clave — preguntas de la familia
+%%    que no se formularon aún (no son repeticiones)
+
+DEPTH_G["🔒 PROFUNDIZACIÓN — Familia RANSOMWARE
+Indicadores clave no confirmados aún — preguntas N que
+no se hicieron en el bloque principal:
+
+N128: ¿El mensaje de rescate pedía pago en Bitcoin
+      u otra criptomoneda concretamente?
+N130: ¿El problema comenzó justo después de abrir
+      un archivo adjunto de email (Word, PDF, ZIP)?
+N131: ¿Ocurrió al conectar un USB o disco externo?
+N133: ¿Hay otros equipos de tu casa o trabajo
+      con el mismo problema ahora?
+N135: ¿Tenés copias de seguridad de los archivos
+      en un disco externo o en la nube?
+N138: ¿Podés compartir el texto exacto del mensaje
+      de rescate (foto o copia del texto)?
+
+→ Si N127=No en todas → evaluar redirección a BLOQUE H"]:::blqG
+
+DEPTH_H["🦠 PROFUNDIZACIÓN — Familia MALWARE
+Indicadores clave no confirmados aún:
+
+N143: ¿Tu navegador abre páginas que no pediste
+      al arrancar o al navegar?
+N144: ¿El navegador instaló extensiones o barras
+      de herramientas que no reconocés?
+N146: ¿Tu correo envía mensajes de spam a tus
+      contactos sin que vos lo hayas hecho?
+N148: ¿Tu PC intenta conectarse a internet
+      constantemente sin razón aparente?
+N150: ¿Encontraste programas de minería de
+      criptomonedas que no instalaste?
+N151: ¿El cursor se mueve solo o ventanas
+      se abren y cierran sin que toques nada?
+N154: ¿Tus contraseñas del navegador fueron usadas
+      en otro dispositivo sin tu permiso?
+
+→ Si N147=Sí Y N152=Sí → evaluar redirección a BLOQUE G"]:::blqH
+
+DEPTH_C["🎣 PROFUNDIZACIÓN — Familia PHISHING / ESTAFA
+Indicadores clave no confirmados aún:
+
+N060: ¿Alguien te pidió instalar un programa remoto
+      (TeamViewer, AnyDesk) para 'arreglarte' el PC?
+N062: ¿Te pidieron comprar tarjetas de regalo
+      (Google Play, Steam, Amazon, iTunes) para pagar algo?
+N063: ¿Te prometieron ganancias, inversiones muy
+      rentables o un trabajo bien pagado pidiendo
+      dinero o datos primero?
+N065: ¿Apareció una ventana de alerta en el navegador
+      diciendo que tenés un virus y un número a llamar?
+N071: ¿Se hicieron pasar por soporte técnico de
+      Microsoft, Apple o Google?
+N072: ¿Una oferta de trabajo pedía dinero para
+      materiales, registro o uniformes primero?
+N073: ¿Te propusieron invertir en criptomonedas
+      con ganancias muy altas y sin riesgo?
+
+→ Si todas=No → posiblemente Bloque B (acceso a cuentas)"]:::blqC
+
+DEPTH_D["💳 PROFUNDIZACIÓN — Familia FRAUDE FINANCIERO
+Indicadores clave no confirmados aún:
+
+N082: ¿Ya le avisaste a tu banco del fraude?
+      (cuanto antes más posibilidades de recuperar)
+N083: ¿Tenés capturas o comprobantes de las
+      transacciones fraudulentas?
+N084: ¿El dinero fue enviado a cuenta de otro país?
+N085: ¿El fraude ocurrió en una compra por internet
+      (tienda online, marketplace)?
+N086: ¿Pagaste por algo que nunca llegó o era falso?
+N087: ¿Te pidieron pagar con métodos irreversibles
+      (criptomonedas, giros postales, tarjetas de regalo)?
+N089: ¿Hace cuántos días ocurrió el fraude?
+
+→ Si N076=No Y N079=No → confirmar si hay fraude real
+  o si fue un error de cargo legítimo (N090)"]:::blqD
+
+DEPTH_E["👁️ PROFUNDIZACIÓN — Familia ACOSO / SEXTORSIÓN
+Indicadores clave no confirmados aún:
+
+N093: ¿Los mensajes provienen de muchas cuentas
+      distintas o siempre de la misma persona?
+N099: ¿El acosador sabe dónde vivís, trabajás
+      o estudiás, o datos de tu familia?
+N101: ¿Alguien está publicando información privada
+      tuya para dañarte o avergonzarte (doxing)?
+N103: ¿Creés que alguien instaló una app espía
+      en tu teléfono sin que te dieras cuenta?
+N104: ¿Tu ex pareja o alguien muy cercano tiene
+      acceso a tus cuentas o dispositivos?
+N108: ¿El acoso también ocurre en persona,
+      en tu trabajo o en tu domicilio?
+
+→ Si N091=No Y N094=No → puede ser Bloque F
+  (suplantación sin amenaza directa)"]:::blqE
+
+DEPTH_F["👤 PROFUNDIZACIÓN — Familia IDENTIDAD / SUPLANTACIÓN
+Indicadores clave no confirmados aún:
+
+N113: ¿Tus contactos reciben mensajes que parecen
+      ser tuyos pero vos no los enviaste?
+N115: ¿Tu documento de identidad fue robado, lo
+      perdiste o lo mostraste a alguien sospechoso?
+N117: ¿Recibís correspondencia de empresas o bancos
+      con los que no tenés ninguna relación?
+N119: ¿Alguien intentó hacer trámites usando tu
+      número de seguridad social, CURP u otro dato?
+N122: ¿Tu email aparece en listas de datos filtrados?
+      (podés verificarlo en haveibeenpwned.com)
+N124: ¿Alguien hizo compras, reservas de hotel
+      o vuelos a tu nombre sin tu permiso?
+
+→ Si N111=No Y N114=No → confirmar si hay suplantación
+  real o solo acceso a una cuenta (Bloque B)"]:::blqF
+
+DEPTH_B["🔐 PROFUNDIZACIÓN — Familia ACCESO A CUENTAS
+Indicadores clave no confirmados aún:
+
+N040: ¿El email o teléfono de recuperación de
+      tus cuentas fue cambiado sin que vos lo hicieras?
+N041: ¿Ves actividad en tus cuentas que no reconocés?
+      (mensajes enviados, compras, publicaciones)
+N046: ¿Tu cuenta de email sirve para recuperar
+      o acceder a otras cuentas (banco, redes, trabajo)?
+N050: ¿Hay dispositivos desconocidos con acceso
+      activo a tus cuentas en este momento?
+N051: ¿Tu cuenta de redes sociales publicó cosas
+      que vos no pusiste?
+N053: ¿Tu correo electrónico principal está
+      afectado o inaccesible?
+
+→ Si N037=Sí (podés entrar) Y N039=No Y N050=No
+  → puede ser solo sospecha sin compromiso real"]:::blqB
+
+DEPTH_I["👶 PROFUNDIZACIÓN — Familia SEGURIDAD MENORES
+Indicadores clave no confirmados aún:
+
+N158: ¿El menor recibió imágenes, videos o mensajes
+      de contenido inapropiado, sexual o violento?
+N159: ¿El menor compartió fotos personales o íntimas
+      con alguien que no conoce en persona?
+N160: ¿El menor fue presionado, amenazado o
+      chantajeado en línea para hacer algo?
+N163: ¿Sabés con quién se comunica habitualmente
+      el menor en sus dispositivos?
+N164: ¿El menor cambió su comportamiento de manera
+      notable? (tristeza, miedo, secretismo)
+
+💡 IMPORTANTE: con menores SIEMPRE profundizar,
+   nunca minimizar aunque las señales sean leves"]:::blqI
+
+%% ── Conexiones: Bloques principales → DEPTH (si no confirmado) ─
+
+BLQ_G -->|"N127=No
+Sin mensaje de rescate claro
+→ profundizar familia G"| DEPTH_G
+DEPTH_G -->|"N127 confirmado ahora → RANSOMWARE"| BLQ_A
+DEPTH_G -->|"N127=No en toda profundización
+→ posiblemente MALWARE"| DISC_GH
+
+BLQ_H -->|"N141=No Y N142=No Y N143=No
+Sin malware claro → profundizar"| DEPTH_H
+DEPTH_H -->|"N147=Sí Y N152=Sí
+Comportamiento de ransomware"| DISC_GH
+DEPTH_H --> BLQ_A
+
+BLQ_C -->|"N056=No Y N058=No Y N060=No
+Sin phishing claro → profundizar"| DEPTH_C
+DEPTH_C --> BLQ_A
+
+BLQ_D -->|"N076=No Y N079=No
+Sin fraude claro → profundizar"| DEPTH_D
+DEPTH_D --> BLQ_A
+
+BLQ_E -->|"N091=No Y N094=No
+Sin acoso claro → profundizar"| DEPTH_E
+DEPTH_E -->|"N094=No Y N111=Sí
+Puede ser suplantación"| DISC_EF
+DEPTH_E --> BLQ_A
+
+BLQ_F -->|"N111=No Y N114=No
+Sin suplantación clara → profundizar"| DEPTH_F
+DEPTH_F -->|"N039=Sí
+Puede ser acceso a cuentas"| DISC_BF
+DEPTH_F --> BLQ_A
+
+BLQ_B -->|"N037=Sí Y N039=No Y N050=No
+Acceso no comprometido → profundizar"| DEPTH_B
+DEPTH_B --> BLQ_A
+
+BLQ_I -->|"N156=No
+Sin contacto con menor confirmado
+→ profundizar (tomar en serio)"| DEPTH_I
+DEPTH_I --> BLQ_A
+
+%% ── Nota sobre los pools de preguntas ────────────────────────
+%%
+%% IMPORTANTE — Relación con las 66 preguntas originales:
+%%
+%%  q_001–q_066  = Pool ANALISTA SOC (vocabulario técnico)
+%%                 EDR, SIEM, IOC, C2, kill chain, APT...
+%%                 Usado por el wizard form y chatbot v1
+%%
+%%  N001–N200   = Pool VÍCTIMA / CIUDADANO (lenguaje simple)
+%%                 ¿archivos bloqueados?, ¿tarjetas de regalo?
+%%                 ¿el acosador sabe dónde vivís?
+%%                 Diseñado para este chatbot v2
+%%
+%%  Los dos pools NO se solapan — son complementarios.
+%%  El mismo Incident puede evaluarse por cualquiera de
+%%  los dos caminos y produce el mismo registro en la DB.
+%%  Un analista SOC puede usar las q_* para profundizar
+%%  técnicamente después de que una víctima usó las N*.
+%%
+%% ════════════════════════════════════════════════════════════
 %% LEYENDA
 %% ════════════════════════════════════════════════════════════
 

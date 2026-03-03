@@ -1,0 +1,368 @@
+%%{init: {'theme': 'dark', 'flowchart': {'curve': 'basis'}}}%%
+flowchart TD
+
+    %% ─────────────────────────────────────────────
+    %% INICIO — Tres puntos de entrada naturales
+    %% ─────────────────────────────────────────────
+    START(["INICIO DEL CHAT\n¿Qué evento estás analizando hoy?"])
+
+    EP1>"Tengo alerta de herramienta\nEDR / SIEM / IDS"]
+    EP2>"Vi actividad de red sospechosa\no tráfico inusual"]
+    EP3>"Usuario reportó algo\nphishing o llamada extraña"]
+
+    START --> EP1
+    START --> EP2
+    START --> EP3
+
+    EP1 & EP2 & EP3 --> Q001
+
+    %% ─────────────────────────────────────────────
+    %% BLOQUE 1 — Naturaleza del Evento
+    %% Módulo: naturaleza | Peso motor: 1.0
+    %% ─────────────────────────────────────────────
+    subgraph BLQ1["BLOQUE 1 - Naturaleza del Evento"]
+        direction TB
+        Q001{"q_001\n¿Puede ser malicioso?"}
+        Q002["q_002\n¿Fuente o tipo de alerta?"]
+        Q004["q_004\n¿Herramienta lo marcó malicioso?"]
+        Q005["q_005\n¿Archivo o proceso sospechoso?"]
+        Q008{"q_008\n¿Malware confirmado?"}
+        Q010["q_010\n¿Anomalía de comportamiento UEBA?"]
+    end
+
+    Q001 -->|"Claramente sospechoso"| Q008
+    Q001 -->|"No seguro o parece normal"| Q002
+    Q002 --> Q004
+    Q004 --> Q005
+    Q005 --> Q008
+
+    Q008 -->|"Malware confirmado e identificado"| FT_RANSOM
+    Q008 -->|"Sin malware o sin determinar"| Q010
+
+    %% FAST-TRACK: Ransomware
+    FT_RANSOM{"q_048\n¿Cifrado masivo de archivos?"}
+    FT_RANSOM -->|"SI - Ransomware confirmado"| CR_RANSOMWARE
+    FT_RANSOM -->|"No"| Q010
+
+    CR_RANSOMWARE(["[CRITICO] RANSOMWARE DETECTADO\nSaltar a: q_011 - q_040 - q_039\nPlaybook: Contención y aislamiento inmediato\nMultiplier x1.5 si hay persistencia + lateral"])
+
+    %% ─────────────────────────────────────────────
+    %% BLOQUE 0 — Contexto de Red
+    %% Preguntas de contexto inicial, se rellenan
+    %% automáticamente si se ingresaron IP/URL/MAC
+    %% antes de comenzar el chat
+    %% ─────────────────────────────────────────────
+    Q010 --> BLQ0_S
+
+    subgraph BLQ0["BLOQUE 0 - Contexto de Red"]
+        direction TB
+        BLQ0_S["q_064\n¿La comunicación de red fue exitosa?"]
+        Q065["q_065\n¿El usuario involucrado fue identificado?"]
+        Q066["q_066\n¿Ocupa función crítica para el negocio?"]
+    end
+
+    BLQ0_S --> Q065
+    Q065 --> Q066
+
+    %% ─────────────────────────────────────────────
+    %% BLOQUE 2 — Inteligencia de Amenazas
+    %% Módulo: naturaleza + identificadores
+    %% Peso motor: 1.0 y 0.7
+    %% ─────────────────────────────────────────────
+    subgraph BLQ2["BLOQUE 2 - Inteligencia de Amenazas"]
+        direction TB
+        Q003["q_003\n¿Coincide con IOC conocido?"]
+        Q006["q_006\n¿Reputación IP o dominio externo?"]
+        Q007["q_007\n¿Dominio registrado recientemente?"]
+        Q009["q_009\n¿Hash del archivo en lista negra?"]
+        Q062{"q_062\n¿Categoría de amenaza asociada?"}
+        Q063["q_063\n¿Cuántos equipos contactan esa IP?"]
+    end
+
+    Q066 --> Q003
+    Q003 --> Q006
+    Q006 -->|"Reputación maliciosa confirmada"| Q062
+    Q006 -->|"Limpia o sin información"| Q007
+    Q007 --> Q009
+    Q009 --> Q062
+    Q062 -->|"C2 / APT / Ransomware / Botnet"| FT_C2
+    Q062 -->|"Phishing / Fraude / Cryptomining"| Q063
+    Q063 --> BLQ3_S
+
+    %% FAST-TRACK: C2 activo
+    FT_C2{"q_046\n¿Comunicación C2 confirmada?"}
+    FT_C2 -->|"Confirmada"| CR_C2
+    FT_C2 -->|"Sospechosa pero no confirmada"| Q063
+
+    CR_C2(["[CRITICO] C2 ACTIVO\nSaltar a: q_040 - q_039 - q_047\nPlaybook: Aislamiento de red y análisis forense\nPosible Brecha si hay exfiltración"])
+
+    %% ─────────────────────────────────────────────
+    %% BLOQUE 3 — Identificadores de Red
+    %% Módulo: identificadores + alcance
+    %% Peso motor: 0.7 y 1.2
+    %% ─────────────────────────────────────────────
+    subgraph BLQ3["BLOQUE 3 - Identificadores de Red"]
+        direction TB
+        BLQ3_S["q_014\n¿Dirección del tráfico?"]
+        Q059["q_059\n¿IP de origen identificada?"]
+        Q060["q_060\n¿IP de destino identificada?"]
+        Q061["q_061\n¿VPN o acceso remoto involucrado?"]
+        Q025["q_025\n¿MAC address conocida?"]
+        Q026["q_026\n¿Hostname registrado oficialmente?"]
+    end
+
+    BLQ3_S --> Q059
+    Q059 -->|"Proxy / Tor / VPN anonima"| WARN_ANON
+    Q059 -->|"IP conocida o identificada"| Q060
+    WARN_ANON(["[ALERTA] ORIGEN ANONIMO\nIndicador de evasión activa\nT1090 MITRE - Proxy / Tor"])
+    WARN_ANON --> Q060
+    Q060 --> Q061
+    Q061 --> Q025
+    Q025 --> Q026
+
+    %% ─────────────────────────────────────────────
+    %% BLOQUE 4 — Identificación del Activo
+    %% Módulo: activo | Peso motor: 1.3 (el segundo más alto)
+    %% ─────────────────────────────────────────────
+    subgraph BLQ4["BLOQUE 4 - Identificacion del Activo (peso x1.3)"]
+        direction TB
+        Q019{"q_019\n¿Tipo de equipo afectado?"}
+        Q020["q_020\n¿Está en inventario CMDB?"]
+        Q021["q_021\n¿Pertenece al dominio corporativo?"]
+        Q022["q_022\n¿Está en la DMZ?"]
+        Q023["q_023\n¿Maneja datos sensibles o regulados?"]
+        Q024{"q_024\n¿Es activo crítico Crown Jewel?"}
+    end
+
+    Q026 --> Q019
+    Q019 -->|"Controlador de Dominio"| WARN_DC
+    Q019 -->|"BD / Servidor critico / IoT"| Q020
+    Q019 -->|"PC / Laptop / BYOD"| Q020
+    WARN_DC(["[ALERTA MAXIMA] DC COMPROMETIDO\nEscalada inmediata - T1078 MITRE\nPlaybook: Respuesta a compromiso de AD"])
+    WARN_DC --> Q020
+    Q020 --> Q021
+    Q021 --> Q022
+    Q022 --> Q023
+    Q023 --> Q024
+    Q024 -->|"SI - Crown Jewel"| WARN_CROWN
+    Q024 -->|"No o desconocido"| Q011
+    WARN_CROWN(["[ALERTA] ACTIVO CRITICO AFECTADO\nMultiplier x1.8 si hay exfiltracion\nMultiplier x1.3 si no hay EDR"])
+    WARN_CROWN --> Q011
+
+    %% ─────────────────────────────────────────────
+    %% BLOQUE 5 — Alcance y Propagación
+    %% Módulo: alcance | Peso motor: 1.2
+    %% ─────────────────────────────────────────────
+    subgraph BLQ5["BLOQUE 5 - Alcance y Propagacion (peso x1.2)"]
+        direction TB
+        Q011{"q_011\n¿Cuántos equipos afectados?"}
+        Q012["q_012\n¿Cuántos usuarios afectados?"]
+        Q013["q_013\n¿Múltiples segmentos de red?"]
+        Q015["q_015\n¿Movimiento lateral visible?"]
+        Q016["q_016\n¿Salida masiva o inusual de datos?"]
+        Q018["q_018\n¿Servidores críticos o DC involucrados?"]
+    end
+
+    Q011 -->|"Mas de 50 equipos"| FT_LATERAL
+    Q011 -->|"1 a 50 equipos"| Q012
+    Q012 --> Q013
+    Q013 --> Q015
+    Q015 --> Q016
+    Q016 --> Q018
+
+    %% FAST-TRACK: Propagación masiva
+    FT_LATERAL{"q_040\n¿Movimiento lateral confirmado?"}
+    FT_LATERAL -->|"SI - Confirmado"| CR_LATERAL
+    FT_LATERAL -->|"No confirmado"| Q012
+
+    CR_LATERAL(["[CRITICO] PROPAGACION MASIVA\nSaltar a: q_039 - q_041 - q_047\nMultiplier x1.5 activado\nPlaybook: Segmentacion de red urgente"])
+
+    %% ─────────────────────────────────────────────
+    %% BLOQUE 6 — Contexto Temporal
+    %% Módulo: temporal | Peso motor: 0.8
+    %% ─────────────────────────────────────────────
+    subgraph BLQ6["BLOQUE 6 - Contexto Temporal (peso x0.8)"]
+        direction TB
+        Q034["q_034\n¿Horario del evento?"]
+        Q035["q_035\n¿Fin de semana o festivo?"]
+        Q036["q_036\n¿Patrón repetitivo en el tiempo?"]
+        Q037["q_037\n¿Inusual para ese equipo o usuario?"]
+        Q038["q_038\n¿Frecuencia inusualmente alta?"]
+        Q017["q_017\n¿Beaconing o patrón automatizado?"]
+    end
+
+    Q018 --> Q034
+    Q034 --> Q035
+    Q035 --> Q036
+    Q036 --> Q037
+    Q037 --> Q038
+    Q038 -->|"Rafaga masiva - cientos en minutos"| WARN_BEACON
+    Q038 -->|"Normal o levemente alta"| Q017
+    WARN_BEACON(["[ALERTA] BEACONING PROBABLE\nT1071 MITRE - C2 via protocolo legítimo\nVerificar q_046 con urgencia"])
+    WARN_BEACON --> Q017
+    Q017 --> Q027
+
+    %% ─────────────────────────────────────────────
+    %% BLOQUE 7 — Contexto del Usuario
+    %% Módulo: usuario | Peso motor: 1.2
+    %% ─────────────────────────────────────────────
+    subgraph BLQ7["BLOQUE 7 - Contexto del Usuario (peso x1.2)"]
+        direction TB
+        Q027{"q_027\n¿Nivel de privilegio del usuario?"}
+        Q028["q_028\n¿Proviene de cuenta de servicio?"]
+        Q029{"q_029\n¿Cuenta inactiva o deshabilitada?"}
+        Q030["q_030\n¿Cuenta creada recientemente?"]
+        Q031["q_031\n¿Intentos fallidos de autenticación?"]
+        Q033["q_033\n¿Comportamiento inusual para su perfil?"]
+    end
+
+    Q027 -->|"Admin Dominio / Enterprise Admin / root"| WARN_PRIV
+    Q027 -->|"Usuario estandar / cuenta servicio"| Q028
+    WARN_PRIV(["[ALERTA] CUENTA MUY PRIVILEGIADA\nT1078.002 MITRE - Domain Accounts\nRiesgo critico si está comprometida"])
+    WARN_PRIV --> Q029
+    Q028 -->|"Cuenta servicio con comportamiento inusual"| WARN_SVC
+    Q028 -->|"Comportamiento normal"| Q029
+    WARN_SVC(["[ALERTA] CUENTA SERVICIO ANOMALA\nT1078.003 MITRE - Service Accounts\nPosible abuso o movimiento lateral"])
+    WARN_SVC --> Q029
+    Q029 -->|"Cuenta deshabilitada aparece activa"| WARN_ZOMBIE
+    Q029 -->|"Cuenta activa y valida"| Q030
+    WARN_ZOMBIE(["[ALERTA] CUENTA ZOMBIE ACTIVA\nT1078 MITRE - Valid Accounts\nCompromiso de identidad o insider threat"])
+    WARN_ZOMBIE --> Q030
+    Q030 --> Q031
+    Q031 --> Q033
+    Q033 --> Q049
+
+    %% ─────────────────────────────────────────────
+    %% BLOQUE 8 — Controles de Seguridad
+    %% Módulo: proteccion | Peso motor: 1.1
+    %% ─────────────────────────────────────────────
+    subgraph BLQ8["BLOQUE 8 - Controles de Seguridad (peso x1.1)"]
+        direction TB
+        Q049["q_049\n¿Qué solución de seguridad tiene el equipo?"]
+        Q050["q_050\n¿Definiciones AV/EDR actualizadas?"]
+        Q051["q_051\n¿Firewall activo y con reglas?"]
+        Q052{"q_052\n¿Logs disponibles y completos?"}
+        Q053["q_053\n¿MFA habilitado?"]
+        Q032["q_032\n¿Cambio de contraseña reciente?"]
+    end
+
+    Q049 --> Q050
+    Q050 --> Q051
+    Q051 --> Q052
+    Q052 -->|"Logs BORRADOS o manipulados"| WARN_ANTI
+    Q052 -->|"Logs completos y disponibles"| Q053
+    WARN_ANTI(["[ALERTA] ANTI-FORENSICS DETECTADO\nT1070 MITRE - Indicator Removal\nIntruso avanzado / APT activo"])
+    WARN_ANTI --> Q053
+    Q053 --> Q032
+
+    %% ─────────────────────────────────────────────
+    %% BLOQUE 9 — Ingeniería Social
+    %% Módulo: social | Peso motor: 1.0
+    %% ─────────────────────────────────────────────
+    subgraph BLQ9["BLOQUE 9 - Ingenieria Social (peso x1.0)"]
+        direction TB
+        Q054["q_054\n¿Contacto telefónico sospechoso previo?"]
+        Q055["q_055\n¿Solicitud urgente e inusual de credenciales?"]
+        Q056["q_056\n¿MFA Fatigue detectado?"]
+        Q057{"q_057\n¿Phishing confirmado?"}
+        Q058["q_058\n¿Usuario reportó ser víctima?"]
+    end
+
+    Q032 --> Q054
+    Q054 --> Q055
+    Q055 --> Q056
+    Q056 --> Q057
+    Q057 -->|"Phishing confirmado"| WARN_PHISHING
+    Q057 -->|"No confirmado"| Q058
+    WARN_PHISHING(["[ALERTA] PHISHING CONFIRMADO\nVerificar: q_027 - q_016 - q_047\nPlaybook: BEC / Credential Theft\nNotificar a todos los usuarios afectados"])
+    WARN_PHISHING --> Q058
+    Q058 --> BLQ10_S
+
+    %% ─────────────────────────────────────────────
+    %% BLOQUE 10 — Evidencia Técnica: Persistencia
+    %% Módulo: evidencia | Peso motor: 1.8 (EL MÁS ALTO)
+    %% Las preguntas de este bloque tienen el mayor impacto
+    %% en el score final
+    %% ─────────────────────────────────────────────
+    subgraph BLQ10["BLOQUE 10 - Evidencia Tecnica Persistencia (peso x1.8 - EL MAS ALTO)"]
+        direction TB
+        BLQ10_S["q_039\n¿Mecanismo de persistencia detectado?\ntareas programadas, servicios nuevos, registro"]
+        Q040B["q_040\n¿Movimiento lateral confirmado?"]
+        Q041["q_041\n¿Elevación de privilegios no autorizada?"]
+        Q042{"q_042\n¿AV/EDR desactivado o manipulado?"}
+        Q043["q_043\n¿Políticas de seguridad modificadas?"]
+        Q044["q_044\n¿Cuenta admin no autorizada creada?"]
+    end
+
+    BLQ10_S --> Q040B
+    Q040B -->|"Confirmado - viene de persistencia"| MULT_PERSIST
+    Q040B -->|"No confirmado"| Q041
+    MULT_PERSIST(["[MULTIPLICADOR x1.5]\nPersistencia + Movimiento Lateral\nScore escala dramaticamente\nT1053 + T1021 MITRE"])
+    MULT_PERSIST --> Q041
+    Q041 --> Q042
+    Q042 -->|"AV/EDR completamente deshabilitado"| WARN_EDR
+    Q042 -->|"Activo y funcionando"| Q043
+    WARN_EDR(["[ALERTA] DEFENSA EVASION\nT1562 MITRE - Impair Defenses\nIndicador claro de APT o ataque avanzado"])
+    WARN_EDR --> Q043
+    Q043 --> Q044
+
+    %% ─────────────────────────────────────────────
+    %% BLOQUE 11 — Evidencia Avanzada
+    %% Módulo: evidencia + social
+    %% Peso motor: 1.8 — preguntas de mayor score bruto
+    %% q_048: score 22, q_047: score 18, q_046: score 16
+    %% ─────────────────────────────────────────────
+    subgraph BLQ11["BLOQUE 11 - Evidencia Avanzada (peso x1.8)"]
+        direction TB
+        Q045["q_045\n¿Comandos sospechosos ejecutados?\nPowerShell codificado, cmd raro"]
+        Q046B["q_046\n¿Comunicación C2 confirmada?"]
+        Q047["q_047\n¿Exfiltración de datos confirmada?"]
+    end
+
+    Q044 --> Q045
+    Q045 --> Q046B
+    Q046B -->|"C2 confirmado"| MULT_C2
+    Q046B -->|"No confirmado"| Q047
+    MULT_C2(["[MULTIPLICADOR + BRECHA POTENCIAL]\nC2 confirmado en Bloque 11\nScore muy probablemente supera 601\nT1041 / T1071 MITRE"])
+    MULT_C2 --> Q047
+    Q047 -->|"Exfiltracion + Crown Jewel activo"| MULT_EXFIL
+    Q047 -->|"Sin exfiltracion confirmada"| RESULTADO
+
+    MULT_EXFIL(["[MULTIPLICADOR x1.8]\nExfiltracion confirmada en Crown Jewel\nClasificacion final: BRECHA CONFIRMADA\nNotificacion legal y regulatoria obligatoria"])
+    MULT_EXFIL --> RESULTADO
+
+    %% ─────────────────────────────────────────────
+    %% RESULTADO FINAL
+    %% ─────────────────────────────────────────────
+    RESULTADO(["ANALISIS COMPLETADO\nScore ponderado calculado\nUmbral: 0-40 Informativo / 41-110 Sospechoso\n111-280 Incidente / 281-600 Critico / 601+ Brecha\nPlaybook asignado por nivel\nSimilitud con incidentes historicos"])
+
+    %% Fast-tracks también convergen al resultado
+    CR_RANSOMWARE --> RESULTADO
+    CR_C2 --> RESULTADO
+    CR_LATERAL --> RESULTADO
+
+    %% ─────────────────────────────────────────────
+    %% NAVEGACIÓN — siempre disponible durante el chat
+    %% El chatbot debe ofrecer esto en cada turno
+    %% ─────────────────────────────────────────────
+    NAV(["NAVEGACION SIEMPRE DISPONIBLE EN EL CHAT\nVolver a pregunta anterior\nRevisar bloque especifico por tema\nOmitir esta pregunta por ahora\nVer score parcial acumulado"])
+    NAV -.->|"en cualquier momento del chat"| Q001
+
+    %% ─────────────────────────────────────────────
+    %% ESTILOS
+    %% ─────────────────────────────────────────────
+    classDef critical fill:#dc3545,color:#fff,stroke:#dc3545,stroke-width:3px
+    classDef warning fill:#fd7e14,color:#fff,stroke:#fd7e14,stroke-width:2px
+    classDef multiplier fill:#6f42c1,color:#fff,stroke:#6f42c1,stroke-width:2px
+    classDef result fill:#198754,color:#fff,stroke:#198754,stroke-width:3px
+    classDef nav fill:#0dcaf0,color:#000,stroke:#0dcaf0,stroke-width:2px
+    classDef entry fill:#0d6efd,color:#fff,stroke:#0d6efd,stroke-width:2px
+    classDef decision fill:#343a40,color:#fff,stroke:#adb5bd,stroke-width:2px
+
+    class CR_RANSOMWARE,CR_C2,CR_LATERAL critical
+    class WARN_DC,WARN_PRIV,WARN_SVC,WARN_ZOMBIE,WARN_ANON,WARN_ANTI,WARN_EDR,WARN_PHISHING,WARN_BEACON,WARN_CROWN warning
+    class MULT_PERSIST,MULT_C2,MULT_EXFIL multiplier
+    class RESULTADO result
+    class NAV nav
+    class EP1,EP2,EP3 entry
+    class FT_RANSOM,FT_C2,FT_LATERAL decision

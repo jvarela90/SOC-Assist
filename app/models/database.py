@@ -281,6 +281,38 @@ class CalibrationLog(Base):
     notes            = Column(Text, nullable=True)
 
 
+class ChatSession(Base):
+    """Sesión de chatbot — almacena estado conversacional hasta crear el incidente."""
+    __tablename__ = "chat_sessions"
+
+    id                    = Column(Integer, primary_key=True, index=True)
+    session_uuid          = Column(String(36), unique=True, nullable=False, index=True)
+    user_id               = Column(Integer, ForeignKey("users.id"), nullable=True)
+    organization_id       = Column(Integer, ForeignKey("organizations.id"), nullable=True)
+    status                = Column(String(20), default="active")   # active|completed|abandoned
+    phase                 = Column(String(20), default="gateway")  # gateway|targeted|complete
+    # IoCs y TI
+    iocs                  = Column(Text, default="{}")   # JSON {ip_src,ip_dst,url,hash,domain}
+    ti_results            = Column(Text, default="[]")   # JSON raw TI results
+    ti_answers            = Column(Text, default="{}")   # JSON auto-answered from TI
+    # Inferencia de categoría
+    inferred_category     = Column(String(50), nullable=True)
+    category_confidence   = Column(Float, default=0.0)
+    category_probs        = Column(Text, default="{}")   # JSON {category: probability}
+    # Flujo de preguntas
+    question_queue        = Column(Text, default="[]")   # JSON q_ids pendientes
+    answered_questions    = Column(Text, default="[]")   # JSON q_ids respondidos en orden
+    answers               = Column(Text, default="{}")   # JSON {q_id: value}
+    messages              = Column(Text, default="[]")   # JSON historial del chat
+    # Resultado
+    final_score           = Column(Float, nullable=True)
+    final_classification  = Column(String(50), nullable=True)
+    threat_classification = Column(Text, default="{}")   # JSON multidimensional
+    incident_id           = Column(Integer, ForeignKey("incidents.id"), nullable=True)
+    created_at            = Column(DateTime, default=datetime.utcnow)
+    updated_at            = Column(DateTime, default=datetime.utcnow)
+
+
 class User(Base):
     __tablename__ = "users"
 

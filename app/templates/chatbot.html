@@ -1,0 +1,613 @@
+{% extends "base.html" %}
+{% block title %}Chat Analista — SOC Assist{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+
+  <!-- Header -->
+  <div class="d-flex align-items-center gap-3 mb-3">
+    <div>
+      <h4 class="mb-0"><i class="bi bi-chat-dots-fill text-info me-2"></i>Chat Analista</h4>
+      <small class="text-muted">Clasificación inteligente de incidentes · hasta 80% menos preguntas</small>
+    </div>
+    <div class="ms-auto d-flex gap-2 align-items-center" id="sessionHeader" style="display:none!important">
+      <span class="badge bg-secondary" id="categoryBadge">Sin categoría</span>
+      <span class="badge bg-outline-secondary border" id="confidenceBadge" title="Confianza en la categoría"></span>
+      <div class="progress flex-grow-1" style="width:120px;height:8px" title="Progreso">
+        <div class="progress-bar bg-info" id="progressBar" role="progressbar" style="width:0%"></div>
+      </div>
+      <small class="text-muted" id="progressText">0/0</small>
+    </div>
+  </div>
+
+  <div class="row g-3">
+
+    <!-- Panel izquierdo: IoCs -->
+    <div class="col-md-4 col-lg-3">
+      <div class="card border-secondary h-100">
+        <div class="card-header d-flex align-items-center justify-content-between">
+          <span><i class="bi bi-shield-exclamation me-1 text-warning"></i>IoCs / Indicadores</span>
+          <button class="btn btn-sm btn-outline-secondary py-0" type="button"
+                  data-bs-toggle="collapse" data-bs-target="#iocPanel">
+            <i class="bi bi-chevron-down"></i>
+          </button>
+        </div>
+        <div class="collapse show" id="iocPanel">
+          <div class="card-body">
+            <div class="mb-2">
+              <label class="form-label small text-muted mb-1">IP Origen</label>
+              <div class="input-group input-group-sm">
+                <input type="text" id="ioc_ip_src" class="form-control bg-dark text-light border-secondary font-monospace"
+                       placeholder="192.168.1.100">
+                <button class="btn btn-outline-info btn-sm" onclick="lookupSingle('ioc_ip_src','tip_ip_src')">
+                  <i class="bi bi-search"></i>
+                </button>
+              </div>
+              <div id="tip_ip_src" class="mt-1"></div>
+            </div>
+            <div class="mb-2">
+              <label class="form-label small text-muted mb-1">IP Destino</label>
+              <div class="input-group input-group-sm">
+                <input type="text" id="ioc_ip_dst" class="form-control bg-dark text-light border-secondary font-monospace"
+                       placeholder="203.0.113.5">
+                <button class="btn btn-outline-info btn-sm" onclick="lookupSingle('ioc_ip_dst','tip_ip_dst')">
+                  <i class="bi bi-search"></i>
+                </button>
+              </div>
+              <div id="tip_ip_dst" class="mt-1"></div>
+            </div>
+            <div class="mb-2">
+              <label class="form-label small text-muted mb-1">URL / Dominio</label>
+              <div class="input-group input-group-sm">
+                <input type="text" id="ioc_url" class="form-control bg-dark text-light border-secondary"
+                       placeholder="http://evil.ru/payload">
+                <button class="btn btn-outline-info btn-sm" onclick="lookupSingle('ioc_url','tip_url')">
+                  <i class="bi bi-search"></i>
+                </button>
+              </div>
+              <div id="tip_url" class="mt-1"></div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label small text-muted mb-1">Hash (MD5/SHA256)</label>
+              <input type="text" id="ioc_hash" class="form-control form-control-sm bg-dark text-light border-secondary font-monospace"
+                     placeholder="d41d8cd98f00b204e9800998ecf8427e">
+            </div>
+            <button class="btn btn-info btn-sm w-100" id="btnAnalyzeIoCs" onclick="analyzeIoCs()">
+              <i class="bi bi-cpu me-1"></i>Analizar con TI
+            </button>
+
+            <!-- Panel de auto-respondidas -->
+            <div id="autoAnsweredPanel" class="mt-3 d-none">
+              <hr class="border-secondary my-2">
+              <p class="small text-success mb-1"><i class="bi bi-check-circle-fill me-1"></i>Auto-respondidas por TI:</p>
+              <ul class="list-unstyled small mb-0" id="autoAnsweredList"></ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Panel de clasificación -->
+      <div class="card border-secondary mt-3 d-none" id="classificationCard">
+        <div class="card-header"><i class="bi bi-diagram-3 me-1"></i>Clasificación parcial</div>
+        <div class="card-body text-center">
+          <div class="mb-1" id="previewEmoji" style="font-size:2rem"></div>
+          <span class="badge fs-6" id="previewBadge">—</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Panel derecho: Chat -->
+    <div class="col-md-8 col-lg-9 d-flex flex-column">
+      <div class="card border-secondary flex-grow-1">
+        <div class="card-body d-flex flex-column" style="min-height:500px">
+
+          <!-- Área de mensajes -->
+          <div id="chatMessages" class="flex-grow-1 overflow-auto mb-3" style="max-height:420px">
+
+            <!-- Mensaje de bienvenida -->
+            <div class="d-flex gap-2 mb-3" id="welcomeMsg">
+              <div class="rounded-circle bg-info d-flex align-items-center justify-content-center flex-shrink-0"
+                   style="width:36px;height:36px;font-size:1.1rem">🤖</div>
+              <div class="bg-dark border border-secondary rounded-3 p-3 flex-grow-1">
+                <p class="mb-2">¡Hola! Soy el <strong>Asistente SOC</strong>.</p>
+                <p class="mb-2 small text-muted">Te voy a hacer entre 13 y 24 preguntas para clasificar este evento — mucho menos que el formulario completo.</p>
+                <p class="mb-0 small">Si tienes IPs, URLs o hashes del evento, ingresalos en el panel izquierdo antes de comenzar para que pueda pre-clasificar automáticamente.</p>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Área de respuesta -->
+          <div id="answerArea">
+            <button class="btn btn-info w-100" id="btnStart" onclick="startSession()">
+              <i class="bi bi-play-circle-fill me-2"></i>Comenzar análisis
+            </button>
+          </div>
+
+          <!-- Navegación -->
+          <div class="d-flex gap-2 mt-2 d-none" id="navControls">
+            <button class="btn btn-sm btn-outline-secondary" onclick="goBack()" id="btnBack">
+              <i class="bi bi-arrow-left me-1"></i>Atrás
+            </button>
+            <button class="btn btn-sm btn-outline-secondary ms-auto" onclick="skipQuestion()" id="btnSkip">
+              Omitir <i class="bi bi-arrow-right ms-1"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Panel de resultado final -->
+      <div class="card border-success mt-3 d-none" id="resultCard">
+        <div class="card-header bg-success bg-opacity-25 d-flex align-items-center gap-2">
+          <span id="resultEmoji" style="font-size:1.5rem"></span>
+          <span class="fw-bold" id="resultLabel"></span>
+          <span class="ms-auto badge" id="resultBadge"></span>
+        </div>
+        <div class="card-body">
+          <div class="row g-3 mb-3">
+            <div class="col-sm-6">
+              <p class="small text-muted mb-1">Categoría de amenaza</p>
+              <strong id="resultCategory"></strong>
+            </div>
+            <div class="col-sm-6">
+              <p class="small text-muted mb-1">Prioridad</p>
+              <strong id="resultPriority"></strong>
+            </div>
+          </div>
+          <div class="mb-3">
+            <p class="small text-muted mb-1">Vector de ataque</p>
+            <div id="resultVectors"></div>
+          </div>
+          <div class="mb-3">
+            <p class="small text-muted mb-1">Kill Chain</p>
+            <div id="resultKillChain"></div>
+          </div>
+          <div class="mb-3">
+            <p class="small text-muted mb-1">Recomendación</p>
+            <p class="small mb-0" id="resultRecommendation"></p>
+          </div>
+
+          <!-- Top factores de riesgo -->
+          <div class="mb-3">
+            <p class="small text-muted mb-1">Factores de mayor peso</p>
+            <div id="resultTopFactors" class="d-flex flex-wrap gap-1"></div>
+          </div>
+
+          <div class="d-flex gap-2 flex-wrap">
+            <button class="btn btn-success" id="btnSave" onclick="saveIncident()">
+              <i class="bi bi-save me-1"></i>Crear Incidente
+            </button>
+            <button class="btn btn-outline-secondary" onclick="newSession()">
+              <i class="bi bi-plus-circle me-1"></i>Nuevo análisis
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ─── Estado global ────────────────────────────────────────────────────────────
+let SESSION_ID = null;
+let CURRENT_Q_ID = null;
+
+// ─── TI Lookup rápido individual ──────────────────────────────────────────────
+async function lookupSingle(inputId, resultId) {
+  const val = document.getElementById(inputId).value.trim();
+  const div = document.getElementById(resultId);
+  if (!val) return;
+  div.innerHTML = '<span class="text-muted small"><i class="bi bi-hourglass-split me-1"></i>Consultando...</span>';
+  try {
+    const res = await fetch('/api/ti/lookup', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({indicator: val, type: 'auto'})
+    });
+    const data = await res.json();
+    const v = data.summary_verdict || 'LIMPIO';
+    const colorMap = {MALICIOSO:'danger', SOSPECHOSO:'warning', LIMPIO:'success'};
+    const col = colorMap[v] || 'secondary';
+    div.innerHTML = `<span class="badge bg-${col} small">${v}</span>`;
+  } catch(e) {
+    div.innerHTML = '<span class="text-muted small">Error TI</span>';
+  }
+}
+
+// ─── Analizar IoCs con TI ─────────────────────────────────────────────────────
+async function analyzeIoCs() {
+  if (!SESSION_ID) {
+    await startSession();
+  }
+  const btn = document.getElementById('btnAnalyzeIoCs');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Analizando...';
+
+  const body = {
+    session_id: SESSION_ID,
+    ip_src:  document.getElementById('ioc_ip_src').value.trim(),
+    ip_dst:  document.getElementById('ioc_ip_dst').value.trim(),
+    url:     document.getElementById('ioc_url').value.trim(),
+    hash:    document.getElementById('ioc_hash').value.trim(),
+  };
+
+  try {
+    const res = await fetch('/chatbot/session/iocs', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(body)
+    });
+    const data = await res.json();
+
+    // Mostrar auto-respondidas
+    const autoKeys = Object.keys(data.auto_answered || {});
+    if (autoKeys.length > 0) {
+      document.getElementById('autoAnsweredPanel').classList.remove('d-none');
+      const list = document.getElementById('autoAnsweredList');
+      list.innerHTML = autoKeys.map(q =>
+        `<li><i class="bi bi-check2 text-success me-1"></i><code>${q}</code></li>`
+      ).join('');
+    }
+
+    // Actualizar categoría
+    if (data.category && data.category !== 'unknown') {
+      updateCategoryBadge(data.category, data.category_label, data.confidence);
+    }
+
+    // Mensaje TI en chat
+    const v = data.ti_summary || 'LIMPIO';
+    const colorMap = {MALICIOSO:'danger', SOSPECHOSO:'warning', LIMPIO:'success'};
+    const msgHtml = `
+      <div class="d-flex gap-2 mb-3">
+        <div class="rounded-circle bg-secondary d-flex align-items-center justify-content-center flex-shrink-0"
+             style="width:36px;height:36px">🔍</div>
+        <div class="bg-dark border border-secondary rounded-3 p-3 flex-grow-1">
+          <p class="mb-1 small"><strong>Análisis TI completado</strong></p>
+          <p class="mb-1 small">Veredicto: <span class="badge bg-${colorMap[v]||'secondary'}">${v}</span></p>
+          ${autoKeys.length > 0 ? `<p class="mb-0 small text-success">${autoKeys.length} pregunta(s) respondidas automáticamente</p>` : ''}
+          ${data.category && data.category !== 'unknown' ? `<p class="mb-0 small text-info mt-1">Categoría probable: <strong>${data.category_label}</strong> (${Math.round(data.confidence*100)}%)</p>` : ''}
+        </div>
+      </div>`;
+    appendToChat(msgHtml);
+
+  } catch(e) {
+    appendToChat('<div class="alert alert-danger small py-2">Error al consultar TI</div>');
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '<i class="bi bi-cpu me-1"></i>Analizar con TI';
+}
+
+// ─── Iniciar sesión ───────────────────────────────────────────────────────────
+async function startSession() {
+  const btn = document.getElementById('btnStart');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Iniciando...';
+
+  try {
+    const res = await fetch('/chatbot/session/start', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({})
+    });
+    const data = await res.json();
+    SESSION_ID = data.session_id;
+
+    // Mostrar header de sesión
+    document.getElementById('sessionHeader').style.removeProperty('display');
+
+    // Ocultar botón de inicio
+    btn.classList.add('d-none');
+
+    // Mostrar controles de nav
+    document.getElementById('navControls').classList.remove('d-none');
+
+    // Mostrar primera pregunta
+    renderQuestion(data.question, data);
+
+  } catch(e) {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-play-circle-fill me-2"></i>Comenzar análisis';
+    alert('Error al iniciar sesión. Intenta de nuevo.');
+  }
+}
+
+// ─── Renderizar pregunta ──────────────────────────────────────────────────────
+function renderQuestion(q, state) {
+  if (!q) {
+    // No hay más preguntas → completar
+    completeSession();
+    return;
+  }
+  CURRENT_Q_ID = q.id;
+
+  // Actualizar progreso
+  updateProgress(state);
+
+  // Burbuja de pregunta
+  const questionHtml = `
+    <div class="d-flex gap-2 mb-2" id="q_msg_${q.id}">
+      <div class="rounded-circle bg-info d-flex align-items-center justify-content-center flex-shrink-0"
+           style="width:36px;height:36px;font-size:1.1rem">🤖</div>
+      <div class="bg-dark border border-secondary rounded-3 p-3 flex-grow-1">
+        <p class="mb-1"><strong>${escHtml(q.text)}</strong></p>
+        ${q.help ? `<p class="mb-0 small text-muted">${escHtml(q.help)}</p>` : ''}
+        <div class="mt-1"><small class="text-secondary"><code>${q.id}</code> · módulo: ${q.module || '—'}</small></div>
+      </div>
+    </div>`;
+  appendToChat(questionHtml);
+
+  // Botones de opciones
+  const optButtons = q.options.map(opt =>
+    `<button class="btn btn-outline-light btn-sm" onclick="sendAnswer('${escHtml(opt.value)}')">${escHtml(opt.label)}</button>`
+  ).join('');
+
+  const answerAreaHtml = `
+    <div class="d-flex flex-wrap gap-2 mt-1" id="opts_${q.id}">
+      ${optButtons}
+    </div>`;
+
+  document.getElementById('answerArea').innerHTML = answerAreaHtml;
+  scrollChat();
+}
+
+// ─── Enviar respuesta ─────────────────────────────────────────────────────────
+async function sendAnswer(value) {
+  // Deshabilitar botones para evitar doble clic
+  const opts = document.getElementById(`opts_${CURRENT_Q_ID}`);
+  if (opts) {
+    opts.querySelectorAll('button').forEach(b => b.disabled = true);
+    // Marcar la opción elegida
+    opts.querySelectorAll('button').forEach(b => {
+      if (b.onclick && b.getAttribute('onclick').includes(value)) {
+        b.classList.replace('btn-outline-light', 'btn-info');
+      }
+    });
+  }
+
+  // Burbuja de respuesta del analista
+  const label = opts ? [...opts.querySelectorAll('button')]
+    .find(b => b.getAttribute('onclick') && b.getAttribute('onclick').includes(`'${value}'`))?.textContent.trim() || value : value;
+
+  const answerHtml = `
+    <div class="d-flex gap-2 mb-3 flex-row-reverse">
+      <div class="rounded-circle bg-secondary d-flex align-items-center justify-content-center flex-shrink-0"
+           style="width:36px;height:36px">👤</div>
+      <div class="bg-secondary rounded-3 p-2 px-3 text-end">
+        <span class="small">${escHtml(label)}</span>
+      </div>
+    </div>`;
+  appendToChat(answerHtml);
+
+  document.getElementById('answerArea').innerHTML =
+    '<div class="text-muted small"><span class="spinner-border spinner-border-sm me-1"></span>Procesando...</div>';
+
+  try {
+    const res = await fetch('/chatbot/session/answer', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({session_id: SESSION_ID, question_id: CURRENT_Q_ID, answer_value: value})
+    });
+    const data = await res.json();
+
+    // Actualizar categoría si cambió
+    if (data.category && data.category !== 'unknown') {
+      updateCategoryBadge(data.category, data.category_label, data.confidence);
+    }
+
+    // Mostrar clasificación parcial si fase cambió a targeted
+    if (data.phase === 'targeted') {
+      document.getElementById('classificationCard').classList.remove('d-none');
+      updatePreviewBadge(data.classification_preview);
+    }
+
+    if (data.done) {
+      completeSession();
+    } else {
+      renderQuestion(data.question, data);
+    }
+  } catch(e) {
+    document.getElementById('answerArea').innerHTML =
+      '<div class="alert alert-danger small py-2">Error al procesar respuesta. Intenta de nuevo.</div>';
+  }
+}
+
+// ─── Omitir pregunta ──────────────────────────────────────────────────────────
+async function skipQuestion() {
+  if (!CURRENT_Q_ID) return;
+  const skipHtml = `
+    <div class="d-flex gap-2 mb-3 flex-row-reverse">
+      <div class="rounded-circle bg-secondary d-flex align-items-center justify-content-center flex-shrink-0"
+           style="width:36px;height:36px">👤</div>
+      <div class="bg-secondary rounded-3 p-2 px-3 text-end">
+        <span class="small text-muted"><em>Omitida</em></span>
+      </div>
+    </div>`;
+  appendToChat(skipHtml);
+
+  try {
+    const res = await fetch('/chatbot/session/skip', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({session_id: SESSION_ID, question_id: CURRENT_Q_ID})
+    });
+    const data = await res.json();
+    if (data.done) completeSession();
+    else renderQuestion(data.question, data);
+  } catch(e) {}
+}
+
+// ─── Volver atrás ─────────────────────────────────────────────────────────────
+async function goBack() {
+  try {
+    const res = await fetch('/chatbot/session/back', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({session_id: SESSION_ID})
+    });
+    const data = await res.json();
+    if (data.error) return;
+
+    // Quitar última burbuja de analista + pregunta del chat
+    const msgs = document.getElementById('chatMessages');
+    const divs = msgs.querySelectorAll(':scope > div');
+    // Quitar últimas 2 (respuesta + opts, y pregunta)
+    for (let i = 0; i < 2 && divs.length > 1; i++) {
+      const last = msgs.lastElementChild;
+      if (last && last.id !== 'welcomeMsg') last.remove();
+    }
+
+    renderQuestion(data.previous_question, data);
+  } catch(e) {}
+}
+
+// ─── Completar sesión ─────────────────────────────────────────────────────────
+async function completeSession() {
+  document.getElementById('answerArea').innerHTML =
+    '<div class="text-muted small"><span class="spinner-border spinner-border-sm me-1"></span>Calculando resultado...</div>';
+  document.getElementById('navControls').classList.add('d-none');
+
+  try {
+    const res = await fetch('/chatbot/session/complete', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({session_id: SESSION_ID})
+    });
+    const data = await res.json();
+    showResult(data);
+  } catch(e) {
+    document.getElementById('answerArea').innerHTML =
+      '<div class="alert alert-danger small">Error al calcular resultado.</div>';
+  }
+}
+
+// ─── Mostrar resultado ────────────────────────────────────────────────────────
+function showResult(data) {
+  document.getElementById('answerArea').innerHTML = '';
+  const card = document.getElementById('resultCard');
+  card.classList.remove('d-none');
+
+  const tc = data.threat_classification || {};
+  const colorClass = `bg-${data.classification_color || 'secondary'}`;
+
+  document.getElementById('resultEmoji').textContent = data.classification_emoji || '';
+  document.getElementById('resultLabel').textContent = data.classification_label || data.classification;
+  document.getElementById('resultBadge').className = `ms-auto badge ${colorClass}`;
+  document.getElementById('resultBadge').textContent = tc.prioridad || '';
+  document.getElementById('resultCategory').textContent = tc.category_label || data.category_label || '—';
+  document.getElementById('resultPriority').textContent = tc.prioridad || '—';
+  document.getElementById('resultRecommendation').textContent = data.recommendation || '—';
+
+  // Vectors
+  const vectors = tc.vector || [];
+  document.getElementById('resultVectors').innerHTML =
+    vectors.map(v => `<span class="badge bg-secondary me-1">${escHtml(v)}</span>`).join('');
+
+  // Kill Chain
+  const kc = tc.fase_kill_chain || [];
+  document.getElementById('resultKillChain').innerHTML =
+    kc.map(k => `<span class="badge bg-outline-info border border-info text-info me-1">${escHtml(k)}</span>`).join('');
+
+  // Top factores
+  const factors = data.top_factors || [];
+  document.getElementById('resultTopFactors').innerHTML =
+    factors.slice(0, 6).map(f =>
+      `<span class="badge bg-dark border border-secondary text-muted small">${escHtml(f.question_id)}: ${f.contribution?.toFixed(1) || 0}</span>`
+    ).join('');
+
+  // Actualizar header
+  updateCategoryBadge(data.category, data.category_label, 1.0);
+  card.scrollIntoView({behavior:'smooth'});
+}
+
+// ─── Guardar incidente ────────────────────────────────────────────────────────
+async function saveIncident() {
+  const btn = document.getElementById('btnSave');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Guardando...';
+
+  try {
+    const res = await fetch('/chatbot/session/save', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({session_id: SESSION_ID})
+    });
+    const data = await res.json();
+    if (data.incident_id) {
+      window.location.href = `/incidentes/${data.incident_id}`;
+    }
+  } catch(e) {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-save me-1"></i>Crear Incidente';
+    alert('Error al guardar el incidente.');
+  }
+}
+
+// ─── Nuevo análisis ───────────────────────────────────────────────────────────
+function newSession() {
+  SESSION_ID = null;
+  CURRENT_Q_ID = null;
+  document.getElementById('chatMessages').innerHTML = `
+    <div class="d-flex gap-2 mb-3" id="welcomeMsg">
+      <div class="rounded-circle bg-info d-flex align-items-center justify-content-center flex-shrink-0"
+           style="width:36px;height:36px;font-size:1.1rem">🤖</div>
+      <div class="bg-dark border border-secondary rounded-3 p-3 flex-grow-1">
+        <p class="mb-2">¡Hola! Soy el <strong>Asistente SOC</strong>.</p>
+        <p class="mb-0 small text-muted">Haz clic en "Comenzar análisis" para iniciar.</p>
+      </div>
+    </div>`;
+  document.getElementById('answerArea').innerHTML =
+    '<button class="btn btn-info w-100" id="btnStart" onclick="startSession()"><i class="bi bi-play-circle-fill me-2"></i>Comenzar análisis</button>';
+  document.getElementById('navControls').classList.add('d-none');
+  document.getElementById('resultCard').classList.add('d-none');
+  document.getElementById('classificationCard').classList.add('d-none');
+  document.getElementById('sessionHeader').style.display = 'none';
+  document.getElementById('autoAnsweredPanel').classList.add('d-none');
+  ['ioc_ip_src','ioc_ip_dst','ioc_url','ioc_hash'].forEach(id => document.getElementById(id).value = '');
+  ['tip_ip_src','tip_ip_dst','tip_url'].forEach(id => document.getElementById(id).innerHTML = '');
+}
+
+// ─── Helpers de UI ────────────────────────────────────────────────────────────
+function appendToChat(html) {
+  const msgs = document.getElementById('chatMessages');
+  msgs.insertAdjacentHTML('beforeend', html);
+  scrollChat();
+}
+
+function scrollChat() {
+  const msgs = document.getElementById('chatMessages');
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function escHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function updateProgress(state) {
+  const answered = state.answered_count || 0;
+  const total = state.total_questions || (state.question?.total_questions) || 0;
+  const pct = total ? Math.round(answered / total * 100) : 0;
+  document.getElementById('progressBar').style.width = pct + '%';
+  document.getElementById('progressText').textContent = `${answered}/${total}`;
+}
+
+const CAT_COLORS = {
+  ransomware:'danger', phishing:'warning', apt_intrusion:'danger',
+  ddos:'info', insider:'purple', credential_theft:'warning', unknown:'secondary'
+};
+
+function updateCategoryBadge(category, label, confidence) {
+  const col = CAT_COLORS[category] || 'secondary';
+  const pct = Math.round((confidence || 0) * 100);
+  const badge = document.getElementById('categoryBadge');
+  badge.className = `badge bg-${col}`;
+  badge.textContent = label || category;
+  document.getElementById('confidenceBadge').textContent = pct > 0 ? `${pct}%` : '';
+}
+
+function updatePreviewBadge(preview) {
+  if (!preview) return;
+  const colorMap = {success:'success', warning:'warning', orange:'warning', danger:'danger', breach:'danger'};
+  const col = colorMap[preview.color] || 'secondary';
+  document.getElementById('previewEmoji').textContent = preview.emoji || '';
+  const badge = document.getElementById('previewBadge');
+  badge.className = `badge fs-6 bg-${col}`;
+  badge.textContent = preview.label || preview.classification;
+}
+</script>
+{% endblock %}

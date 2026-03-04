@@ -1,8 +1,8 @@
 # SOC Assist — Guía de Desarrollo y Roadmap
 
-> **Estado actual:** v1.10 — Multi-Tenant + CMDB + Adjuntos + SMTP + SLA Tracking + Etiquetas
+> **Estado actual:** v1.11 — Chatbot Multimodal (SOC · Ciudadano · Experto+ · Unificado)
 > **Repositorio:** https://github.com/jvarela90/SOC-Assist
-> **Última actualización:** 2026-02
+> **Última actualización:** 2026-03
 
 ---
 
@@ -20,6 +20,7 @@
 | 8 | Multi-Tenant + CMDB de Activos | ✅ Completado |
 | 9 | Adjuntos de Evidencia + Notificaciones SMTP | ✅ Completado |
 | 10 | SLA Tracking + Etiquetas de Incidentes | ✅ Completado |
+| 11 | Chatbot Multimodal (SOC · Ciudadano · Experto+ · Unificado) | ✅ Completado |
 
 ---
 
@@ -197,6 +198,40 @@
 
 ---
 
+## Fase 11 — Chatbot Multimodal (Completado ✅)
+
+| # | Feature | Estado |
+|---|---------|--------|
+| 93 | Canal chatbot alternativo al formulario wizard (nueva pestaña "Chat Analista") | ✅ |
+| 94 | **Modo SOC** — 8 preguntas gateway + ruta dirigida por categoría (15–24 preguntas vs. 66) | ✅ |
+| 95 | **Modo Ciudadano** — 68 preguntas en lenguaje no técnico, resultado P1/P2/P3/P4 | ✅ |
+| 96 | **Modo Experto+** — igual que SOC pero transición anticipada a ruta dirigida (confidence ≥ 0.45) | ✅ |
+| 97 | **Modo Unificado** — Ciudadano → BRIDGE → SOC en una sola sesión | ✅ |
+| 98 | Inferencia de categoría de amenaza tras gateway (ransomware / phishing / apt / ddos / insider / credential_theft) | ✅ |
+| 99 | TI auto-answers — responde q_003, q_006, q_062, q_046 automáticamente desde resultados de lookup | ✅ |
+| 100 | Anti-anchoring en opciones — orden aleatorio (Fisher-Yates) en cada pregunta renderizada | ✅ |
+| 101 | Navegación hacia atrás (deshacer última respuesta) y omitir pregunta | ✅ |
+| 102 | Creación de Incident + IncidentAnswer desde el chatbot (mismo modelo que el formulario) | ✅ |
+| 103 | REST API `/api/v1/chat/sessions` para consumo programático por SOAR/SIEM | ✅ |
+| 104 | Modelo `ChatSession` en BD — estado persistente de sesión (modo, fase, cola, respuestas, TI) | ✅ |
+| 105 | Escalado ciudadano → analista SOC ("Escalar a Analista SOC" en resultados P1/P2) | ✅ |
+| 106 | Selector de modo en la UI con descriptor de cada canal antes de iniciar | ✅ |
+
+### Reducción de preguntas por categoría (Modo SOC)
+
+| Categoría | Total | Reducción |
+|-----------|-------|-----------|
+| ransomware | ~19 | **71%** |
+| phishing | ~17 | **74%** |
+| apt_intrusion | ~24 | **64%** |
+| ddos | ~13 | **80%** |
+| insider | ~18 | **73%** |
+| credential_theft | ~16 | **76%** |
+
+Con IoCs y TI hits: se auto-responden hasta 4 preguntas adicionales → reducción adicional ~10%.
+
+---
+
 ## Arquitectura de Referencia
 
 ```
@@ -229,7 +264,9 @@ SOC-Assist/
     │   ├── ti.py             # /api/ti/lookup + /api/mac/lookup
     │   ├── orgs.py           # CRUD organizaciones (/admin/orgs)
     │   ├── assets.py         # CMDB activos + CSV import/export (/activos)
-    │   └── attachments.py    # Adjuntos de evidencia (/incidentes/{id}/adjuntar, /adjuntos/{id})
+    │   ├── attachments.py    # Adjuntos de evidencia (/incidentes/{id}/adjuntar, /adjuntos/{id})
+    │   ├── chatbot.py        # Chatbot web: session start/answer/back/skip/complete/save
+    │   └── chatbot_api.py    # REST API chatbot (/api/v1/chat/sessions/...)
     ├── services/
     │   ├── mitre.py          # Mapeo MITRE ATT&CK
     │   ├── threat_intel.py   # VirusTotal / AbuseIPDB / IBM X-Force
@@ -237,7 +274,9 @@ SOC-Assist/
     │   ├── mailer.py         # SMTP: alertas por email
     │   ├── scheduler.py      # Revisión periódica de activos → notificaciones in-app
     │   ├── similarity.py     # Cosine similarity entre incidentes
-    │   └── mac_oui.py        # Lookup fabricante por prefijo MAC (OUI local)
+    │   ├── mac_oui.py        # Lookup fabricante por prefijo MAC (OUI local)
+    │   ├── chatbot_engine.py # Gateway questions, routing SOC, inferencia de categoría
+    │   └── citizen_engine.py # 68 preguntas ciudadano, clasificación P1-P4, BRIDGE_MAP
     ├── templates/            # Jinja2 + Bootstrap 5 (tema oscuro)
     │   ├── base.html
     │   ├── dashboard.html
@@ -249,6 +288,7 @@ SOC-Assist/
     │   ├── users.html
     │   ├── assets_list.html
     │   ├── asset_detail.html
+    │   ├── chatbot.html
     │   └── ...
     ├── uploads/              # Evidencia adjunta (app/uploads/{incident_id}/{uuid}.ext)
     └── static/               # CSS + JS
@@ -276,6 +316,17 @@ a fuentes de inteligencia externas. La validación ocurre en el backend, no solo
 `resolved_at` se establece cuando el analista asigna una resolución (TP, FP, TP escalado).
 Si se elimina la resolución, `resolved_at` se borra. MTTR = media de `(resolved_at - timestamp)`
 en horas, agrupado por clasificación.
+
+### Chatbot — Routing Inteligente
+El chatbot reduce las 66 preguntas del wizard a 15-24 mediante dos mecanismos:
+1. **8 gateway questions** con mayor poder discriminante siempre se preguntan primero.
+2. La `INFERENCE_TABLE` asigna deltas de confianza a cada respuesta → si `confidence ≥ 0.45` se activa la ruta dirigida de la categoría inferida (en lugar de las 66 preguntas completas).
+El estado de sesión se persiste en `ChatSession` (BD), lo que permite que la REST API sea stateless.
+
+### Chatbot — Modo Ciudadano
+Usa un conjunto separado de 68 preguntas (`N001`–`N066`) en lenguaje no técnico.
+La clasificación es P1 (Urgente) / P2 (Prioritario) / P3 (Importante) / P4 (Orientación), basada en señales de urgencia (riesgo físico, actividad financiera activa, archivos cifrados).
+El modo **Unificado** permite transición transparente Ciudadano → Analista SOC en la misma sesión.
 
 ### Almacenamiento de API Keys
 Las API keys se guardan en `ti_config.json` (archivo local, fuera del motor de scoring).

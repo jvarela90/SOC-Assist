@@ -2,16 +2,18 @@
 
 [![Python](https://img.shields.io/badge/Python-3.10+-blue?logo=python)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115-green?logo=fastapi)](https://fastapi.tiangolo.com)
-[![Version](https://img.shields.io/badge/Version-1.8-orange)](ROADMAP.md)
+[![Version](https://img.shields.io/badge/Version-1.11-orange)](ROADMAP.md)
 [![License](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
 
 **SOC Assist** es una plataforma web de evaluación y clasificación de eventos de ciberseguridad. Permite que analistas con distintos niveles de experiencia puedan detectar señales de alerta, calcular un puntaje de riesgo estructurado, enriquecer con inteligencia de amenazas y saber exactamente qué hacer a continuación.
+
+Incluye un **chatbot multimodal** (SOC · Ciudadano · Experto+ · Unificado) como canal alternativo al formulario wizard, con routing inteligente que reduce las 66 preguntas a 15-24 según la amenaza inferida.
 
 ---
 
 ## Contenido
 
-- [Características v1.8](#caracteristicas)
+- [Características v1.11](#caracteristicas)
 - [Quickstart — Desarrollo local](#quickstart--desarrollo-local)
 - [Quickstart — Docker (recomendado)](#quickstart--docker-recomendado)
 - [Acceso desde otra máquina / red](#acceso-desde-otra-maquina--red)
@@ -28,15 +30,25 @@
 
 | # | Feature | Estado |
 |---|---------|--------|
-| — | Motor de scoring ponderado (63 preguntas, 9 módulos, 5 niveles) | ✅ |
-| — | Dashboard ejecutivo + heatmap temporal | ✅ |
+| — | Motor de scoring ponderado (66 preguntas, 12 bloques, 5 niveles) | ✅ |
+| — | Dashboard ejecutivo + heatmap temporal + métricas SLA (MTTR, tasa de cierre) | ✅ |
 | — | Threat Intelligence: VirusTotal, AbuseIPDB, IBM X-Force | ✅ |
 | — | Bloque 0 — Contexto de Red: IPs, dirección, URL, MAC + lookup inline | ✅ |
 | — | Ajuste TI híbrido — analista confirma ajuste de score | ✅ |
-| — | Webhooks Teams / Slack para incidentes Crítico/Brecha | ✅ |
+| — | Webhooks Teams / Slack + Email SMTP para incidentes Crítico/Brecha | ✅ |
 | — | Mapeo MITRE ATT&CK + Playbooks de respuesta | ✅ |
-| — | Autenticación con roles (Analista / Admin) | ✅ |
+| — | Autenticación con roles (Analista / Admin / Super Admin) | ✅ |
 | — | Gestión de usuarios: crear, activar, cambiar rol, notas, trazabilidad | ✅ |
+| — | Multi-tenant: organizaciones jerárquicas (central > regional > local) | ✅ |
+| — | CMDB de activos: IP, hostname, criticidad (×0.8–×1.5), CSV import/export | ✅ |
+| — | Adjuntos de evidencia por incidente (imágenes, PDF, PCAP, logs — máx 10 MB) | ✅ |
+| — | SLA tracking: `resolved_at`, MTTR por clasificación | ✅ |
+| — | Etiquetas libres (tags) en incidentes con filtro en historial | ✅ |
+| — | **Chatbot multimodal** (SOC · Ciudadano · Experto+ · Unificado) | ✅ |
+| — | Chatbot SOC: routing inteligente — 15-24 preguntas vs. 66 del wizard | ✅ |
+| — | Chatbot Ciudadano: lenguaje no técnico, clasificación P1/P2/P3/P4 | ✅ |
+| — | Anti-anchoring en chatbot: opciones en orden aleatorio (Fisher-Yates) | ✅ |
+| — | REST API chatbot `/api/v1/chat/sessions` para integración SOAR/SIEM | ✅ |
 | — | Códigos de recuperación de cuenta (single-use, bcrypt) | ✅ |
 | — | Audit log de todas las acciones de administrador | ✅ |
 | — | REST API documentada (OpenAPI/Swagger en `/docs`) | ✅ |
@@ -286,6 +298,7 @@ SOC-Assist/
 ├── docker-compose.yml        # Despliegue con volumen persistente
 ├── config_engine.json        # Scoring: pesos, umbrales, multiplicadores, reglas
 ├── ti_config.json            # API keys TI — NO commitear con claves reales
+├── smtp_config.json          # Configuración SMTP — NO commitear con credenciales
 ├── playbooks.json            # Playbooks de respuesta por nivel
 ├── questions.json            # 66 preguntas + bloques temáticos
 ├── ROADMAP.md                # Estado de desarrollo por fase
@@ -294,22 +307,33 @@ SOC-Assist/
     ├── core/
     │   ├── engine.py         # Motor de scoring ponderado
     │   ├── calibration.py    # Auto-calibración basada en TP/FP
-    │   └── auth.py           # bcrypt + dependencias require_auth/require_admin
+    │   ├── auth.py           # bcrypt + dependencias require_auth/require_admin
+    │   └── rate_limit.py     # Rate limiting in-memory (20 req/min/IP)
     ├── models/
-    │   └── database.py       # SQLAlchemy + SQLite/PostgreSQL + migraciones
+    │   └── database.py       # SQLAlchemy + SQLite/PostgreSQL + migraciones inline
     ├── routes/
     │   ├── auth.py           # Login / logout / recuperación de cuenta
     │   ├── form.py           # Wizard + TI enrichment + comentarios + asignación
-    │   ├── dashboard.py      # Dashboard + historial + exportación CSV
-    │   ├── admin.py          # Panel admin + gestión de usuarios
+    │   ├── dashboard.py      # Dashboard + historial + SLA + tags + CSV
+    │   ├── admin.py          # Panel admin + usuarios + SMTP + audit log + backup
     │   ├── api.py            # REST API v1 (/api/v1/...)
-    │   └── ti.py             # API TI + MAC OUI lookup
+    │   ├── ti.py             # API TI + MAC OUI lookup
+    │   ├── orgs.py           # CRUD organizaciones (/admin/orgs)
+    │   ├── assets.py         # CMDB activos + CSV import/export (/activos)
+    │   ├── attachments.py    # Adjuntos de evidencia (/incidentes/{id}/adjuntar)
+    │   ├── chatbot.py        # Chatbot web: session start/answer/back/skip/complete/save
+    │   └── chatbot_api.py    # REST API chatbot (/api/v1/chat/sessions/...)
     ├── services/
     │   ├── mitre.py          # Mapeo MITRE ATT&CK
     │   ├── threat_intel.py   # VirusTotal / AbuseIPDB / IBM X-Force
     │   ├── mac_oui.py        # Fabricante por prefijo MAC
     │   ├── similarity.py     # Similitud coseno entre incidentes
-    │   └── notifications.py  # Webhooks Teams / Slack
+    │   ├── notifications.py  # Webhooks Teams / Slack
+    │   ├── mailer.py         # SMTP: alertas por email
+    │   ├── scheduler.py      # Revisión periódica de activos → notificaciones in-app
+    │   ├── chatbot_engine.py # Gateway questions, routing SOC, inferencia de categoría
+    │   └── citizen_engine.py # 68 preguntas ciudadano, clasificación P1-P4, BRIDGE_MAP
+    ├── uploads/              # Evidencia adjunta (app/uploads/{incident_id}/{uuid}.ext)
     ├── templates/            # Jinja2 + Bootstrap 5.3 (dark theme)
     └── static/               # CSS + JS
 ```
@@ -347,15 +371,19 @@ python -c "import secrets; print(secrets.token_hex(32))"
 | `/login` | Autenticación | — |
 | `/recuperar` | Recuperación de cuenta con código admin | — |
 | `/evaluar` | Formulario wizard de evaluación (Bloque 0 + 11 bloques) | Analista |
-| `/dashboard` | Dashboard ejecutivo con gráficos + heatmap | Analista |
-| `/incidentes` | Historial completo con filtros avanzados | Analista |
-| `/incidentes/{id}` | Detalle: timeline, TI, MITRE, playbook, similitud | Analista |
-| `/admin` | Panel de configuración: pesos, umbrales, calibración, TI keys | Admin |
+| `/chatbot` | Chat Analista — 4 modos: SOC, Ciudadano, Experto+, Unificado | Analista |
+| `/dashboard` | Dashboard ejecutivo con gráficos + heatmap + SLA | Analista |
+| `/incidentes` | Historial completo con filtros avanzados y tags | Analista |
+| `/incidentes/{id}` | Detalle: timeline, TI, MITRE, playbook, similitud, adjuntos | Analista |
+| `/activos` | CMDB: inventario de activos, criticidad, CSV import/export | Analista |
+| `/admin` | Panel de configuración: pesos, umbrales, calibración, TI keys, SMTP | Admin |
 | `/admin/usuarios` | Gestión de usuarios: crear, roles, trazabilidad, recuperación | Admin |
+| `/admin/orgs` | Gestión de organizaciones jerárquicas | Admin |
 | `/admin/audit-log` | Registro de todas las acciones administrativas | Admin |
+| `/api/v1/chat/sessions` | REST API chatbot (SOAR/SIEM) | Admin |
 | `/docs` | Swagger UI — REST API interactiva | Admin |
 | `/redoc` | ReDoc — REST API documentada | Admin |
-| `/health` | Health check (`{"status":"ok","version":"1.8.0"}`) | — |
+| `/health` | Health check (`{"status":"ok","version":"1.11.0"}`) | — |
 
 ---
 
@@ -429,4 +457,4 @@ MIT License — Libre para uso interno, educativo y adaptacion.
 
 ---
 
-*Desarrollado como herramienta SOC de alerta temprana — v1.8*
+*Desarrollado como herramienta SOC de alerta temprana — v1.11*

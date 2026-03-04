@@ -354,11 +354,6 @@ async function analyzeIoCs() {
 
 // ─── Iniciar sesión ───────────────────────────────────────────────────────────
 async function startSession() {
-  // Modos BETA: mostrar stub descriptivo en lugar de llamar al API
-  if (CHAT_MODE !== 'soc') {
-    showModeStub();
-    return;
-  }
   const btn = document.getElementById('btnStart');
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Iniciando...';

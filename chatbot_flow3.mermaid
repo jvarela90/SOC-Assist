@@ -1,0 +1,851 @@
+%%{init: {"theme": "dark", "flowchart": {"curve": "basis", "nodeSpacing": 40, "rankSpacing": 55}}}%%
+flowchart TD
+
+%% ============================================================
+%% SOC Assist — Chat Analista v3.0 — Pool EXPERTO SOC
+%% 66 preguntas (q_001–q_066) en lógica NO LINEAL
+%% con preguntas disparadoras, discriminación por pares
+%% y profundización por familia
+%%
+%% GATEWAY (8 Qs — mayor poder discriminante):
+%%   q_002  Fuente de alerta
+%%   q_008  Malware confirmado
+%%   q_057  Phishing confirmado
+%%   q_038  Frecuencia de eventos (burst=DDoS)
+%%   q_029  Cuenta deshabilitada activa
+%%   q_046  Comunicación C2
+%%   q_048  Cifrado masivo de archivos
+%%   q_027  Privilegio del usuario
+%%
+%% CATEGORÍAS (INFERENCE_TABLE de chatbot_engine.py):
+%%   RANSOMWARE      → q_048=yes (+0.70)
+%%   APT / INTRUSION → q_046=yes (+0.65)
+%%   PHISHING        → q_057=yes (+0.65)
+%%   DDoS            → q_038=burst (+0.70)
+%%   INSIDER         → q_029=disabled_active (+0.45)
+%%   CREDENTIAL_THEFT→ q_029=disabled_active (+0.35)
+%%   UNKNOWN         → confidence < 0.45
+%%
+%% MÓDULOS: naturaleza | alcance | activo | usuario |
+%%          temporal | evidencia | proteccion | social | identificadores
+%%
+%% CLASIFICACIÓN: informativo | sospechoso | incidente | critico | brecha
+%% ============================================================
+
+%% ─────── ESTILOS ─────────────────────────────────────────────
+classDef gateway    fill:#1a237e,stroke:#5c6bc0,color:#fff,font-size:12px
+classDef route      fill:#0d47a1,stroke:#42a5f5,color:#fff,font-size:11px
+classDef ransom     fill:#b71c1c,stroke:#ef9a9a,color:#ffebee,font-size:11px
+classDef apt        fill:#4a0072,stroke:#ce93d8,color:#f3e5f5,font-size:11px
+classDef phish      fill:#bf360c,stroke:#ffab91,color:#fbe9e7,font-size:11px
+classDef ddos       fill:#004d40,stroke:#80cbc4,color:#e0f2f1,font-size:11px
+classDef insider    fill:#880e4f,stroke:#f48fb1,color:#fce4ec,font-size:11px
+classDef cred       fill:#1b5e20,stroke:#81c784,color:#e8f5e9,font-size:11px
+classDef common     fill:#37474f,stroke:#90a4ae,color:#eceff1,font-size:11px
+classDef ioc        fill:#0d47a1,stroke:#64b5f6,color:#e3f2fd,font-size:11px
+classDef impact     fill:#e65100,stroke:#ffcc02,color:#fff8e1,font-size:11px
+classDef disc       fill:#311b92,stroke:#b39ddb,color:#ede7f6,font-size:11px
+classDef depth      fill:#263238,stroke:#78909c,color:#cfd8dc,font-size:11px
+classDef r_info     fill:#37474f,stroke:#90a4ae,color:#fff,font-weight:bold,font-size:13px
+classDef r_sosp     fill:#1b5e20,stroke:#4caf50,color:#fff,font-weight:bold,font-size:13px
+classDef r_inci     fill:#e65100,stroke:#ff6d00,color:#fff,font-weight:bold,font-size:13px
+classDef r_crit     fill:#b71c1c,stroke:#ff1744,color:#fff,font-weight:bold,font-size:13px
+classDef r_brec     fill:#4a0072,stroke:#ff1744,color:#fff,font-weight:bold,font-size:13px
+classDef cross      fill:#311b92,stroke:#b39ddb,color:#ede7f6,font-size:10px,stroke-dasharray:4 2
+
+%% ════════════════════════════════════════════════════════════
+%% ENTRADA
+%% ════════════════════════════════════════════════════════════
+
+START(["🔬 CHAT ANALISTA SOC — Motor Experto
+Preguntas para analistas e incident responders.
+Vocabulario técnico: IOC, EDR, SIEM, C2, ATT&CK.
+El orden es dinámico — el sistema dirige la ruta
+según las respuestas más discriminantes."]):::gateway
+
+START --> GW_Q002
+
+%% ════════════════════════════════════════════════════════════
+%% BLOQUE GATEWAY — 8 preguntas de mayor poder discriminante
+%% ════════════════════════════════════════════════════════════
+
+subgraph BLQ_GW["🎯  GATEWAY — Preguntas Disparadoras   q_002 · q_008 · q_057 · q_038 · q_029 · q_046 · q_048 · q_027"]
+direction TB
+
+GW_Q002{"q_002 — Fuente / tipo de alerta
+¿Cómo te enteraste del evento?
+💡 Alerta EDR/SIEM pesa más que observación manual
+→ manual | siem_low | ids_ips | edr_alert | siem_high | confirmed"}:::gateway
+
+GW_Q008{"q_008 — Malware confirmado
+¿Se detectó malware (virus, troyano, ransomware)?
+💡 ¿El AV u otra herramienta identificó y nombró la amenaza?
+→ no | unknown | maybe (comportamiento sin nombre) | yes"}:::gateway
+
+GW_Q057{"q_057 — Phishing confirmado
+¿Se confirmó un correo de phishing como vector inicial?
+💡 Email falso → página de login falsa o descarga malware
+→ no | suspected | yes"}:::gateway
+
+GW_Q038{"q_038 — Frecuencia de eventos
+¿La frecuencia de eventos es inusualmente alta?
+💡 Decenas/cientos de eventos en minutos = automatización
+→ normal | high | very_high | burst (ráfaga masiva)"}:::gateway
+
+GW_Q029{"q_029 — Estado de la cuenta
+¿La cuenta involucrada estaba inactiva o deshabilitada?
+💡 Cuenta deshabilitada activa = señal de alerta crítica
+→ no | inactive (sin uso mucho tiempo) | yes (deshabilitada activa)"}:::gateway
+
+GW_Q046{"q_046 — Comunicación C2
+¿Se detectó comunicación con infraestructura de C2?
+💡 Tráfico cifrado a IPs raras, DNS inusual, beaconing
+→ no | unknown | suspected | yes (C2 confirmado)"}:::gateway
+
+GW_Q048{"q_048 — Cifrado masivo de archivos
+¿Se detectó cifrado masivo? (posible Ransomware)
+💡 Extensiones raras, notas de rescate, carpetas inaccesibles
+→ no | unknown | maybe | yes ← DISPARADOR RANSOMWARE"}:::gateway
+
+GW_Q027{"q_027 — Privilegio del usuario
+¿Cuál es el nivel de privilegio del usuario involucrado?
+💡 Domain Admin comprometido = escenario crítico
+→ restricted | standard | local_admin | domain_admin | service | full"}:::gateway
+
+end
+
+%% ─── Flujo interno del Gateway ────────────────────────────────
+GW_Q002 --> GW_Q008
+GW_Q008 --> GW_Q057
+GW_Q057 --> GW_Q038
+GW_Q038 --> GW_Q029
+GW_Q029 --> GW_Q046
+GW_Q046 --> GW_Q048
+GW_Q048 --> GW_Q027
+
+%% ─── Disparadores de ruta desde Gateway ──────────────────────
+GW_Q048 -->|"yes — cifrado masivo confirmado
+→ RANSOMWARE"| ROUTE_RAN["🔀 RUTA RANSOMWARE ⚠️
+Prioridad máxima"]:::route
+
+GW_Q046 -->|"yes — C2 confirmado
+→ APT / INTRUSION"| ROUTE_APT["🔀 RUTA APT / INTRUSION
+Advanced Persistent Threat"]:::route
+
+GW_Q057 -->|"yes — phishing confirmado
+→ PHISHING / SOCIAL ENGINEERING"| ROUTE_PHI["🔀 RUTA PHISHING
+Ingeniería Social"]:::route
+
+GW_Q038 -->|"burst — ráfaga masiva
+→ DDoS"| ROUTE_DDOS["🔀 RUTA DDoS
+Ataque de Denegación de Servicio"]:::route
+
+GW_Q029 -->|"yes — cuenta deshabilitada activa
+→ INSIDER / CREDENTIAL THEFT"| MULTI_IC["¿Insider o Credential Theft?
+Disambiguation necesaria"]:::disc
+
+GW_Q008 -->|"yes — malware Y q_048=no
+→ puede ser APT o credential"| DISC_MA["🔀 DISC Malware↔APT
+¿Persistencia o C2?"]:::disc
+
+GW_Q027 --> GW_UNKN
+GW_UNKN{"Gateway sin disparador claro
+Confidence < 0.45
+→ unknown: preguntar IOC + Scope"}:::gateway
+GW_UNKN --> ROUTE_UNKN["🔀 RUTA UNKNOWN
+Todos los bloques comunes primero
+→ ruta por evidencia acumulada"]:::route
+
+%% ─── Discriminación de ambigüedad en Gateway ──────────────────
+MULTI_IC --> DISC_IC
+DISC_IC{"🔀 DISC I↔C — ¿Insider o Credential Theft?
+q_043: ¿Se modificaron políticas de seguridad sin autorización?
+q_031: ¿Se registraron múltiples intentos fallidos de autenticación?
+q_030: ¿La cuenta fue creada hace menos de 7 días?
+→ Si q_043=yes → INSIDER (acceso privilegiado interno)
+→ Si q_031=many → CREDENTIAL_THEFT (brute force externo)
+→ Si ambas → INSIDER (mayor riesgo)"}:::disc
+
+DISC_IC -->|"q_043=yes\nPolíticas modificadas → INSIDER"| ROUTE_INS["🔀 RUTA INSIDER
+Amenaza Interna"]:::route
+DISC_IC -->|"q_031=many\nBrute force → CREDENTIAL THEFT"| ROUTE_CRD["🔀 RUTA CREDENTIAL THEFT
+Robo de Credenciales"]:::route
+DISC_IC -->|"q_043=yes Y q_031=many\nAmbas → empezar por INSIDER"| ROUTE_INS
+
+DISC_MA -->|"q_039=yes\nPersistencia detectada → APT"| ROUTE_APT
+DISC_MA -->|"q_039=no Y q_046=suspected\nTráfico sospechoso → APT"| ROUTE_APT
+DISC_MA -->|"q_039=no Y q_031=many\nSin persistencia + brute force → CREDENTIAL"| ROUTE_CRD
+
+%% ════════════════════════════════════════════════════════════
+%% BLOQUE IOC / THREAT INTELLIGENCE — Siempre al inicio
+%% ════════════════════════════════════════════════════════════
+
+subgraph BLQ_IOC["🔍  IOC / Threat Intelligence   q_003 · q_006 · q_007 · q_009 · q_062 · q_063  (siempre)"]
+direction LR
+IOC_GRP["q_003 — ¿El evento coincide con un IOC conocido?
+💡 IP maliciosa, hash en lista negra, dominio comprometido
+→ no | unknown | partial | yes
+
+q_006 — ¿Cuál es la reputación de la IP/dominio externo?
+💡 Verificar en VirusTotal, AbuseIPDB, X-Force
+→ na | clean | unknown | suspicious | malicious
+
+q_007 — ¿El dominio externo fue registrado hace menos de 30 días?
+💡 Dominios recientes = TTP común de atacantes (WHOIS)
+→ na | no | unknown | yes
+
+q_009 — ¿El hash del archivo aparece en alguna lista negra?
+💡 MD5/SHA256 en VirusTotal — marcado por múltiples motores
+→ na | no | unknown | partial | yes (confirmado malicioso)
+
+q_062 — ¿La IP/dominio está asociado a una categoría de amenaza?
+💡 VirusTotal, Shodan, AbuseIPDB, Threat Intel feeds
+→ none | unknown | cryptominer | phishing | botnet | c2 | ransomware
+
+q_063 — ¿Cuántos equipos internos se comunican con esa IP/dominio?
+💡 Si muchos equipos contactan el mismo destino → infección amplia
+→ na | one | few (<10) | many (10-50) | lots (>50)"]:::ioc
+end
+
+%% ════════════════════════════════════════════════════════════
+%% BLOQUE RANSOMWARE
+%% ════════════════════════════════════════════════════════════
+
+subgraph BLQ_RAN["🔒  RANSOMWARE   q_039 · q_040 · q_042 · q_041 · q_049 · q_051 · q_015 · q_016 · q_011 · q_018 · q_019 · q_024"]
+direction LR
+
+RAN1["q_039 — ¿Se detectó persistencia?
+💡 Tareas programadas, servicios nuevos, claves de registro
+→ no | unknown | yes (+14 pts)
+
+q_040 — ¿Se detectó movimiento lateral confirmado?
+💡 El atacante salta de equipo en equipo — credenciales robadas
+→ no | unknown | yes (+14 pts)
+
+q_042 — ¿Se desactivó o manipuló el AV/EDR?
+💡 El ransomware desactiva la seguridad antes de cifrar
+→ no | unknown | partial (+8) | yes — AV completamente deshabilitado (+14)
+
+q_041 — ¿Se detectó elevación de privilegios no autorizada?
+💡 Usuario normal con permisos de admin sin autorización
+→ no | unknown | yes (+12 pts)
+
+q_049 — ¿Qué protección tiene el equipo afectado?
+💡 Sin AV: +10pts / EDR: +1pt / XDR: 0pts
+→ none | av_free | av_corp | edr | xdr | unknown"]:::ransom
+
+RAN2["q_051 — ¿Firewall activo y con reglas actualizadas?
+💡 Firewall desactivado = tráfico sin filtrar
+→ yes | partial | no (firewall desactivado, +8pts)
+
+q_015 — ¿Se observa movimiento lateral visible entre equipos?
+💡 El atacante se mueve lateralmente por la red
+→ no | unknown | yes (+11 pts)
+
+q_016 — ¿Se observa salida masiva o inusual de datos?
+💡 Double extortion: cifra Y exfiltra para doble presión
+→ no | unknown | maybe | yes (+12 pts)
+
+q_011 — ¿Cuántos equipos están involucrados o afectados?
+💡 1 equipo = contenido / >100 = brecha masiva
+→ one | few | many | lots | massive (+18)
+
+q_018 — ¿Involucra servidores críticos o Controlador de Dominio?
+💡 DC comprometido = escenario de máxima criticidad
+→ no | unknown | server (+7) | dc (+14)
+
+q_019 — ¿Qué tipo de equipo es el más afectado?
+💡 Controlador de Dominio = +14 / DB server = +9
+→ workstation | laptop | server | db | dc | network | iot | byod | unknown
+
+q_024 — ¿Es un activo crítico / Crown Jewel?
+💡 Sistema cuya caída causa daño severo al negocio
+→ no | unknown | yes (+16 pts)"]:::ransom
+end
+
+%% ════════════════════════════════════════════════════════════
+%% BLOQUE APT / INTRUSION
+%% ════════════════════════════════════════════════════════════
+
+subgraph BLQ_APT["🕵️  APT / INTRUSION   q_043 · q_044 · q_045 · q_039 · q_040 · q_041 · q_059 · q_060 · q_061 · q_052 · q_028"]
+direction LR
+
+APT1["q_043 — ¿Se modificaron políticas de seguridad sin autorización?
+💡 GPO, reglas de firewall, políticas de acceso
+→ no | unknown | yes (+10 pts)
+
+q_044 — ¿Se creó una cuenta de administrador no autorizada?
+💡 Backdoor clásico: crear cuenta admin oculta para persistencia
+→ no | unknown | yes (+14 pts)
+
+q_045 — ¿Se ejecutaron comandos sospechosos?
+💡 PowerShell -enc, mshta, certutil, wscript con parámetros raros
+→ no | unknown | maybe | yes (+10 pts)
+
+q_039 — ¿Se detectó persistencia?
+💡 Tareas programadas, servicios, claves de registro
+→ no | unknown | yes (+14 pts)
+
+q_040 — ¿Se detectó movimiento lateral confirmado?
+💡 Lateral movement hacia otros hosts internos
+→ no | unknown | yes (+14 pts)
+
+q_041 — ¿Se detectó elevación de privilegios?
+💡 Privilege escalation no autorizada
+→ no | unknown | yes (+12 pts)"]:::apt
+
+APT2["q_059 — ¿Se conoce la IP de origen del evento?
+💡 Desconocida/ofuscada dificulta investigación
+→ yes_internal | yes_external | proxy/Tor/VPN (+8) | no (+6)
+
+q_060 — ¿Se conoce la IP de destino?
+💡 IP externa desconocida puede ser infraestructura del atacante
+→ yes_internal | yes_known | unknown (+5) | malicious (+10)
+
+q_061 — ¿El equipo se conecta vía VPN o acceso remoto (RDP)?
+💡 RDP expuesto = vector de entrada muy común
+→ no | vpn_ok | vpn_anon (+7) | rdp (+8) | unknown
+
+q_052 — ¿Los logs del sistema están disponibles y completos?
+💡 Logs borrados = señal de anti-forense / APT avanzado
+→ complete | partial (+5) | deleted (+12) | none (+8)
+
+q_028 — ¿La actividad proviene de cuenta de servicio/sistema?
+💡 Cuenta de servicio usada interactivamente = muy sospechoso
+→ no | yes_ok | yes_bad (comportamiento inusual, +8)"]:::apt
+end
+
+%% ════════════════════════════════════════════════════════════
+%% BLOQUE PHISHING / SOCIAL ENGINEERING
+%% ════════════════════════════════════════════════════════════
+
+subgraph BLQ_PHI["🎣  PHISHING / SOCIAL ENGINEERING   q_054 · q_055 · q_056 · q_058 · q_031 · q_030 · q_033 · q_053 · q_032"]
+direction LR
+
+PHI1["q_054 — ¿Se reportó llamada o contacto telefónico sospechoso?
+💡 Vishing: haciéndose pasar por soporte para robar credenciales
+→ no | unknown | yes (+8 pts)
+
+q_055 — ¿Se detectó solicitud urgente de credenciales/accesos/transferencias?
+💡 BEC: CEO fraud, urgencia artificial para saltarse controles
+→ no | unknown | yes (+9 pts)
+
+q_056 — ¿Se detectó MFA Fatigue? (múltiples solicitudes de aprobación)
+💡 Atacante bombardea con push MFA hasta que el usuario acepta
+→ no | few (+4) | yes — múltiples solicitudes seguidas (+10)
+
+q_058 — ¿El usuario confirma haber sido víctima de ingeniería social?
+💡 Compartió credenciales, instaló software, fue engañado
+→ no | unknown | suspected (+5) | yes — confirma engaño (+11)
+
+q_031 — ¿Se registraron múltiples intentos fallidos de autenticación?
+💡 Password spray: probar una contraseña en muchas cuentas
+→ no | few (3-10, +3) | many (+10 intentos, +7)"]:::phish
+
+PHI2["q_030 — ¿La cuenta fue creada hace menos de 7 días?
+💡 Cuenta nueva usada en phishing = creada por atacante
+→ no | recent (7-30 días, +3) | yes (<7 días, +9)
+
+q_033 — ¿El usuario opera de manera completamente inusual para su perfil?
+💡 Acceso a sistemas que normalmente no usa, en horarios distintos
+→ no | slight (+3) | yes — fuera de patrón habitual (+8)
+
+q_053 — ¿El usuario/sistema tiene MFA habilitado?
+💡 MFA activo dificulta enormemente el acceso con creds robadas
+→ yes | partial (+3) | no (sin MFA, +7)
+
+q_032 — ¿El usuario cambió su contraseña en las últimas 48 horas?
+💡 Cambio reciente + actividad inusual = cuenta tomada
+→ no | yes — cambió hace <48h (+5) | forced (+2)"]:::phish
+end
+
+%% ════════════════════════════════════════════════════════════
+%% BLOQUE DDoS
+%% ════════════════════════════════════════════════════════════
+
+subgraph BLQ_DDOS["🌊  DDoS — Denegación de Servicio   q_017 · q_011 · q_012 · q_013 · q_014 · q_018 · q_051 · q_064 · q_036"]
+direction LR
+
+DDOS1["q_017 — ¿Se observa patrón repetitivo o automatizado? (beaconing)
+💡 Tráfico muy regular cada X segundos = herramienta automatizada
+→ no | unknown | yes — patrón repetitivo claro (+8)
+
+q_036 — ¿Es un patrón de eventos que se repite en el tiempo?
+💡 Beaconing clásico: muy regular cada X minutos = malware
+→ no | irregular (+4) | regular — cada X minutos (+8)
+
+q_011 — ¿Cuántos equipos o sistemas están involucrados?
+💡 DDoS volumétrico afecta muchos sistemas a la vez
+→ one (+2) | few | many | lots | massive (+18)
+
+q_012 — ¿Cuántos usuarios están afectados?
+💡 Si el servicio está caído, todos los usuarios son afectados
+→ one | few | many | lots (+10)
+
+q_013 — ¿El evento se repite en múltiples segmentos de red?
+💡 DDoS distribuido afecta múltiples subredes simultáneamente
+→ no | unknown | yes — múltiples segmentos (+9)
+
+q_014 — ¿Cuál es la dirección del tráfico involucrado?
+💡 Ext→Int: inbound flood / Int→Ext: outbound (equipo zombie)
+→ int_int | int_ext | ext_int (+7) | bidireccional (+9)
+
+q_018 — ¿Involucra servidores críticos o Controlador de Dominio?
+💡 Si el DC o servers de producción están bajo DDoS: crítico
+→ no | unknown | server (+7) | dc (+14)
+
+q_051 — ¿Firewall activo y con reglas actualizadas?
+💡 Firewall puede mitigar DDoS volumétrico con rate limiting
+→ yes | partial | no (+8)
+
+q_064 — ¿La comunicación de red involucrada fue exitosa?
+💡 Si logró establecerse: daño real / Si bloqueada: intento
+→ yes (+12) | partial (+8) | blocked (+3) | failed (+2)"]:::ddos
+end
+
+%% ════════════════════════════════════════════════════════════
+%% BLOQUE INSIDER
+%% ════════════════════════════════════════════════════════════
+
+subgraph BLQ_INS["👤  INSIDER THREAT   q_028 · q_030 · q_033 · q_034 · q_035 · q_043 · q_044 · q_016 · q_047 · q_023 · q_024 · q_052"]
+direction LR
+
+INS1["q_028 — ¿La actividad proviene de cuenta de servicio/sistema?
+💡 Cuenta de servicio usada interactivamente = uso indebido
+→ no | yes_ok | yes_bad (comportamiento inusual, +8)
+
+q_030 — ¿La cuenta fue creada recientemente (<7 días)?
+💡 Insider puede crear cuentas nuevas para ocultar actividad
+→ no | recent (7-30 días, +3) | yes (<7 días, +9)
+
+q_033 — ¿El usuario opera fuera de su patrón habitual?
+💡 Accede a sistemas que normalmente no usa, o a datos que no necesita
+→ no | slight (+3) | yes — fuera de patrón (+8)
+
+q_034 — ¿El evento ocurrió fuera del horario laboral normal?
+💡 Insider actúa de madrugada o en fines de semana para no ser visto
+→ business (0) | evening (+3) | dawn — madrugada (+8) | morning (+5)
+
+q_035 — ¿El evento ocurrió durante fin de semana o día festivo?
+💡 Días sin personal de seguridad = cobertura reducida
+→ no (0) | weekend (+6) | holiday (+8)"]:::insider
+
+INS2["q_043 — ¿Se modificaron políticas de seguridad sin autorización?
+💡 Insider modifica GPO, deshabilita logs, cambia permisos
+→ no | unknown | yes (+10)
+
+q_044 — ¿Se creó cuenta de administrador no autorizada?
+💡 Backdoor para acceso posterior al despido o descubrimiento
+→ no | unknown | yes (+14)
+
+q_016 — ¿Se observa salida masiva o inusual de datos?
+💡 Exfiltración antes de irse: emails, USB, nube personal
+→ no | unknown | maybe (+5) | yes (+12)
+
+q_047 — ¿Se confirmó exfiltración de datos hacia el exterior?
+💡 Datos de empresa hacia servidores externos sin autorización
+→ no | unknown | suspected (+8) | yes — exfiltración confirmada (+18)
+
+q_023 — ¿El equipo maneja información financiera/regulada/confidencial?
+💡 Insider con acceso a datos de alto valor = impacto mayor
+→ no | unknown (+4) | yes — datos sensibles (+10)
+
+q_024 — ¿Es un activo crítico / Crown Jewel?
+💡 ERP, AD, core banking: el insider sabe exactamente dónde atacar
+→ no | unknown (+5) | yes (+16)
+
+q_052 — ¿Los logs están disponibles y completos?
+💡 Insider borraría logs para cubrir su actividad
+→ complete (0) | partial (+5) | deleted — ALERTA (+12) | none (+8)"]:::insider
+end
+
+%% ════════════════════════════════════════════════════════════
+%% BLOQUE CREDENTIAL THEFT
+%% ════════════════════════════════════════════════════════════
+
+subgraph BLQ_CRD["🔑  CREDENTIAL THEFT   q_031 · q_030 · q_028 · q_053 · q_032 · q_059 · q_061 · q_047 · q_016"]
+direction LR
+
+CRD1["q_031 — ¿Múltiples intentos fallidos de autenticación?
+💡 Brute force o password spray: muchos intentos en poco tiempo
+→ no | few (3-10, +3) | many (+10 intentos, +7)
+
+q_030 — ¿La cuenta fue creada recientemente (<7 días)?
+💡 Atacante crea nueva cuenta tras comprometer credenciales
+→ no | recent (+3) | yes — <7 días (+9)
+
+q_028 — ¿La actividad proviene de cuenta de servicio/sistema?
+💡 Robo de creds de service accounts: mayor impacto
+→ no | yes_ok | yes_bad (+8)
+
+q_053 — ¿El usuario/sistema tiene MFA habilitado?
+💡 Sin MFA: credential theft = full compromise / Con MFA: parcial
+→ yes (0) | partial (+3) | no — sin MFA (+7)
+
+q_032 — ¿El usuario cambió su contraseña en las últimas 48h?
+💡 Cambio reciente + actividad inusual = cuenta ya comprometida
+→ no | yes (+5) | forced (+2)
+
+q_059 — ¿Se conoce la IP de origen?
+💡 IP desconocida/Tor/VPN anónima = atacante externo ocultándose
+→ yes_internal | yes_external | proxy/Tor (+8) | no (+6)
+
+q_061 — ¿El equipo se conecta vía VPN o RDP?
+💡 RDP expuesto + credenciales robadas = vector clásico de entrada
+→ no | vpn_ok | vpn_anon (+7) | rdp (+8)
+
+q_047 — ¿Se confirmó exfiltración de datos hacia el exterior?
+💡 Tras robar credenciales el atacante exfiltra datos
+→ no | unknown | suspected (+8) | yes (+18)
+
+q_016 — ¿Se observa salida masiva inusual de datos?
+💡 Credenciales robadas usadas para extraer información
+→ no | unknown | maybe (+5) | yes (+12)"]:::cred
+end
+
+%% ════════════════════════════════════════════════════════════
+%% BLOQUE ASSET / CONTEXTO — Siempre al final de categoría
+%% ════════════════════════════════════════════════════════════
+
+subgraph BLQ_ASSET["🖥️  Asset / Contexto del Equipo   q_001 · q_004 · q_005 · q_010 · q_019 · q_020 · q_021 · q_022 · q_023 · q_024 · q_025 · q_026  (siempre)"]
+direction LR
+
+ASSET1["q_001 — ¿El evento puede ser potencialmente malicioso?
+💡 Intuición del analista — responde con lo que ves aunque no estés seguro
+→ no | unknown (+3) | maybe (+6) | yes (+10)
+
+q_004 — ¿Alguna herramienta marcó este evento como malicioso?
+💡 AV, EDR, firewall, SIEM — ¿alguno levantó alerta?
+→ no | unknown (+2) | warning (+5) | yes — marcado malicioso (+10)
+
+q_005 — ¿El archivo/proceso involucrado es desconocido o sospechoso?
+💡 Nombre inusual, proceso no reconocido, LOLBin
+→ na | no | unknown (+4) | yes — claramente inusual (+7)
+
+q_010 — ¿El sistema detectó anomalía de comportamiento? (UEBA)
+💡 Fuera del baseline habitual del usuario/equipo
+→ no | unknown (+2) | maybe (+4) | yes — fuera del patrón (+8)
+
+q_019 — ¿Qué tipo de equipo es el más afectado?
+💡 DC comprometido = +14 / BYOD = +6 / Workstation = +3
+→ workstation | laptop | server | db | dc | network | iot | byod | unknown
+
+q_020 — ¿El equipo está en el inventario oficial (CMDB)?
+💡 Equipo no inventariado = rogue device posible
+→ yes | no — no inventariado (+8) | unknown (+4)
+
+q_021 — ¿El equipo pertenece al dominio corporativo?
+💡 Fuera del dominio = sin políticas de seguridad corporativas
+→ yes | no — fuera del dominio (+7) | unknown (+3)
+
+q_022 — ¿El equipo se encuentra en la DMZ?
+💡 DMZ = accesible desde internet, mayor exposición
+→ no | yes — en DMZ (+6) | unknown (+3)
+
+q_023 — ¿El equipo maneja información financiera/regulada/confidencial?
+💡 PCI-DSS, HIPAA, GDPR, datos de clientes, core banking
+→ no | unknown (+4) | yes — datos sensibles (+10)
+
+q_024 — ¿Es activo crítico / Crown Jewel?
+💡 Caída o compromiso = daño severo al negocio
+→ no | unknown (+5) | yes (+16)
+
+q_025 — ¿Se conoce la dirección MAC del equipo?
+💡 MAC desconocida = posible rogue device en la red
+→ yes | no (+5) | unknown (+2)
+
+q_026 — ¿El hostname está registrado oficialmente?
+💡 Hostname aleatorio o no registrado = equipo no autorizado
+→ yes | no — hostname raro (+5) | unknown (+2)"]:::common
+end
+
+%% ════════════════════════════════════════════════════════════
+%% BLOQUE TEMPORAL — Siempre
+%% ════════════════════════════════════════════════════════════
+
+subgraph BLQ_TEMP["⏰  Contexto Temporal   q_034 · q_035 · q_036 · q_037  (siempre)"]
+direction LR
+
+TEMP1["q_034 — ¿El evento ocurrió fuera del horario laboral?
+💡 Madrugada (23-6h) = +8pts / Tarde/noche (18-23h) = +3pts
+→ business (0) | evening (+3) | dawn (+8) | morning (+5)
+
+q_035 — ¿Ocurrió en fin de semana o día festivo?
+💡 Atacantes prefieren cuando el equipo de seguridad no está
+→ no (0) | weekend (+6) | holiday (+8)
+
+q_036 — ¿Es un patrón de eventos que se repite en el tiempo?
+💡 Beaconing regular = malware / Irregular = humano
+→ no | irregular (+4) | regular — cada X minutos (+8)
+
+q_037 — ¿Este comportamiento es completamente inusual para este contexto?
+💡 Servidor de producción con tráfico a las 3am es anómalo
+→ normal (0) | slight (+3) | yes — completamente inusual (+7)"]:::common
+end
+
+%% ════════════════════════════════════════════════════════════
+%% BLOQUE IMPACTO FINAL — Siempre
+%% ════════════════════════════════════════════════════════════
+
+subgraph BLQ_IMPACT["💥  Impacto Final   q_047 · q_064 · q_065 · q_066  (siempre)"]
+direction LR
+
+IMP1["q_047 — ¿Se confirmó exfiltración de datos hacia el exterior?
+💡 El dato más grave — datos de empresa fuera sin autorización
+→ no | unknown (+4) | suspected (+8) | yes — exfiltración confirmada (+18)
+
+q_064 — ¿El intento de comunicación de red fue exitoso?
+💡 Comunicación establecida = daño real / Bloqueada = intento
+→ yes (+12) | partial (+8) | blocked (+3) | failed (+2)
+
+q_065 — ¿El usuario involucrado en el evento ha sido identificado?
+💡 Sin identificar = peor para la investigación forense
+→ yes_known (0) | yes_foreign (+6) | not_yet (+5) | no (+9)
+
+q_066 — ¿El usuario ocupa una función crítica para el negocio?
+💡 C-level, Domain Admin, CISO, CFO, auditores internos = +10pts
+→ yes (+10) | no (0) | unknown (+3) | na (0)"]:::impact
+end
+
+%% ════════════════════════════════════════════════════════════
+%% NODOS DISC — Discriminación entre pares confundibles
+%% ════════════════════════════════════════════════════════════
+
+DISC_RA{"🔀 DISC R↔A — ¿Ransomware o APT?
+q_048: ¿Hay cifrado masivo de archivos?
+q_046: ¿Hay comunicación C2 activa?
+q_039: ¿Se detectó persistencia?
+→ q_048=yes → RANSOMWARE
+→ q_046=yes Y q_048=no → APT
+→ Ambas=yes → RANSOMWARE (prioridad) + analizar APT también"}:::disc
+
+DISC_PC{"🔀 DISC P↔C — ¿Phishing o Credential Theft?
+q_057: ¿Hay phishing email confirmado? → PHISHING
+q_031: ¿Hay muchos intentos fallidos de auth? → CREDENTIAL THEFT
+q_056: ¿Hay MFA Fatigue? → PHISHING
+→ Si phishing causó el robo de credenciales → PHISHING es el vector
+  y CREDENTIAL THEFT es el impacto (activar ambos bloques)"}:::disc
+
+DISC_IA{"🔀 DISC I↔A — ¿Insider o APT?
+q_034: ¿Evento fuera de horario laboral?
+q_044: ¿Se creó cuenta admin no autorizada?
+q_043: ¿Se modificaron políticas?
+→ Insider tiene patrón horario humano + conocimiento interno
+→ APT tiende a ser más sigiloso, usa herramientas avanzadas,
+  puede operar desde múltiples IPs (q_059=proxy/Tor)
+→ q_059=proxy/Tor → APT (externo) / q_059=internal → INSIDER"}:::disc
+
+DISC_RA -->|"q_048=yes"| ROUTE_RAN
+DISC_RA -->|"q_046=yes Y q_048=no"| ROUTE_APT
+DISC_PC -->|"q_057=yes"| ROUTE_PHI
+DISC_PC -->|"q_031=many Y q_057=no"| ROUTE_CRD
+DISC_IA -->|"q_059=proxy/Tor → APT"| ROUTE_APT
+DISC_IA -->|"q_059=internal → INSIDER"| ROUTE_INS
+
+%% ════════════════════════════════════════════════════════════
+%% NODOS DEPTH — Profundización cuando categoría no se confirma
+%% ════════════════════════════════════════════════════════════
+
+DEPTH_RAN["🔒 DEPTH RANSOMWARE
+Si q_048=maybe/unknown → profundizar:
+q_039: ¿Persistencia detectada? (tareas, servicios, registro)
+q_040: ¿Movimiento lateral? (salta de equipo en equipo)
+q_042: ¿AV/EDR deshabilitado?
+q_041: ¿Elevación de privilegios?
+q_015: ¿Movimiento lateral visible en red?
+→ Si q_039+q_040+q_042=yes → ransomware muy probable
+→ Si q_039=no Y q_046=suspected → redirigir a APT"]:::depth
+
+DEPTH_APT["🕵️ DEPTH APT
+Si q_046=suspected → profundizar:
+q_043: ¿Modificación de políticas? (GPO, firewall rules)
+q_044: ¿Cuenta admin creada?
+q_045: ¿PowerShell encoded / comandos sospechosos?
+q_062: ¿IP/dominio en categoría C2/APT?
+q_052: ¿Logs borrados o manipulados?
+→ Si q_052=deleted → APT avanzado / anti-forensic
+→ Si q_045=yes Y q_044=yes → APT confirmado"]:::depth
+
+DEPTH_PHI["🎣 DEPTH PHISHING
+Si q_057=suspected → profundizar:
+q_054: ¿Llamada sospechosa previa? (vishing)
+q_055: ¿Solicitud urgente de credenciales/transferencias?
+q_056: ¿MFA Fatigue detectada?
+q_058: ¿El usuario confirma haber sido víctima?
+→ Si q_058=yes → phishing confirmado, activar CREDENTIAL también
+→ Si q_055=yes Y q_058=no → posible BEC sin confirmación"]:::depth
+
+DEPTH_DDOS["🌊 DEPTH DDoS
+Si q_038=very_high (no burst) → profundizar:
+q_036: ¿Patrón regular en el tiempo? (beaconing)
+q_017: ¿Patrón repetitivo automatizado?
+q_013: ¿Afecta múltiples segmentos de red?
+q_014: ¿Dirección del tráfico? (ext→int = inbound flood)
+→ Si q_017=yes Y q_013=yes → DDoS distribuido
+→ Si q_014=int_ext → equipo zombie participando en botnet DDoS"]:::depth
+
+DEPTH_INS["👤 DEPTH INSIDER
+Si q_029=inactive → profundizar:
+q_034: ¿Fuera de horario laboral? (madrugada)
+q_035: ¿En fin de semana o festivo?
+q_033: ¿Completamente fuera de su patrón habitual?
+q_016: ¿Salida masiva de datos?
+q_052: ¿Logs borrados?
+→ Si q_034=dawn Y q_035=weekend → máxima sospecha de insider
+→ Si q_052=deleted → insider avanzado cubriendo rastros"]:::depth
+
+DEPTH_CRD["🔑 DEPTH CREDENTIAL THEFT
+Si q_029=inactive Y q_031=few → profundizar:
+q_032: ¿Cambio de contraseña en <48h?
+q_053: ¿Tiene MFA habilitado?
+q_061: ¿Conexión vía VPN anónima o RDP expuesto?
+q_059: ¿IP de origen conocida?
+→ Si q_053=no Y q_061=rdp → credential theft clásico (RDP + sin MFA)
+→ Si q_059=proxy/Tor → atacante externo ocultando IP"]:::depth
+
+%% Conexiones Depth desde bloques principales
+BLQ_RAN -->|"q_048=maybe\n→ profundizar"| DEPTH_RAN
+DEPTH_RAN -->|"q_039+q_042=yes\n→ ransomware confirmado"| BLQ_ASSET
+DEPTH_RAN -->|"q_039=no Y q_046=yes\n→ redirigir a APT"| DISC_RA
+
+BLQ_APT -->|"q_046=suspected\n→ profundizar"| DEPTH_APT
+DEPTH_APT -->|"q_052=deleted\n→ APT avanzado"| BLQ_ASSET
+DEPTH_APT --> BLQ_ASSET
+
+BLQ_PHI -->|"q_057=suspected\n→ profundizar"| DEPTH_PHI
+DEPTH_PHI -->|"q_058=yes → phishing\n→ también credential"| DISC_PC
+DEPTH_PHI --> BLQ_ASSET
+
+BLQ_DDOS -->|"q_038=very_high (no burst)\n→ profundizar"| DEPTH_DDOS
+DEPTH_DDOS -->|"q_014=int_ext → zombie\n→ también INSIDER"| DISC_IA
+DEPTH_DDOS --> BLQ_ASSET
+
+BLQ_INS -->|"q_029=inactive (no disabled)\n→ profundizar"| DEPTH_INS
+DEPTH_INS -->|"q_052=deleted\n→ insider avanzado"| BLQ_ASSET
+DEPTH_INS --> BLQ_ASSET
+
+BLQ_CRD -->|"q_031=few\n→ profundizar"| DEPTH_CRD
+DEPTH_CRD -->|"q_061=rdp Y q_053=no\n→ credential theft confirmado"| BLQ_ASSET
+DEPTH_CRD --> BLQ_ASSET
+
+%% ════════════════════════════════════════════════════════════
+%% ROUTING PRINCIPAL
+%% ════════════════════════════════════════════════════════════
+
+ROUTE_RAN --> BLQ_IOC
+ROUTE_APT --> BLQ_IOC
+ROUTE_PHI --> BLQ_IOC
+ROUTE_DDOS --> BLQ_IOC
+ROUTE_INS --> BLQ_IOC
+ROUTE_CRD --> BLQ_IOC
+ROUTE_UNKN --> BLQ_IOC
+
+BLQ_IOC -->|RANSOMWARE| BLQ_RAN
+BLQ_IOC -->|APT| BLQ_APT
+BLQ_IOC -->|PHISHING| BLQ_PHI
+BLQ_IOC -->|DDoS| BLQ_DDOS
+BLQ_IOC -->|INSIDER| BLQ_INS
+BLQ_IOC -->|CREDENTIAL| BLQ_CRD
+BLQ_IOC -->|UNKNOWN| BLQ_ASSET
+
+BLQ_RAN --> BLQ_ASSET
+BLQ_APT --> BLQ_ASSET
+BLQ_PHI --> BLQ_ASSET
+BLQ_DDOS --> BLQ_ASSET
+BLQ_INS --> BLQ_ASSET
+BLQ_CRD --> BLQ_ASSET
+
+BLQ_ASSET --> BLQ_TEMP
+BLQ_TEMP --> BLQ_IMPACT
+
+%% Conexiones cruzadas
+BLQ_PHI -. "q_058=yes\nPhishing llevó a robo de creds" .-> BLQ_CRD:::cross
+BLQ_RAN -. "q_040=yes\nMovimiento lateral detectado\n→ revisar APT también" .-> DISC_RA:::cross
+BLQ_CRD -. "q_059=proxy/Tor\n→ puede ser APT externo" .-> DISC_IA:::cross
+BLQ_INS -. "q_016=yes\nExfiltración masiva\n→ revisar APT también" .-> DISC_IA:::cross
+BLQ_APT -. "q_048=yes\nCifrado masivo en APT\n→ ransomware como payload" .-> BLQ_RAN:::cross
+
+%% ════════════════════════════════════════════════════════════
+%% CLASIFICACIÓN FINAL
+%% ════════════════════════════════════════════════════════════
+
+BLQ_IMPACT --> CLS_INFO
+BLQ_IMPACT --> CLS_SOSP
+BLQ_IMPACT --> CLS_INCI
+BLQ_IMPACT --> CLS_CRIT
+BLQ_IMPACT --> CLS_BREC
+
+CLS_INFO(["⬜  INFORMATIVO   Score < 25
+━━━━━━━━━━━━━━━━━━━━━━━━━
+Evento de baja probabilidad maliciosa.
+Monitorear. No requiere acción inmediata.
+MITRE: Ninguna táctica significativa.
+Acción: Registrar, observar, enriquecer con TI."]):::r_info
+
+CLS_SOSP(["🟢  SOSPECHOSO   Score 25–49
+━━━━━━━━━━━━━━━━━━━━━━━━━
+Indicadores ambiguos. Requiere investigación.
+MITRE: Reconnaissance | Initial Access
+Acción: Escalar a analista Tier 2.
+Preservar logs. Verificar con TI adicional."]):::r_sosp
+
+CLS_INCI(["🟡  INCIDENTE   Score 50–74
+━━━━━━━━━━━━━━━━━━━━━━━━━
+Actividad maliciosa probable o confirmada.
+MITRE: Execution | Persistence | Lateral Movement
+Acción: Contener equipo afectado.
+Notificar al equipo de respuesta.
+Iniciar playbook de respuesta a incidentes."]):::r_inci
+
+CLS_CRIT(["🔴  CRÍTICO   Score 75–99
+━━━━━━━━━━━━━━━━━━━━━━━━━
+Compromiso activo o inminente.
+MITRE: Privilege Escalation | Defense Evasion |
+       Credential Access | C2 | Exfiltration
+Acción: AISLAMIENTO INMEDIATO.
+Convocar al equipo de IR. Notificar a dirección.
+Preservar evidencia forense."]):::r_crit
+
+CLS_BREC(["🟣  BRECHA   Score ≥ 100
+━━━━━━━━━━━━━━━━━━━━━━━━━
+Brecha de seguridad confirmada.
+MITRE: Impact | Exfiltration | Data Encrypted
+Acción: PROTOCOLO DE BRECHA ACTIVO.
+Notificación regulatoria (GDPR/LOPD/etc).
+IR team + Legal + Dirección + Reguladores.
+Comunicación de crisis si hay terceros afectados."]):::r_brec
+
+%% ════════════════════════════════════════════════════════════
+%% LEYENDA
+%% ════════════════════════════════════════════════════════════
+
+subgraph LEYENDA["📌  Leyenda"]
+direction LR
+LEG1["🎯 GW: 8 Preguntas Disparadoras
+🔒 RAN: Ransomware
+🕵️ APT: APT / Intrusion
+🎣 PHI: Phishing / Social Eng.
+🌊 DDoS: Denial of Service
+👤 INS: Insider Threat
+🔑 CRD: Credential Theft
+🔍 IOC: Threat Intelligence
+🖥️ AST: Asset / Contexto
+⏰ TMP: Temporal
+💥 IMP: Impacto Final"]:::common
+LEG2["DISC_**: Discrimina pares confundibles
+DEPTH_**: Profundiza misma familia
+--- Conexiones cruzadas entre categorías
+
+⬜ Informativo: Score < 25
+🟢 Sospechoso: 25–49
+🟡 Incidente:  50–74
+🔴 Crítico:    75–99
+🟣 Brecha:     ≥ 100
+
+INFERENCE_TABLE (chatbot_engine.py):
+  q_048=yes → ransomware +0.70
+  q_046=yes → apt       +0.65
+  q_057=yes → phishing  +0.65
+  q_038=burst → ddos    +0.70
+  q_029=disabled → insider +0.45"]:::common
+end

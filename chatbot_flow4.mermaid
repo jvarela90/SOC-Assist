@@ -1,0 +1,554 @@
+%%{init: {"theme": "dark", "flowchart": {"curve": "basis", "nodeSpacing": 35, "rankSpacing": 50}}}%%
+flowchart TD
+
+%% ============================================================
+%% SOC Assist — Chat Analista UNIFICADO v4.0
+%% Pool completo: N001–N200 (ciudadano) + q_001–q_066 (analista)
+%% = 266 preguntas — dos fases conectadas por un PUENTE
+%%
+%% FASE 1 — INTAKE (N001–N200)
+%%   Para víctimas, denunciantes y ciudadanos sin vocabulario técnico.
+%%   Clasifica en P1–P4 y en categoría de incidente.
+%%   Referencia completa: chatbot_flow2.mermaid
+%%
+%% FASE 2 — ANÁLISIS TÉCNICO (q_001–q_066)
+%%   Para analistas SOC, incident responders y técnicos.
+%%   Clasifica en informativo/sospechoso/incidente/critico/brecha.
+%%   Referencia completa: chatbot_flow3.mermaid
+%%
+%% PUENTE (BRIDGE)
+%%   Mapea categoría de Fase 1 → bloque de entrada en Fase 2.
+%%   Un analista SOC puede "retomar" el caso de un ciudadano
+%%   y continuar con el análisis técnico desde el punto correcto,
+%%   sin volver a preguntar lo que ya se respondió.
+%%
+%% FLUJO DUAL
+%%   → Entrada Analista: va directo a GATEWAY experto (q_)
+%%   → Entrada Ciudadano: GATEWAY N → Clasificación P1-P4
+%%     → ¿disponible analista? → BRIDGE → Análisis técnico
+%%
+%% ============================================================
+
+%% ─────── ESTILOS ─────────────────────────────────────────────
+classDef gateway    fill:#1a237e,stroke:#5c6bc0,color:#fff,font-size:12px
+classDef phase1     fill:#1a237e,stroke:#9fa8da,color:#e8eaf6,font-size:11px
+classDef phase2     fill:#4a0072,stroke:#ce93d8,color:#f3e5f5,font-size:11px
+classDef bridge     fill:#006064,stroke:#80deea,color:#e0f7fa,font-size:11px
+classDef route      fill:#0d47a1,stroke:#42a5f5,color:#fff,font-size:11px
+classDef ransom     fill:#b71c1c,stroke:#ef9a9a,color:#ffebee,font-size:11px
+classDef phish      fill:#bf360c,stroke:#ffab91,color:#fbe9e7,font-size:11px
+classDef fraude     fill:#4a148c,stroke:#ce93d8,color:#f3e5f5,font-size:11px
+classDef acoso      fill:#880e4f,stroke:#f48fb1,color:#fce4ec,font-size:11px
+classDef identidad  fill:#1b5e20,stroke:#81c784,color:#e8f5e9,font-size:11px
+classDef malware    fill:#bf360c,stroke:#ffab91,color:#fbe9e7,font-size:11px
+classDef menores    fill:#01579b,stroke:#81d4fa,color:#e1f5fe,font-size:11px
+classDef empresa    fill:#33691e,stroke:#aed581,color:#f1f8e9,font-size:11px
+classDef apt        fill:#4a0072,stroke:#ce93d8,color:#f3e5f5,font-size:11px
+classDef ddos       fill:#004d40,stroke:#80cbc4,color:#e0f2f1,font-size:11px
+classDef insider    fill:#880e4f,stroke:#f48fb1,color:#fce4ec,font-size:11px
+classDef cred       fill:#1b5e20,stroke:#81c784,color:#e8f5e9,font-size:11px
+classDef common     fill:#37474f,stroke:#90a4ae,color:#eceff1,font-size:11px
+classDef disc       fill:#311b92,stroke:#b39ddb,color:#ede7f6,font-size:11px
+classDef depth      fill:#263238,stroke:#78909c,color:#cfd8dc,font-size:11px
+classDef r_p1       fill:#b71c1c,stroke:#ff1744,color:#fff,font-weight:bold,font-size:13px
+classDef r_p2       fill:#e65100,stroke:#ff6d00,color:#fff,font-weight:bold,font-size:13px
+classDef r_p3       fill:#f57f17,stroke:#ffca28,color:#1a1a1a,font-weight:bold,font-size:13px
+classDef r_p4       fill:#1b5e20,stroke:#4caf50,color:#fff,font-weight:bold,font-size:13px
+classDef r_info     fill:#37474f,stroke:#90a4ae,color:#fff,font-weight:bold,font-size:12px
+classDef r_sosp     fill:#1b5e20,stroke:#4caf50,color:#fff,font-weight:bold,font-size:12px
+classDef r_inci     fill:#e65100,stroke:#ff6d00,color:#fff,font-weight:bold,font-size:12px
+classDef r_crit     fill:#b71c1c,stroke:#ff1744,color:#fff,font-weight:bold,font-size:12px
+classDef r_brec     fill:#4a0072,stroke:#ff1744,color:#fff,font-weight:bold,font-size:12px
+classDef cross      fill:#311b92,stroke:#b39ddb,color:#ede7f6,font-size:10px,stroke-dasharray:4 2
+
+%% ════════════════════════════════════════════════════════════
+%% ENTRADA PRINCIPAL — ROUTER
+%% ════════════════════════════════════════════════════════════
+
+START(["🛡️ SOC ASSIST — CHAT UNIFICADO v4.0
+Sistema de evaluación de incidentes en dos fases:
+
+FASE 1 (N001–N200): Para víctimas y ciudadanos
+FASE 2 (q_001–q_066): Para analistas SOC y técnicos
+
+Ambas fases crean el mismo Incident en la DB.
+Las fases se pueden combinar en un mismo caso."]):::gateway
+
+START --> ENTRY_ROUTER
+
+ENTRY_ROUTER{"¿Quién está iniciando esta consulta?"}:::gateway
+
+ENTRY_ROUTER -->|"Soy analista SOC,
+incident responder
+o técnico de seguridad"| PHASE2_START
+
+ENTRY_ROUTER -->|"Soy víctima, ciudadano,
+denunciante o no soy
+experto en informática"| PHASE1_START
+
+ENTRY_ROUTER -->|"Soy una herramienta
+automatizada (SOAR, SIEM,
+script, API)"| PHASE2_API["API REST
+POST /api/v1/chat/sessions
+→ Modo analista por defecto
+Ver: /docs o /api/v1/"]:::gateway
+
+PHASE2_API --> PHASE2_START
+
+%% ════════════════════════════════════════════════════════════
+%% ════════════════════════════════════════════════════════════
+%%  FASE 1 — INTAKE DEL CIUDADANO (N001–N200)
+%%  Ver detalle completo en chatbot_flow2.mermaid
+%% ════════════════════════════════════════════════════════════
+%% ════════════════════════════════════════════════════════════
+
+PHASE1_START(["📋 FASE 1 — INTAKE DEL CIUDADANO
+Preguntas N001–N200 en lenguaje simple.
+Cada pregunta tiene ayuda 💡 para principiantes.
+Ver flujo completo: chatbot_flow2.mermaid"]):::phase1
+
+PHASE1_START --> P1_GW
+
+subgraph P1_GATEWAY["🚦  FASE 1: GATEWAY CIUDADANO   N001 – N015  (ver chatbot_flow2.mermaid para detalle completo)"]
+direction LR
+
+P1_GW["N001 ¿Persona particular o empresa?
+N002 ¿Qué dispositivo está afectado?
+N003 ¿Cuándo notaste el problema?
+N004 ¿Sigue activo ahora mismo?
+N005 ¿Hay otras personas afectadas?
+N006 ¿Recibiste mensaje/email sospechoso previo?
+N007 ¿Hiciste clic en algo recientemente?
+N008 ¿Todo funciona normal o hay algo raro?
+N009 ¿Hay pérdidas económicas o cargos no reconocidos?  → FRAUDE
+N010 ¿Alguien te amenaza o acosa?                      → ACOSO
+N011 ¿Crees que alguien entró sin permiso?
+N012 ¿Archivos bloqueados o con nombres raros?          → RANSOMWARE
+N013 ¿Hay un menor involucrado?                        → MENORES
+N014 ¿Alguien usa tu identidad sin permiso?            → IDENTIDAD
+N015 ¿Ves virus/publicidad rara/comportamiento extraño? → MALWARE"]:::phase1
+
+P1_CATS["RUTAS FASE 1 (ver chatbot_flow2.mermaid):
+
+🔒 G — Ransomware / Archivos Bloqueados  N126–N140
+🎣 C — Phishing / Engaño / Estafa         N056–N075
+💳 D — Fraude Financiero                  N076–N090
+👁️ E — Acoso Digital / Sextorsión         N091–N110
+👤 F — Robo de Identidad / Suplantación   N111–N125
+🦠 H — Virus / Malware / Comportamiento   N141–N155
+👶 I — Seguridad de Menores              N156–N165
+🏢 J — Incidente Organizacional           N166–N180
+💻 A — Dispositivo y Entorno (base)       N016–N035
+🔐 B — Acceso a Cuentas                   N036–N055
+📋 K — Evidencia y Acciones (siempre)     N181–N193
+🚨 L — Urgencia Final (siempre)           N194–N200"]:::phase1
+end
+
+P1_GW --> P1_CATS
+P1_CATS --> P1_CLASSIFY
+
+subgraph P1_CLASSIFY["🎯  FASE 1: CLASIFICACIÓN CIUDADANO (salida de N001–N200)"]
+direction LR
+
+P1_P1(["🔴 P1 — URGENTE — Actúa AHORA
+Ransomware activo / Fraude bancario en curso /
+Menor en riesgo / Atacante con acceso activo
+→ Bloquear tarjeta / Apagar equipo /
+  Llamar a la policía / Cambiar contraseñas"]):::r_p1
+
+P1_P2(["🟠 P2 — PRIORITARIO — Actúa HOY
+Cuentas comprometidas / Robo de identidad /
+Malware persistente / Datos sensibles expuestos
+→ Cambiar email primero / Denuncia policial /
+  Buscar ayuda técnica"]):::r_p2
+
+P1_P3(["🟡 P3 — IMPORTANTE — 24-48h
+Estafa/phishing completado / Acoso activo /
+Fraude menor ya resuelto / Sospecha sin confirmar
+→ Documentar todo / Denunciar /
+  Monitorear cuentas"]):::r_p3
+
+P1_P4(["🟢 P4 — ORIENTACIÓN PREVENTIVA
+Consulta de precaución / Sin daño confirmado
+→ Revisar configuraciones / Activar 2FA /
+  Guía de buenas prácticas / INCIBE 017"]):::r_p4
+end
+
+%% ─── Decisión post-Fase 1: ¿Escalar a analista? ─────────────
+P1_CLASSIFY --> ESCALADO
+
+ESCALADO{"¿Hay un analista SOC disponible
+para profundizar el análisis técnico?
+O ¿el caso requiere análisis forense?"}:::bridge
+
+ESCALADO -->|"Sí — analista disponible
+o caso P1/P2 que lo requiere"| BRIDGE
+ESCALADO -->|"No — solo ciudadano
+sin soporte técnico disponible"| P1_END
+
+P1_END(["✅ CASO CERRADO — FASE 1
+Incidente registrado con clasificación P1–P4.
+Acciones recomendadas entregadas al denunciante.
+Si la situación cambia: reabrir con /chatbot
+Si requiere escalado posterior: usar Fase 2"]):::phase1
+
+%% ════════════════════════════════════════════════════════════
+%% PUENTE (BRIDGE) — Mapeo categoría ciudadano → experto
+%% ════════════════════════════════════════════════════════════
+
+subgraph BLQ_BRIDGE["🌉  PUENTE — Mapeo Fase 1 (N) → Fase 2 (q_)"]
+direction TB
+
+BRIDGE["🌉 BRIDGE — Correlación de Categorías
+El BRIDGE usa la categoría inferida en Fase 1 para
+arrancar Fase 2 en el bloque más relevante,
+preservando las respuestas ya dadas.
+
+MAPEO DE CATEGORÍAS:
+N-RANSOMWARE (Bloque G)    → q_048, q_039  — RANSOMWARE (flow3)
+N-PHISHING (Bloque C)      → q_057, q_054  — PHISHING (flow3)
+N-FRAUDE (Bloque D)        → q_031, q_053  — CREDENTIAL THEFT (flow3)
+N-ACOSO (Bloque E)         → q_029, q_028  — INSIDER THREAT (flow3)
+N-IDENTIDAD (Bloque F)     → q_031, q_061  — CREDENTIAL THEFT (flow3)
+N-MALWARE (Bloque H)       → q_008, q_046  — APT o RANSOMWARE (flow3)
+N-MENORES (Bloque I)       → q_029, q_028  — INSIDER (flow3)
+N-EMPRESA (Bloque J)       → q_002, q_008  — TODOS los bloques (flow3)
+N-ACCESO (Bloque B)        → q_029, q_031  — CREDENTIAL / INSIDER (flow3)
+
+RESPUESTAS REUTILIZADAS (N → q equivalente):
+  N006=Sí (msg sospechoso) ↔ q_002=edr_alert/siem_high
+  N007=Sí (clic en enlace) ↔ q_057=suspected
+  N012=Sí (archivos bloqueados) ↔ q_048=maybe/yes
+  N009=Sí (pérdidas económicas) ↔ q_047=suspected
+  N015=Sí (virus/malware) ↔ q_008=maybe/yes
+  N011=Sí (acceso sin permiso) ↔ q_029=inactive
+  N005=Sí (otros afectados) ↔ q_011=few/many
+  N004=Sí (activo ahora) ↔ q_038=high/very_high"]:::bridge
+
+BRIDGE_ROUTER{"¿Qué categoría viene de Fase 1?"}:::bridge
+
+end
+
+BRIDGE --> BRIDGE_ROUTER
+
+BRIDGE_ROUTER -->|"N-RANSOMWARE"| BR_RAN["Bridge → RANSOMWARE
+Pre-carga: q_048=maybe/yes
+Continúa: q_039, q_040, q_042
+chatbot_flow3 — Bloque RAN"]:::route
+
+BRIDGE_ROUTER -->|"N-PHISHING"| BR_PHI["Bridge → PHISHING
+Pre-carga: q_057=suspected/yes
+Continúa: q_054, q_055, q_056, q_058
+chatbot_flow3 — Bloque PHI"]:::route
+
+BRIDGE_ROUTER -->|"N-FRAUDE"| BR_FRD["Bridge → CREDENTIAL THEFT
+Pre-carga: q_047=suspected
+Continúa: q_031, q_053, q_061
+chatbot_flow3 — Bloque CRD"]:::route
+
+BRIDGE_ROUTER -->|"N-ACOSO / N-MENORES"| BR_INS["Bridge → INSIDER THREAT
+Pre-carga: q_029=inactive
+Continúa: q_028, q_033, q_034
+chatbot_flow3 — Bloque INS"]:::route
+
+BRIDGE_ROUTER -->|"N-IDENTIDAD"| BR_CRD["Bridge → CREDENTIAL THEFT
+Pre-carga: q_031=few/many
+Continúa: q_053, q_059, q_061
+chatbot_flow3 — Bloque CRD"]:::route
+
+BRIDGE_ROUTER -->|"N-MALWARE"| BR_APT["Bridge → APT o RANSOMWARE
+Pre-carga: q_008=maybe/yes
+Dispatch: DISC_RA
+chatbot_flow3 — DISC R↔A"]:::route
+
+BRIDGE_ROUTER -->|"N-EMPRESA"| BR_EMP["Bridge → ANÁLISIS COMPLETO
+Pre-carga: q_002=confirmed
+Inicia gateway completo q_002–q_027
+chatbot_flow3 — Bloque completo"]:::route
+
+BRIDGE_ROUTER -->|"N-ACCESO / N-CUENTAS"| BR_ACC["Bridge → CREDENTIAL/INSIDER
+Pre-carga: q_029=inactive/q_031=few
+DISC_IC: discriminar entre ambos
+chatbot_flow3 — DISC I↔C"]:::route
+
+%% ════════════════════════════════════════════════════════════
+%% ════════════════════════════════════════════════════════════
+%%  FASE 2 — ANÁLISIS TÉCNICO (q_001–q_066)
+%%  Ver detalle completo en chatbot_flow3.mermaid
+%% ════════════════════════════════════════════════════════════
+%% ════════════════════════════════════════════════════════════
+
+PHASE2_START(["🔬 FASE 2 — ANÁLISIS TÉCNICO SOC
+Preguntas q_001–q_066 con vocabulario experto.
+EDR / SIEM / IOC / C2 / kill chain / ATT&CK.
+Ver flujo completo: chatbot_flow3.mermaid"]):::phase2
+
+PHASE2_START --> P2_GW
+
+subgraph P2_GATEWAY["🎯  FASE 2: GATEWAY EXPERTO   q_002 · q_008 · q_057 · q_038 · q_029 · q_046 · q_048 · q_027"]
+direction LR
+
+P2_GW["q_002 Fuente / tipo de alerta     → manual|siem_low|ids_ips|edr_alert|siem_high|confirmed
+q_008 Malware confirmado            → no|unknown|maybe|yes (+14pts) ← DISPARADOR MALWARE
+q_057 Phishing confirmado           → no|suspected|yes (+9pts) ← DISPARADOR PHISHING
+q_038 Frecuencia inusualmente alta  → normal|high|very_high|burst (+10pts) ← DISPARADOR DDoS
+q_029 Cuenta deshabilitada activa   → no|inactive|yes (+14pts) ← DISPARADOR INSIDER/CRED
+q_046 Comunicación C2               → no|unknown|suspected|yes (+16pts) ← DISPARADOR APT
+q_048 Cifrado masivo de archivos    → no|unknown|maybe|yes (+22pts) ← DISPARADOR RANSOMWARE
+q_027 Privilegio del usuario        → restricted|standard|local_admin|domain_admin|service|full"]:::phase2
+
+P2_CATS["RUTAS FASE 2 (ver chatbot_flow3.mermaid para detalle):
+
+🔒 RANSOMWARE:      q_039,q_040,q_042,q_041,q_049,q_051,q_015,q_016,q_011,q_018,q_019,q_024
+🕵️ APT/INTRUSION:   q_043,q_044,q_045,q_039,q_040,q_041,q_059,q_060,q_061,q_052,q_028
+🎣 PHISHING/SOCIAL: q_054,q_055,q_056,q_058,q_031,q_030,q_033,q_053,q_032
+🌊 DDoS:            q_017,q_011,q_012,q_013,q_014,q_018,q_051,q_064,q_036
+👤 INSIDER:         q_028,q_030,q_033,q_034,q_035,q_043,q_044,q_016,q_047,q_023,q_024,q_052
+🔑 CRED THEFT:      q_031,q_030,q_028,q_053,q_032,q_059,q_061,q_047,q_016
+🔍 IOC/TI (base):   q_003,q_006,q_007,q_009,q_062,q_063
+🖥️ ASSET (base):    q_001,q_004,q_005,q_010,q_019,q_020,q_021,q_022,q_023,q_024,q_025,q_026
+⏰ TEMPORAL:        q_034,q_035,q_036,q_037
+💥 IMPACTO:         q_047,q_064,q_065,q_066"]:::phase2
+end
+
+P2_GW --> P2_CATS
+P2_CATS --> P2_CLASSIFY
+
+subgraph P2_CLASSIFY["🔬  FASE 2: CLASIFICACIÓN EXPERTO (salida de q_001–q_066)"]
+direction LR
+
+P2_INFO(["⬜ INFORMATIVO  Score < 25
+Baja probabilidad maliciosa.
+MITRE: Ninguna táctica significativa.
+Acción: Registrar y monitorear."]):::r_info
+
+P2_SOSP(["🟢 SOSPECHOSO  Score 25–49
+Indicadores ambiguos.
+MITRE: Reconnaissance | Initial Access
+Acción: Escalar a Tier 2. Enriquecer TI."]):::r_sosp
+
+P2_INCI(["🟡 INCIDENTE  Score 50–74
+Actividad maliciosa probable.
+MITRE: Execution | Persistence | Lateral Movement
+Acción: Contener. Notificar IR team."]):::r_inci
+
+P2_CRIT(["🔴 CRÍTICO  Score 75–99
+Compromiso activo.
+MITRE: Privilege Escalation | C2 | Exfiltration
+Acción: AISLAMIENTO INMEDIATO. Forensics."]):::r_crit
+
+P2_BREC(["🟣 BRECHA  Score ≥ 100
+Brecha confirmada.
+MITRE: Impact | Data Encrypted | Exfiltration
+Acción: PROTOCOLO BRECHA. Legal. Reguladores."]):::r_brec
+end
+
+%% ─── Entrada desde Bridge ────────────────────────────────────
+BR_RAN  --> P2_CATS
+BR_PHI  --> P2_CATS
+BR_FRD  --> P2_CATS
+BR_INS  --> P2_CATS
+BR_CRD  --> P2_CATS
+BR_APT  --> P2_CATS
+BR_EMP  --> P2_GW
+BR_ACC  --> P2_CATS
+
+%% ════════════════════════════════════════════════════════════
+%% PREGUNTAS EXCLUSIVAS DE FASE 2 (sin equivalente en Fase 1)
+%% Son las que hacen única la profundidad técnica de Fase 2
+%% ════════════════════════════════════════════════════════════
+
+subgraph P2_EXCLUSIVE["🔬  Preguntas EXCLUSIVAS de Fase 2 — Sin equivalente en N001–N200"]
+direction LR
+
+EXC1["🔒 RANSOMWARE / MALWARE — Técnico:
+q_039 ¿Persistencia detectada? (tareas, servicios, registro)
+q_040 ¿Movimiento lateral confirmado?
+q_041 ¿Elevación de privilegios no autorizada?
+q_042 ¿AV/EDR desactivado o manipulado?
+q_045 ¿PowerShell encoded / comandos sospechosos?
+q_046 ¿Comunicación C2 confirmada?
+q_047 ¿Exfiltración de datos confirmada?
+q_048 ¿Cifrado masivo de archivos?"]:::phase2
+
+EXC2["🌐 ASSET / RED — Técnico:
+q_003 ¿Coincide con IOC conocido?
+q_006 ¿Reputación de IP/dominio externo?
+q_007 ¿Dominio registrado hace <30 días?
+q_009 ¿Hash del archivo en lista negra?
+q_020 ¿Equipo en inventario CMDB?
+q_021 ¿Equipo en dominio corporativo?
+q_022 ¿Equipo en DMZ?
+q_025 ¿Se conoce la MAC del equipo?
+q_026 ¿Hostname registrado oficialmente?
+q_059 ¿Se conoce la IP de origen?
+q_060 ¿Se conoce la IP de destino?
+q_061 ¿Acceso vía VPN anónima o RDP?
+q_062 ¿IP/dominio en categoría de amenaza?
+q_063 ¿Cuántos equipos contactan esa IP?"]:::phase2
+
+EXC3["👤 USUARIO / CONTEXTO — Técnico:
+q_010 ¿Anomalía de comportamiento (UEBA)?
+q_028 ¿Actividad proviene de cuenta de servicio?
+q_029 ¿Cuenta deshabilitada estaba activa?
+q_030 ¿Cuenta creada hace <7 días?
+q_031 ¿Múltiples intentos fallidos de auth?
+q_032 ¿Usuario cambió contraseña en <48h?
+q_033 ¿Usuario fuera de su patrón habitual?
+q_036 ¿Patrón repetitivo en el tiempo? (beaconing)
+q_037 ¿Comportamiento inusual para este contexto?
+q_043 ¿Políticas de seguridad modificadas?
+q_044 ¿Cuenta admin creada sin autorización?
+q_049 ¿Qué solución de seguridad tiene el equipo?
+q_050 ¿AV/EDR con definiciones actualizadas?
+q_052 ¿Logs disponibles y completos?
+q_053 ¿MFA habilitado?
+q_054 ¿Llamada sospechosa reportada?
+q_055 ¿Solicitud urgente de credenciales?
+q_056 ¿MFA Fatigue detectada?"]:::phase2
+end
+
+%% ════════════════════════════════════════════════════════════
+%% EQUIVALENCIAS N ↔ q (Preguntas mapeables entre fases)
+%% ════════════════════════════════════════════════════════════
+
+subgraph EQUIV["🔄  Equivalencias directas entre Fase 1 (N) y Fase 2 (q)"]
+direction LR
+
+EQ1["EQUIVALENCIAS CONCEPTUALES (mismo dato, diferente lenguaje):
+
+N006 'Recibiste msg sospechoso'        ↔  q_002=edr_alert / q_057=suspected
+N007 'Hiciste clic en enlace'          ↔  q_057=suspected / q_058=suspected
+N009 'Pérdidas económicas'             ↔  q_047=suspected / q_016=yes
+N010 'Alguien te amenaza/acosa'        ↔  q_029=inactive + q_033=yes
+N011 'Alguien entró sin permiso'       ↔  q_029=yes + q_031=many
+N012 'Archivos bloqueados'             ↔  q_048=yes
+N015 'Virus / comportamiento raro'     ↔  q_008=maybe
+N022 'Mensajes de error raros'         ↔  q_005=yes / q_010=yes
+N023 'Antivirus instalado'             ↔  q_049=av_corp/edr
+N024 'USB conectado de origen dudoso'  ↔  q_019=workstation + q_020=no
+N025 'Alguien tuvo acceso físico'      ↔  q_025=no + q_026=no
+N026 'Usas WiFi públicas'              ↔  q_061=vpn_anon
+N031 'Dispositivos en tu red'          ↔  q_011=few/many
+N033 'Verificación en dos pasos'       ↔  q_053=yes/no
+N037 'Contraseña fue cambiada'         ↔  q_029=yes / q_032=yes
+N038 'Aviso de inicio sesión raro'     ↔  q_038=high + q_059=yes_external
+N041 'Actividad que no reconoces'      ↔  q_010=yes / q_033=yes
+N042 'Códigos SMS no pedidos'          ↔  q_056=few/yes (MFA Fatigue)
+N047 'Sitio web falso / phishing'      ↔  q_057=yes
+N094 'Amenazan con publicar imágenes'  ↔  q_047=suspected + q_016=yes
+N127 'Mensaje de rescate en pantalla'  ↔  q_048=yes
+N130 'Adjunto de email causó el daño'  ↔  q_057=yes + q_058=yes
+N133 'Otros equipos afectados'         ↔  q_011=few/many + q_015=yes"]:::bridge
+
+EQ2["PREGUNTAS EXCLUSIVAS FASE 1 (N) — Sin equivalente técnico en q_:
+
+N013 ¿Hay un menor involucrado?
+N062 ¿Te pidieron tarjetas de regalo?
+N063 ¿Prometieron inversiones cripto?
+N064 ¿Conociste a alguien en internet que pidió dinero?
+N065 ¿Ventana de alerta falsa con número de teléfono?
+N071 ¿Se hicieron pasar por soporte de Microsoft/Apple/Google?
+N072 ¿Oferta de trabajo pedía dinero primero?
+N094–N110 (acoso digital / sextorsión - contexto humano)
+N156–N165 (seguridad de menores)
+N195 ¿Hay riesgo físico para la víctima?
+N200 ¿Necesitas orientación sobre a qué autoridad acudir?
+
+PREGUNTAS EXCLUSIVAS FASE 2 (q_) — Sin equivalente en N:
+
+q_036 Patrón de beaconing en el tiempo
+q_045 Comandos PowerShell codificados
+q_050 Estado de actualización del AV
+q_052 Integridad de los logs (logs borrados = anti-forensic)
+q_062 Categoría de amenaza de la IP (c2/ransomware/botnet)
+q_063 Número de equipos comunicándose con IP maliciosa
+q_064 ¿La comunicación de red fue exitosa?
+q_065/q_066 Identificación y criticidad del usuario en el negocio"]:::bridge
+end
+
+%% ════════════════════════════════════════════════════════════
+%% SALIDA UNIFICADA — Clasificación combinada
+%% ════════════════════════════════════════════════════════════
+
+subgraph UNIFIED_OUT["🎯  Salida Unificada — Clasificación Combinada"]
+direction TB
+
+UNIFIED_SCORE["SCORE UNIFICADO
+Si se ejecutaron ambas fases:
+  Score final = max(score_fase1_escalado, score_fase2)
+  Clasificación técnica = score_fase2 (más precisa)
+  Contexto ciudadano = fase1 (evidencia, acciones tomadas)
+  Incident en DB = campos de ambas fases combinados
+
+Campos del Incident enriquecidos por Fase 1:
+  network_context   ← N-IoCs (IPs, URLs, MACs)
+  ti_enrichment     ← TI lookup de IoCs de Fase 1
+  tags              ← categorías N: ['ransomware','p1',...]
+  attachments       ← evidencias subidas por el ciudadano
+  description       ← resumen narrativo generado en Fase 1
+
+Campos del Incident enriquecidos por Fase 2:
+  final_score       ← score q_ (motor de scoring)
+  final_classification ← informativo/sospechoso/incidente/critico/brecha
+  threat_classification ← JSON multidimensional (flow3)
+  mitre_tactics     ← ATT&CK mapping automático"]:::bridge
+
+end
+
+P2_CLASSIFY --> UNIFIED_OUT
+P1_END -.->|"Caso reabierto por analista"| BRIDGE
+
+%% Entradas a fases
+PHASE1_START --> P1_GW
+PHASE2_START --> P2_GW
+P2_GW --> P2_CATS
+
+%% ════════════════════════════════════════════════════════════
+%% LEYENDA
+%% ════════════════════════════════════════════════════════════
+
+subgraph LEYENDA["📌  Leyenda"]
+direction LR
+
+LEG1["FASES:
+📋 Fase 1  N001–N200   Ciudadano/Víctima
+🔬 Fase 2  q_001–q_066 Analista SOC
+🌉 Bridge  Mapeo F1→F2 sin re-preguntar
+
+FASE 1 — Salidas:
+🔴 P1: Urgente — Actúa AHORA
+🟠 P2: Prioritario — Actúa HOY
+🟡 P3: Importante — 24-48h
+🟢 P4: Orientación preventiva
+
+FASE 2 — Salidas (por score):
+⬜ Informativo:  Score < 25
+🟢 Sospechoso:  25–49
+🟡 Incidente:   50–74
+🔴 Crítico:     75–99
+🟣 Brecha:      ≥ 100"]:::common
+
+LEG2["TOTAL PREGUNTAS: 266
+  N001–N200 = 200 (ciudadano)
+  q_001–q_066 = 66 (analista)
+
+MAPEO CATEGORÍAS F1→F2:
+  N-Ransomware → RAN (q_048)
+  N-Phishing   → PHI (q_057)
+  N-Fraude     → CRD (q_031)
+  N-Acoso      → INS (q_029)
+  N-Identidad  → CRD (q_031)
+  N-Malware    → APT/RAN (disc)
+  N-Empresa    → ALL (q_002)
+
+EQUIVALENCIAS CLAVE:
+  N012=Sí ↔ q_048=yes (ransomware)
+  N007=Sí ↔ q_057=suspected (phishing)
+  N011=Sí ↔ q_029=yes (acceso)
+  N009=Sí ↔ q_047=suspected (exfil)
+
+Ver detalle:
+  chatbot_flow2.mermaid → N001–N200
+  chatbot_flow3.mermaid → q_001–q_066"]:::common
+end

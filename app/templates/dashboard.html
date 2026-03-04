@@ -222,6 +222,49 @@
 </div>
 {% endif %}
 
+<!-- Chatbot Metrics (Fase 11) -->
+{% if chatbot_stats and chatbot_stats.total > 0 %}
+<div class="card border-secondary mb-3">
+  <div class="card-header">
+    <i class="bi bi-chat-dots me-2 text-info"></i>Chat Analista — Actividad
+  </div>
+  <div class="card-body">
+    <div class="row g-3 text-center">
+      <div class="col-6 col-md-3">
+        <div class="fs-2 fw-bold text-info">{{ chatbot_stats.total }}</div>
+        <div class="text-muted small">Sesiones totales</div>
+        <div class="text-muted" style="font-size:0.7rem;">{{ chatbot_stats.today }} hoy</div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="fs-2 fw-bold text-success">{{ chatbot_stats.completed }}</div>
+        <div class="text-muted small">Completadas</div>
+        <div class="text-muted" style="font-size:0.7rem;">{{ chatbot_stats.saved }} guardadas como incidente</div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="fs-2 fw-bold text-warning">{{ chatbot_stats.avg_questions }}</div>
+        <div class="text-muted small">Preguntas promedio</div>
+        <div class="text-muted" style="font-size:0.7rem;">vs 66 del wizard</div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="fs-2 fw-bold {% if chatbot_stats.save_rate >= 50 %}text-success{% else %}text-secondary{% endif %}">
+          {{ chatbot_stats.save_rate }}%
+        </div>
+        <div class="text-muted small">Tasa de guardado</div>
+        <div class="text-muted" style="font-size:0.7rem;">sesiones → incidente</div>
+      </div>
+    </div>
+    {% if chatbot_stats.by_mode %}
+    <div class="d-flex gap-2 flex-wrap mt-3">
+      {% set mode_labels = {'soc':'🤖 SOC', 'experto':'🎯 Experto+', 'ciudadano':'👤 Ciudadano', 'unificado':'🔗 Unificado'} %}
+      {% for mode, count in chatbot_stats.by_mode.items() %}
+      <span class="badge bg-secondary">{{ mode_labels.get(mode, mode) }}: {{ count }}</span>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
 <!-- Heatmap: hour-of-day × day-of-week -->
 {% if total > 0 %}
 <div class="card border-secondary mb-3">

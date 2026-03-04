@@ -12,7 +12,7 @@ from fastapi.responses import HTMLResponse, StreamingResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from sqlalchemy import func, or_, desc
-from app.models.database import get_db, Incident, IncidentAnswer, User, Notification, get_visible_org_ids, audit
+from app.models.database import get_db, Incident, IncidentAnswer, User, Notification, ChatSession, get_visible_org_ids, audit
 from app.core.engine import engine_instance
 from app.core.auth import require_auth
 from app.services.mitre import get_techniques_for_incident
@@ -177,6 +177,38 @@ async def dashboard(request: Request, db: Session = Depends(get_db), _user: dict
         else:
             age_buckets[">7d"] += 1
 
+    # ── Chatbot Metrics (Fase 11) ─────────────────────────────────────────────
+    chat_q = db.query(ChatSession)
+    if org_ids is not None:
+        chat_q = chat_q.filter(ChatSession.organization_id.in_(org_ids))
+    all_sessions = chat_q.all()
+
+    chat_total      = len(all_sessions)
+    chat_completed  = sum(1 for s in all_sessions if s.status == "completed")
+    chat_saved      = sum(1 for s in all_sessions if s.incident_id)
+    chat_today      = sum(1 for s in all_sessions if s.created_at and s.created_at.date() == now.date())
+
+    chat_by_mode: dict[str, int] = defaultdict(int)
+    chat_q_counts: list[int] = []
+    for s in all_sessions:
+        chat_by_mode[s.mode or "soc"] += 1
+        answered = json.loads(s.answered_questions or "[]")
+        if answered:
+            chat_q_counts.append(len(answered))
+
+    chat_avg_questions = round(sum(chat_q_counts) / len(chat_q_counts), 1) if chat_q_counts else 0
+    chat_save_rate     = round(chat_saved / chat_completed * 100) if chat_completed else 0
+
+    chatbot_stats = {
+        "total":         chat_total,
+        "completed":     chat_completed,
+        "saved":         chat_saved,
+        "today":         chat_today,
+        "avg_questions": chat_avg_questions,
+        "save_rate":     chat_save_rate,
+        "by_mode":       dict(chat_by_mode),
+    }
+
     return templates.TemplateResponse("dashboard.html", {
         "request": request,
         "total": total,
@@ -204,6 +236,8 @@ async def dashboard(request: Request, db: Session = Depends(get_db), _user: dict
         "resolved_count": resolved_count,
         "open_count": len(open_incidents),
         "age_buckets": age_buckets,
+        # Chatbot
+        "chatbot_stats": chatbot_stats,
     })
 
 

@@ -19,6 +19,7 @@ from app.models.database import (
 )
 from app.core.engine import engine_instance
 from app.core.auth import require_auth
+from app.core.rate_limit import rate_limit_evaluar as _rate_limit
 from app.services.threat_intel import lookup as ti_lookup, is_private_ip
 from app.services.notifications import notify_incident
 from app.services.mailer import send_incident_alert
@@ -125,6 +126,51 @@ async def chatbot_page(request: Request, _user: dict = Depends(require_auth)):
         "request": request,
         "user": _user,
     })
+
+
+# ─── Historial de sesiones (P2) ──────────────────────────────────────────────
+
+@router.get("/sessions")
+async def list_sessions(
+    request: Request,
+    db: Session = Depends(get_db),
+    _user: dict = Depends(require_auth),
+):
+    """Retorna las últimas 30 sesiones del usuario actual."""
+    from sqlalchemy import desc as _desc
+    sessions = (
+        db.query(ChatSession)
+        .filter(ChatSession.user_id == _user["id"])
+        .order_by(_desc(ChatSession.created_at))
+        .limit(30)
+        .all()
+    )
+
+    MODE_LABELS = {
+        "soc":       "SOC Analista",
+        "experto":   "Experto+",
+        "ciudadano": "Ciudadano",
+        "unificado": "Unificado",
+    }
+
+    def _fmt(s: ChatSession) -> dict:
+        answered = _jloads(s.answered_questions, [])
+        return {
+            "session_uuid":     s.session_uuid,
+            "mode":             s.mode or "soc",
+            "mode_label":       MODE_LABELS.get(s.mode or "soc", s.mode),
+            "status":           s.status,
+            "phase":            s.phase,
+            "classification":   s.final_classification,
+            "final_score":      s.final_score,
+            "category":         s.inferred_category,
+            "answered_count":   len(answered),
+            "incident_id":      s.incident_id,
+            "created_at":       s.created_at.strftime("%d/%m/%Y %H:%M") if s.created_at else "",
+            "updated_at":       s.updated_at.strftime("%d/%m/%Y %H:%M") if s.updated_at else "",
+        }
+
+    return JSONResponse({"sessions": [_fmt(s) for s in sessions]})
 
 
 # ─── Gestión de sesión ────────────────────────────────────────────────────────
@@ -241,6 +287,7 @@ async def session_answer(
     request: Request,
     db: Session = Depends(get_db),
     _user: dict = Depends(require_auth),
+    _rl: None = Depends(_rate_limit),
 ):
     """Registra la respuesta y retorna la siguiente pregunta (multi-modo)."""
     body        = await request.json()

@@ -116,6 +116,24 @@
           <span class="badge fs-6" id="previewBadge">—</span>
         </div>
       </div>
+
+      <!-- Panel de historial de sesiones (P2) -->
+      <div class="card border-secondary mt-3">
+        <div class="card-header d-flex align-items-center justify-content-between">
+          <span><i class="bi bi-clock-history me-1 text-info"></i>Sesiones recientes</span>
+          <button class="btn btn-sm btn-outline-secondary py-0" type="button"
+                  data-bs-toggle="collapse" data-bs-target="#historyPanel">
+            <i class="bi bi-chevron-down"></i>
+          </button>
+        </div>
+        <div class="collapse" id="historyPanel">
+          <div class="card-body p-2">
+            <div id="historyList">
+              <p class="text-muted small text-center my-2">Cargando…</p>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Panel derecho: Chat -->
@@ -817,5 +835,62 @@ function showModeStub() {
       <i class="bi bi-arrow-left me-1"></i>Volver al modo Analista SOC
     </button>`;
 }
+
+// ─── Historial de sesiones (P2) ──────────────────────────────────────────────
+const CLS_COLORS = {
+  informativo: 'success', sospechoso: 'warning', incidente: 'warning',
+  critico: 'danger', brecha: 'danger',
+  P1: 'danger', P2: 'warning', P3: 'info', P4: 'secondary',
+};
+const MODE_ICONS = {
+  soc: '🤖', experto: '🎯', ciudadano: '👤', unificado: '🔗',
+};
+
+async function loadHistory() {
+  const container = document.getElementById('historyList');
+  if (!container) return;
+  try {
+    const r = await fetch('/chatbot/sessions');
+    if (!r.ok) { container.innerHTML = '<p class="text-muted small text-center">Sin datos</p>'; return; }
+    const data = await r.json();
+    const sessions = data.sessions || [];
+    if (!sessions.length) {
+      container.innerHTML = '<p class="text-muted small text-center my-2">Sin sesiones previas</p>';
+      return;
+    }
+    container.innerHTML = sessions.map(s => {
+      const cls  = s.classification || '';
+      const col  = CLS_COLORS[cls] || 'secondary';
+      const icon = MODE_ICONS[s.mode] || '💬';
+      const inc  = s.incident_id
+        ? `<a href="/incidentes/${s.incident_id}" class="btn btn-outline-info btn-sm py-0 px-1 ms-1" title="Ver incidente">#${s.incident_id}</a>`
+        : '';
+      const badge = cls
+        ? `<span class="badge bg-${col} ms-1">${cls.toUpperCase()}</span>` : '';
+      const score = s.final_score ? `<span class="text-muted small ms-1">${s.final_score}</span>` : '';
+      return `
+        <div class="d-flex align-items-start gap-1 py-1 border-bottom border-secondary">
+          <span title="${s.mode_label}" class="flex-shrink-0" style="font-size:1rem">${icon}</span>
+          <div class="flex-grow-1 overflow-hidden" style="font-size:0.78rem">
+            <div class="d-flex align-items-center flex-wrap gap-1">
+              ${badge}${score}${inc}
+              <span class="text-muted ms-auto">${s.answered_count}p</span>
+            </div>
+            <div class="text-muted">${s.created_at}</div>
+          </div>
+        </div>`;
+    }).join('');
+  } catch (e) {
+    container.innerHTML = '<p class="text-danger small text-center">Error al cargar</p>';
+  }
+}
+
+// Cargar historial al expandir el panel
+document.addEventListener('DOMContentLoaded', () => {
+  const panel = document.getElementById('historyPanel');
+  if (panel) {
+    panel.addEventListener('show.bs.collapse', loadHistory, { once: false });
+  }
+});
 </script>
 {% endblock %}

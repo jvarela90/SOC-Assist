@@ -28,6 +28,11 @@ from app.services.chatbot_engine import (
     build_question_data, infer_category, ti_to_auto_answers,
     get_question_queue, calculate_score_preview, build_threat_classification,
 )
+from app.services.citizen_engine import (
+    CITIZEN_GATEWAY, CITIZEN_CATEGORY_LABELS,
+    build_citizen_question, citizen_infer_category,
+    get_citizen_queue, citizen_classify, BRIDGE_MAP,
+)
 
 router = APIRouter(prefix="/chatbot", tags=["Chatbot"])
 templates = Jinja2Templates(directory="app/templates")
@@ -71,36 +76,44 @@ async def _run_ti_lookups(indicators: list[str]) -> list[dict]:
 
 
 def _build_next_response(s: ChatSession, done: bool = False) -> dict:
-    """Construye el payload de respuesta con la siguiente pregunta."""
-    queue = _jloads(s.question_queue, [])
+    """Construye el payload de respuesta con la siguiente pregunta (SOC o ciudadano)."""
+    queue    = _jloads(s.question_queue, [])
     answered = _jloads(s.answered_questions, [])
-    ti_auto = _jloads(s.ti_answers, {})
+    ti_auto  = _jloads(s.ti_answers, {})
+    mode     = s.mode or "soc"
+    is_citizen = mode in ("ciudadano", "unificado") and s.phase in ("gateway", "targeted")
 
-    # Total estimado = preguntas ya respondidas + cola restante
     total = len(answered) + len(queue)
-    num = len(answered) + 1
+    num   = len(answered) + 1
 
     next_q_data = None
     if not done and queue:
         next_q_id = queue[0]
-        next_q_data = build_question_data(next_q_id)
-        if next_q_data:
-            next_q_data["question_num"] = num
-            next_q_data["total_questions"] = total
+        if is_citizen:
+            next_q_data = build_citizen_question(next_q_id, num, total)
+        else:
+            next_q_data = build_question_data(next_q_id)
+            if next_q_data:
+                next_q_data["question_num"]    = num
+                next_q_data["total_questions"] = total
 
-    preview = calculate_score_preview(_jloads(s.answers, {}))
+    cat   = s.inferred_category or "unknown"
+    label = (CITIZEN_CATEGORY_LABELS if is_citizen else CATEGORY_LABELS).get(cat, "Sin categoría")
+
+    preview = {} if is_citizen else calculate_score_preview(_jloads(s.answers, {}))
 
     return {
-        "question":         next_q_data,
-        "done":             done or (not next_q_data),
-        "phase":            s.phase,
-        "category":         s.inferred_category,
-        "category_label":   CATEGORY_LABELS.get(s.inferred_category or "unknown", "Sin categoría"),
-        "confidence":       round(s.category_confidence, 2),
+        "question":               next_q_data,
+        "done":                   done or (not next_q_data),
+        "phase":                  s.phase,
+        "mode":                   mode,
+        "category":               cat,
+        "category_label":         label,
+        "confidence":             round(s.category_confidence, 2),
         "classification_preview": preview,
-        "answered_count":   len(answered),
-        "total_questions":  total,
-        "auto_answered":    list(ti_auto.keys()),
+        "answered_count":         len(answered),
+        "total_questions":        total,
+        "auto_answered":          list(ti_auto.keys()),
     }
 
 
@@ -124,27 +137,39 @@ async def session_start(
 ):
     """Crea una nueva ChatSession y retorna la primera pregunta gateway."""
     body = await request.json() if request.headers.get("content-type", "").startswith("application/json") else {}
+    mode = body.get("mode", "soc")
+    if mode not in ("soc", "experto", "ciudadano", "unificado"):
+        mode = "soc"
+
+    # Seleccionar gateway según modo
+    is_citizen = mode in ("ciudadano", "unificado")
+    gw = CITIZEN_GATEWAY if is_citizen else GATEWAY_QUESTIONS
 
     s = ChatSession(
         session_uuid=str(uuid.uuid4()),
         user_id=_user.get("id"),
         organization_id=_user.get("org_id"),
-        question_queue=json.dumps(GATEWAY_QUESTIONS),
+        question_queue=json.dumps(gw),
+        mode=mode,
     )
     db.add(s)
     db.commit()
     db.refresh(s)
 
     # Primera pregunta
-    first_q = build_question_data(GATEWAY_QUESTIONS[0])
-    if first_q:
-        first_q["question_num"] = 1
-        first_q["total_questions"] = len(GATEWAY_QUESTIONS)
+    if is_citizen:
+        first_q = build_citizen_question(gw[0], 1, len(gw))
+    else:
+        first_q = build_question_data(gw[0])
+        if first_q:
+            first_q["question_num"]    = 1
+            first_q["total_questions"] = len(gw)
 
     return JSONResponse({
         "session_id": s.session_uuid,
         "question":   first_q,
         "phase":      "gateway",
+        "mode":       mode,
         "category":   None,
         "confidence": 0.0,
         "done":       False,
@@ -217,8 +242,8 @@ async def session_answer(
     db: Session = Depends(get_db),
     _user: dict = Depends(require_auth),
 ):
-    """Registra la respuesta del analista y retorna la siguiente pregunta."""
-    body = await request.json()
+    """Registra la respuesta y retorna la siguiente pregunta (multi-modo)."""
+    body        = await request.json()
     session_id  = body.get("session_id", "")
     question_id = body.get("question_id", "")
     answer_val  = body.get("answer_value", "")
@@ -227,34 +252,69 @@ async def session_answer(
     if s.status == "completed":
         raise HTTPException(400, "Sesión ya completada")
 
-    # Actualizar answers
-    answers = _jloads(s.answers, {})
-    answers[question_id] = answer_val
+    mode     = s.mode or "soc"
+    answers  = _jloads(s.answers, {})
+    queue    = _jloads(s.question_queue, [])
+    answered = _jloads(s.answered_questions, [])
+    ti_auto  = _jloads(s.ti_answers, {})
+    phase    = s.phase
 
-    # Actualizar cola: quitar la pregunta respondida
-    queue = _jloads(s.question_queue, [])
+    answers[question_id] = answer_val
     if question_id in queue:
         queue.remove(question_id)
-
-    answered = _jloads(s.answered_questions, [])
     if question_id not in answered:
         answered.append(question_id)
 
-    # Re-inferir categoría
+    # ── Modo ciudadano / unificado (preguntas N) ──────────────────────────────
+    if mode in ("ciudadano", "unificado") and phase in ("gateway", "targeted"):
+        category, confidence, probs = citizen_infer_category(answers)
+
+        gw_done = all(q in answers for q in CITIZEN_GATEWAY)
+        if gw_done and phase == "gateway":
+            phase = "targeted"
+            queue = get_citizen_queue(category, answered)
+
+        done = len(queue) == 0
+
+        # Unificado: cuando el ciudadano termina, pasar al puente SOC
+        if done and mode == "unificado":
+            phase = "bridge"
+            bridge_entry = BRIDGE_MAP.get(category, ["q_002"])
+            from app.services.chatbot_engine import get_question_queue as soc_queue
+            soc_q = soc_queue(category if category != "unknown" else "unknown", answered, [])
+            # Priorizar preguntas del bridge al inicio
+            soc_q = [q for q in bridge_entry if q not in answered] + \
+                    [q for q in soc_q if q not in bridge_entry and q not in answered]
+            queue = soc_q
+            done  = False
+
+        _save_session(s, db,
+            answers=json.dumps(answers),
+            question_queue=json.dumps(queue),
+            answered_questions=json.dumps(answered),
+            inferred_category=category,
+            category_confidence=confidence,
+            category_probs=json.dumps(probs),
+            phase=phase,
+        )
+        return JSONResponse(_build_next_response(s, done))
+
+    # ── Modo SOC / experto / fase SOC en unificado ────────────────────────────
     ti_results = _jloads(s.ti_results, [])
     category, confidence, probs = infer_category(answers, ti_results)
 
-    # ¿Cambió la fase? Después de las gateway questions, construir cola dirigida
-    ti_auto = _jloads(s.ti_answers, {})
-    gateway_done = all(q in answers or q in ti_auto for q in GATEWAY_QUESTIONS)
-    phase = s.phase
+    gw_soc = GATEWAY_QUESTIONS
+    gateway_done = all(q in answers or q in ti_auto for q in gw_soc)
 
-    if gateway_done and phase == "gateway":
+    if gateway_done and phase in ("gateway", "bridge"):
         phase = "targeted"
-        # Construir nueva cola para la categoría inferida
         queue = get_question_queue(category, answered, list(ti_auto.keys()))
 
-    # ¿Se acabaron las preguntas?
+    # Experto: transición temprana si confianza ya supera el umbral
+    elif mode == "experto" and confidence >= 0.45 and phase == "gateway":
+        phase = "targeted"
+        queue = get_question_queue(category, answered, list(ti_auto.keys()))
+
     done = len(queue) == 0
 
     _save_session(s, db,
@@ -266,7 +326,6 @@ async def session_answer(
         category_probs=json.dumps(probs),
         phase=phase,
     )
-
     return JSONResponse(_build_next_response(s, done))
 
 
@@ -345,10 +404,34 @@ async def session_complete(
 
     all_answers = _jloads(s.answers, {})
     ti_results  = _jloads(s.ti_results, [])
+    mode        = s.mode or "soc"
+    category    = s.inferred_category or "unknown"
 
-    result = engine_instance.evaluate(all_answers)
+    # ── Clasificación ciudadana (P1-P4) ───────────────────────────────────────
+    if mode == "ciudadano":
+        p_cls = citizen_classify(all_answers, category)
+        _save_session(s, db,
+            phase="complete",
+            final_score=0.0,
+            final_classification=p_cls["level"],
+            threat_classification=json.dumps(p_cls),
+        )
+        return JSONResponse({
+            "mode":                  "ciudadano",
+            "classification":        p_cls["level"],
+            "classification_label":  p_cls["label"],
+            "classification_color":  p_cls["color"],
+            "classification_emoji":  p_cls["label"].split()[0],
+            "final_score":           0,
+            "recommendation":        p_cls["recommendation"],
+            "threat_classification": p_cls,
+            "category":              category,
+            "category_label":        CITIZEN_CATEGORY_LABELS.get(category, "Sin categoría"),
+            "top_factors":           [],
+        })
 
-    category = s.inferred_category or "unknown"
+    # ── Clasificación SOC (informativo/brecha) ────────────────────────────────
+    result     = engine_instance.evaluate(all_answers)
     threat_cls = build_threat_classification(all_answers, category, ti_results, result)
 
     from app.services.config_loader import load_json_file
@@ -364,28 +447,29 @@ async def session_complete(
     )
 
     thresholds = engine_instance.thresholds
-    cls_info = thresholds.get(result["classification"], {})
+    cls_info   = thresholds.get(result["classification"], {})
 
     return JSONResponse({
-        "classification":      result["classification"],
-        "classification_label": cls_info.get("label", result["classification"].title()),
-        "classification_color": cls_info.get("color", "secondary"),
-        "classification_emoji": cls_info.get("emoji", ""),
-        "final_score":         result["final_score"],
-        "base_score":          result["base_score"],
-        "multiplier":          result["multiplier"],
-        "recommendation":      result.get("recommendation", ""),
-        "hard_rule":           result.get("hard_rule"),
-        "active_multipliers":  result.get("active_multipliers", []),
-        "top_factors":         sorted(
+        "mode":                  mode,
+        "classification":        result["classification"],
+        "classification_label":  cls_info.get("label", result["classification"].title()),
+        "classification_color":  cls_info.get("color", "secondary"),
+        "classification_emoji":  cls_info.get("emoji", ""),
+        "final_score":           result["final_score"],
+        "base_score":            result["base_score"],
+        "multiplier":            result["multiplier"],
+        "recommendation":        result.get("recommendation", ""),
+        "hard_rule":             result.get("hard_rule"),
+        "active_multipliers":    result.get("active_multipliers", []),
+        "top_factors":           sorted(
             result.get("answer_details", []),
             key=lambda d: d.get("contribution", 0),
             reverse=True
         )[:8],
         "threat_classification": threat_cls,
-        "playbook":            playbook,
-        "category":            category,
-        "category_label":      CATEGORY_LABELS.get(category, "Sin categoría"),
+        "playbook":              playbook,
+        "category":              category,
+        "category_label":        CATEGORY_LABELS.get(category, "Sin categoría"),
     })
 
 

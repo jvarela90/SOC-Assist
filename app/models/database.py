@@ -290,7 +290,8 @@ class ChatSession(Base):
     user_id               = Column(Integer, ForeignKey("users.id"), nullable=True)
     organization_id       = Column(Integer, ForeignKey("organizations.id"), nullable=True)
     status                = Column(String(20), default="active")   # active|completed|abandoned
-    phase                 = Column(String(20), default="gateway")  # gateway|targeted|complete
+    phase                 = Column(String(20), default="gateway")  # gateway|targeted|bridge|complete
+    mode                  = Column(String(20), default="soc")      # soc|experto|ciudadano|unificado
     # IoCs y TI
     iocs                  = Column(Text, default="{}")   # JSON {ip_src,ip_dst,url,hash,domain}
     ti_results            = Column(Text, default="[]")   # JSON raw TI results
@@ -420,6 +421,8 @@ def _run_migrations():
         # Fase 10 — SLA + tags
         ("incidents", "resolved_at",               "TIMESTAMP"),
         ("incidents", "tags",                      "TEXT"),
+        # Fase 11 — Chatbot multi-modo
+        ("chat_sessions", "mode",                  "VARCHAR(20) DEFAULT 'soc'"),
     ]
     with engine.connect() as conn:
         for table, col, ddl in _new_cols:

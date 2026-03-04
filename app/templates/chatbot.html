@@ -366,7 +366,7 @@ async function startSession() {
   try {
     const res = await fetch('/chatbot/session/start', {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({})
+      body: JSON.stringify({mode: CHAT_MODE})
     });
     const data = await res.json();
     SESSION_ID = data.session_id;
@@ -571,37 +571,81 @@ function showResult(data) {
   const card = document.getElementById('resultCard');
   card.classList.remove('d-none');
 
-  const tc = data.threat_classification || {};
   const colorClass = `bg-${data.classification_color || 'secondary'}`;
 
   document.getElementById('resultEmoji').textContent = data.classification_emoji || '';
   document.getElementById('resultLabel').textContent = data.classification_label || data.classification;
   document.getElementById('resultBadge').className = `ms-auto badge ${colorClass}`;
-  document.getElementById('resultBadge').textContent = tc.prioridad || '';
-  document.getElementById('resultCategory').textContent = tc.category_label || data.category_label || '—';
-  document.getElementById('resultPriority').textContent = tc.prioridad || '—';
   document.getElementById('resultRecommendation').textContent = data.recommendation || '—';
 
-  // Vectors
-  const vectors = tc.vector || [];
-  document.getElementById('resultVectors').innerHTML =
-    vectors.map(v => `<span class="badge bg-secondary me-1">${escHtml(v)}</span>`).join('');
+  // Modo ciudadano: resultado P1-P4
+  if (data.mode === 'ciudadano') {
+    const tc = data.threat_classification || {};
+    document.getElementById('resultBadge').textContent = tc.level || data.classification;
+    document.getElementById('resultCategory').textContent = data.category_label || '—';
+    document.getElementById('resultPriority').textContent = tc.level || data.classification;
+    document.getElementById('resultVectors').innerHTML =
+      `<span class="badge bg-secondary me-1">Reporte ciudadano</span>
+       <span class="badge bg-secondary me-1">${escHtml(data.category_label || 'Sin categoría')}</span>`;
+    document.getElementById('resultKillChain').innerHTML = '';
+    document.getElementById('resultTopFactors').innerHTML = '';
+    // Botón de escalado SOC si es P1 o P2
+    if (['P1','P2'].includes(tc.level)) {
+      const btnArea = document.querySelector('#resultCard .d-flex.gap-2');
+      if (btnArea && !document.getElementById('btnEscalar')) {
+        const btnE = document.createElement('button');
+        btnE.id = 'btnEscalar';
+        btnE.className = 'btn btn-warning';
+        btnE.innerHTML = '<i class="bi bi-arrow-up-circle me-1"></i>Escalar a Analista SOC';
+        btnE.onclick = () => escalateToSOC(data);
+        btnArea.appendChild(btnE);
+      }
+    }
+  } else {
+    // Modo SOC / experto / unificado
+    const tc = data.threat_classification || {};
+    document.getElementById('resultBadge').textContent = tc.prioridad || '';
+    document.getElementById('resultCategory').textContent = tc.category_label || data.category_label || '—';
+    document.getElementById('resultPriority').textContent = tc.prioridad || '—';
 
-  // Kill Chain
-  const kc = tc.fase_kill_chain || [];
-  document.getElementById('resultKillChain').innerHTML =
-    kc.map(k => `<span class="badge bg-outline-info border border-info text-info me-1">${escHtml(k)}</span>`).join('');
+    const vectors = tc.vector || [];
+    document.getElementById('resultVectors').innerHTML =
+      vectors.map(v => `<span class="badge bg-secondary me-1">${escHtml(v)}</span>`).join('');
 
-  // Top factores
-  const factors = data.top_factors || [];
-  document.getElementById('resultTopFactors').innerHTML =
-    factors.slice(0, 6).map(f =>
-      `<span class="badge bg-dark border border-secondary text-muted small">${escHtml(f.question_id)}: ${f.contribution?.toFixed(1) || 0}</span>`
-    ).join('');
+    const kc = tc.fase_kill_chain || [];
+    document.getElementById('resultKillChain').innerHTML =
+      kc.map(k => `<span class="badge bg-outline-info border border-info text-info me-1">${escHtml(k)}</span>`).join('');
 
-  // Actualizar header
+    const factors = data.top_factors || [];
+    document.getElementById('resultTopFactors').innerHTML =
+      factors.slice(0, 6).map(f =>
+        `<span class="badge bg-dark border border-secondary text-muted small">${escHtml(f.question_id)}: ${f.contribution?.toFixed(1) || 0}</span>`
+      ).join('');
+  }
+
   updateCategoryBadge(data.category, data.category_label, 1.0);
   card.scrollIntoView({behavior:'smooth'});
+}
+
+// ─── Escalar de ciudadano a SOC ───────────────────────────────────────────────
+async function escalateToSOC(citizenResult) {
+  const btn = document.getElementById('btnEscalar');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Escalando...'; }
+
+  // Cambiar a modo experto y nuevas sesión
+  selectModeById('experto');
+  await startSession();
+
+  appendToChat(`
+    <div class="d-flex gap-2 mb-3">
+      <div class="rounded-circle bg-warning d-flex align-items-center justify-content-center flex-shrink-0"
+           style="width:36px;height:36px">🌉</div>
+      <div class="bg-dark border border-warning rounded-3 p-3 flex-grow-1">
+        <p class="mb-1 small"><strong>BRIDGE — Escalado ciudadano → Analista SOC</strong></p>
+        <p class="mb-0 small text-muted">Categoría detectada en Fase 1: <strong>${escHtml(citizenResult.category_label || '')}</strong>
+        · ${escHtml(citizenResult.classification_label || '')}. Continuando con preguntas técnicas.</p>
+      </div>
+    </div>`);
 }
 
 // ─── Guardar incidente ────────────────────────────────────────────────────────

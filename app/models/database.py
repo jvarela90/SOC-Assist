@@ -330,12 +330,31 @@ class User(Base):
     notes               = Column(Text, nullable=True)
     recovery_code_hash  = Column(String(200), nullable=True)
     recovery_set_at     = Column(DateTime, nullable=True)
+    # 2FA TOTP (N3)
+    totp_secret         = Column(String(64), nullable=True)   # base32 TOTP secret
+    totp_enabled        = Column(Boolean, default=False)
     # Multi-tenant
     organization_id     = Column(Integer, ForeignKey("organizations.id"), nullable=True)
 
     organization  = relationship("Organization", back_populates="users")
     notifications = relationship("Notification", foreign_keys=[Notification.user_id],
                                  primaryjoin="User.id == Notification.user_id")
+
+
+class APIToken(Base):
+    """Bearer tokens para la REST API — alternativa a HTTP Basic Auth."""
+    __tablename__ = "api_tokens"
+
+    id           = Column(Integer, primary_key=True, index=True)
+    name         = Column(String(100), nullable=False)          # Descripción del token
+    token_hash   = Column(String(200), unique=True, nullable=False)  # bcrypt hash
+    token_prefix = Column(String(8), nullable=False)            # Primeros 8 chars para identificar en UI
+    user_id      = Column(Integer, ForeignKey("users.id"), nullable=False)
+    organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=True)
+    is_active    = Column(Boolean, default=True)
+    created_at   = Column(DateTime, default=datetime.utcnow)
+    last_used_at = Column(DateTime, nullable=True)
+    expires_at   = Column(DateTime, nullable=True)              # None = no expira
 
 
 # ── DB Helpers ────────────────────────────────────────────────────────────────
@@ -423,6 +442,9 @@ def _run_migrations():
         ("incidents", "tags",                      "TEXT"),
         # Fase 11 — Chatbot multi-modo
         ("chat_sessions", "mode",                  "VARCHAR(20) DEFAULT 'soc'"),
+        # N3 — 2FA TOTP
+        ("users", "totp_secret",                   "VARCHAR(64)"),
+        ("users", "totp_enabled",                  "BOOLEAN DEFAULT 0"),
     ]
     with engine.connect() as conn:
         for table, col, ddl in _new_cols:

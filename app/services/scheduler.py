@@ -5,7 +5,7 @@ Email semanal: estructura preparada, pendiente configuración SMTP.
 """
 import logging
 from datetime import datetime, timedelta
-from app.models.database import SessionLocal, Asset, Notification
+from app.models.database import SessionLocal, Asset, Notification, ChatSession
 
 logger = logging.getLogger(__name__)
 
@@ -93,6 +93,31 @@ def check_asset_reviews():
 
     except Exception as e:
         logger.error(f"[Scheduler] Error en check_asset_reviews: {e}")
+    finally:
+        db.close()
+
+
+def cleanup_orphaned_sessions(hours: int = 24):
+    """
+    Elimina sesiones de chatbot no completadas con más de `hours` horas sin actividad.
+    Se ejecuta junto con check_asset_reviews() en el lifespan de la app.
+    """
+    db = SessionLocal()
+    try:
+        cutoff = datetime.utcnow() - timedelta(hours=hours)
+        deleted = (
+            db.query(ChatSession)
+            .filter(
+                ChatSession.status != "completed",
+                ChatSession.updated_at < cutoff,
+            )
+            .delete(synchronize_session=False)
+        )
+        db.commit()
+        if deleted:
+            logger.info(f"[Scheduler] Cleanup chatbot: {deleted} sesión/es huérfana/s eliminadas (>{hours}h inactivas)")
+    except Exception as e:
+        logger.error(f"[Scheduler] Error en cleanup_orphaned_sessions: {e}")
     finally:
         db.close()
 

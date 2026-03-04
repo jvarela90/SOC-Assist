@@ -15,8 +15,10 @@ from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.models.database import get_db, ChatSession, User, get_visible_org_ids
+from app.models.database import get_db, ChatSession, User, APIToken, get_visible_org_ids
 from app.core.auth import verify_password
+import bcrypt as _bcrypt
+from datetime import datetime as _dt
 from app.services.chatbot_engine import (
     GATEWAY_QUESTIONS, CATEGORY_LABELS,
     build_question_data, infer_category, ti_to_auto_answers,
@@ -38,22 +40,36 @@ async def _api_auth(
     user = request.session.get("user")
     if user:
         return user
+    # Bearer token
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.startswith("Bearer "):
+        raw_token = auth_header[7:].strip()
+        prefix = raw_token[:8]
+        candidates = db.query(APIToken).filter(
+            APIToken.token_prefix == prefix, APIToken.is_active == True
+        ).all()
+        for tok in candidates:
+            if (tok.expires_at is None or tok.expires_at > _dt.utcnow()) and \
+               _bcrypt.checkpw(raw_token.encode(), tok.token_hash.encode()):
+                db.query(APIToken).filter(APIToken.id == tok.id).update(
+                    {"last_used_at": _dt.utcnow()}, synchronize_session=False
+                )
+                db.commit()
+                db_user = db.query(User).filter(User.id == tok.user_id, User.is_active == True).first()
+                if db_user:
+                    return {"id": db_user.id, "username": db_user.username,
+                            "role": db_user.role, "org_id": db_user.organization_id}
     if credentials:
         db_user = db.query(User).filter(
-            User.username == credentials.username,
-            User.is_active == True,
+            User.username == credentials.username, User.is_active == True,
         ).first()
         if db_user and verify_password(credentials.password, db_user.password_hash):
-            return {
-                "id":       db_user.id,
-                "username": db_user.username,
-                "role":     db_user.role,
-                "org_id":   db_user.organization_id,
-            }
+            return {"id": db_user.id, "username": db_user.username,
+                    "role": db_user.role, "org_id": db_user.organization_id}
     raise HTTPException(
         status_code=401,
         detail="Credenciales inválidas",
-        headers={"WWW-Authenticate": "Basic"},
+        headers={"WWW-Authenticate": "Bearer, Basic"},
     )
 
 

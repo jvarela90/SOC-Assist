@@ -78,9 +78,10 @@ app.include_router(chatbot_api.router)      # Chat REST API  — /api/v1/chat/..
 async def startup_tasks():
     """Run asset review check on startup to populate notifications."""
     import asyncio
-    from app.services.scheduler import check_asset_reviews
+    from app.services.scheduler import check_asset_reviews, cleanup_orphaned_sessions
     loop = asyncio.get_event_loop()
     loop.run_in_executor(None, check_asset_reviews)
+    loop.run_in_executor(None, cleanup_orphaned_sessions)
 
 
 # ── Health check (used by Docker HEALTHCHECK) ────────────────────────────────

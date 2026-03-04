@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block title %}SOC Assist — Autenticación en dos pasos{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center mb-3 gap-2">
+  <h4 class="mb-0"><i class="bi bi-shield-lock-fill me-2 text-warning"></i>Autenticación en dos pasos (2FA)</h4>
+  <small class="text-muted">TOTP — Google Authenticator / Authy / Aegis</small>
+</div>
+
+{% if msg == "enabled" %}
+<div class="alert alert-success"><i class="bi bi-check-circle me-1"></i>2FA activado correctamente. Tu cuenta está protegida con autenticación en dos pasos.</div>
+{% elif msg == "disabled" %}
+<div class="alert alert-warning"><i class="bi bi-exclamation-triangle me-1"></i>2FA desactivado. Tu cuenta ya no requiere el código adicional al iniciar sesión.</div>
+{% elif msg == "session_expired" %}
+<div class="alert alert-danger"><i class="bi bi-x-circle me-1"></i>La sesión de configuración expiró. Por favor, inicia de nuevo el proceso.</div>
+{% endif %}
+
+{% if error %}
+<div class="alert alert-danger"><i class="bi bi-exclamation-triangle me-1"></i>{{ error }}</div>
+{% endif %}
+
+{% if totp_enabled %}
+<!-- ── 2FA ya está activo ── -->
+<div class="card border-success mb-4">
+  <div class="card-header text-success"><i class="bi bi-shield-check me-1"></i>2FA activado</div>
+  <div class="card-body">
+    <p class="mb-3">Tu cuenta tiene la autenticación en dos pasos activada. Cada vez que inicies sesión, se te pedirá el código de tu aplicación autenticadora.</p>
+    <p class="text-muted small mb-3">Para desactivar el 2FA, confirma tu contraseña actual:</p>
+    <form method="post" action="/cuenta/2fa/disable" class="row g-2 align-items-end">
+      <div class="col-auto">
+        <label class="form-label small">Contraseña actual</label>
+        <input type="password" name="password" class="form-control bg-dark text-light border-secondary"
+               placeholder="Tu contraseña" required autocomplete="current-password">
+      </div>
+      <div class="col-auto">
+        <button type="submit" class="btn btn-outline-danger"
+                onclick="return confirm('¿Seguro que quieres desactivar el 2FA?')">
+          <i class="bi bi-shield-x me-1"></i>Desactivar 2FA
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% else %}
+<!-- ── Configurar 2FA ── -->
+<div class="card border-secondary mb-4">
+  <div class="card-header">Paso 1 — Escanea el código QR</div>
+  <div class="card-body">
+    <div class="row g-4">
+      <div class="col-md-4 text-center">
+        <div id="qrcode" class="d-inline-block p-2 bg-white rounded mb-2"></div>
+        <div class="text-muted small">Escanea con Google Authenticator, Authy, Aegis, etc.</div>
+      </div>
+      <div class="col-md-8">
+        <p class="mb-2">Si no puedes escanear el QR, ingresa esta clave manualmente en tu aplicación:</p>
+        <div class="input-group mb-3" style="max-width:350px">
+          <input type="text" id="secretKey" class="form-control font-monospace bg-dark text-warning border-secondary"
+                 value="{{ secret }}" readonly>
+          <button class="btn btn-outline-secondary" onclick="copySecret()" title="Copiar">
+            <i class="bi bi-clipboard" id="copyIcon"></i>
+          </button>
+        </div>
+        <ul class="text-muted small mb-0">
+          <li>Abre tu aplicación autenticadora</li>
+          <li>Selecciona "Agregar cuenta" → "Escanear QR" o "Ingresar clave"</li>
+          <li>Si ingresas la clave manualmente, selecciona tipo <strong>Time-based (TOTP)</strong></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card border-warning mb-4">
+  <div class="card-header text-warning">Paso 2 — Confirma el código</div>
+  <div class="card-body">
+    <p class="mb-3 small text-muted">Ingresa el código de 6 dígitos que muestra tu aplicación para confirmar la configuración:</p>
+    <form method="post" action="/cuenta/2fa/enable" autocomplete="off">
+      <div class="row g-2 align-items-end">
+        <div class="col-auto">
+          <label class="form-label">Código TOTP</label>
+          <input type="text" name="totp_code" class="form-control form-control-lg bg-dark text-light border-warning"
+                 style="width:160px; letter-spacing:0.15em; text-align:center"
+                 placeholder="000000" maxlength="6" pattern="[0-9]{6}"
+                 autofocus inputmode="numeric" autocomplete="one-time-code" required>
+        </div>
+        <div class="col-auto">
+          <button type="submit" class="btn btn-warning btn-lg">
+            <i class="bi bi-shield-check me-1"></i>Activar 2FA
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+<div class="card border-secondary">
+  <div class="card-header"><i class="bi bi-info-circle me-1"></i>Aplicaciones compatibles</div>
+  <div class="card-body small text-muted">
+    <div class="row">
+      <div class="col-md-4 mb-2"><i class="bi bi-google me-1"></i><strong>Google Authenticator</strong> — Android / iOS</div>
+      <div class="col-md-4 mb-2"><i class="bi bi-phone me-1"></i><strong>Authy</strong> — Android / iOS / Desktop</div>
+      <div class="col-md-4 mb-2"><i class="bi bi-shield me-1"></i><strong>Aegis</strong> — Android (open source)</div>
+    </div>
+  </div>
+</div>
+
+<!-- QR generator (qrcode.js desde CDN) -->
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+<script>
+  {% if not totp_enabled %}
+  const otpUri = {{ otp_uri | tojson }};
+  new QRCode(document.getElementById("qrcode"), {
+    text: otpUri,
+    width: 180,
+    height: 180,
+    colorDark: "#000000",
+    colorLight: "#ffffff",
+    correctLevel: QRCode.CorrectLevel.M,
+  });
+
+  function copySecret() {
+    const el = document.getElementById('secretKey');
+    el.select();
+    navigator.clipboard.writeText(el.value).catch(() => document.execCommand('copy'));
+    const icon = document.getElementById('copyIcon');
+    icon.className = 'bi bi-check-lg text-success';
+    setTimeout(() => icon.className = 'bi bi-clipboard', 2000);
+  }
+
+  // Auto-trim spaces from TOTP input
+  document.querySelector('input[name="totp_code"]').addEventListener('input', function() {
+    this.value = this.value.replace(/\D/g, '').slice(0, 6);
+  });
+  {% endif %}
+</script>
+{% endblock %}

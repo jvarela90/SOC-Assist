@@ -9,6 +9,14 @@
     <i class="bi bi-arrow-left"></i>
   </a>
   <h4 class="mb-0">Incidente #{{ incident.id }}</h4>
+  <div class="ms-auto d-flex gap-2">
+    <button class="btn btn-sm btn-outline-secondary" onclick="window.print()" title="Imprimir / PDF">
+      <i class="bi bi-printer"></i>
+    </button>
+    <button class="btn btn-sm btn-outline-warning" id="btnTheHive" onclick="exportToTheHive({{ incident.id }})" title="Exportar a TheHive">
+      <i class="bi bi-box-arrow-up-right me-1"></i>TheHive
+    </button>
+  </div>
   <span class="ms-3 badge badge-cls-{{ incident.classification }} fs-6">
     {{ t.emoji }} {{ t.label }}
   </span>
@@ -680,4 +688,34 @@
 </div>
 {% endif %}
 
+<script>
+async function exportToTheHive(incidentId) {
+  const btn = document.getElementById('btnTheHive');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Exportando…';
+  try {
+    const r = await fetch(`/incident/${incidentId}/export-thehive`, {method:'POST'});
+    const d = await r.json();
+    if (r.ok && d.success) {
+      btn.innerHTML = `<i class="bi bi-check-circle me-1"></i>Case #${d.case_number}`;
+      btn.classList.replace('btn-outline-warning','btn-success');
+      if (d.url) {
+        const a = document.createElement('a');
+        a.href = d.url; a.target = '_blank';
+        a.className = 'btn btn-sm btn-outline-info';
+        a.innerHTML = '<i class="bi bi-box-arrow-up-right me-1"></i>Abrir en TheHive';
+        btn.parentElement.appendChild(a);
+      }
+    } else {
+      alert(d.detail || 'Error al exportar a TheHive');
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-box-arrow-up-right me-1"></i>TheHive';
+    }
+  } catch(e) {
+    alert('Error de conexión con TheHive');
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-box-arrow-up-right me-1"></i>TheHive';
+  }
+}
+</script>
 {% endblock %}

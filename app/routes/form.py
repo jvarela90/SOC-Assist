@@ -448,3 +448,39 @@ async def apply_ti_adjustment(incident_id: int, request: Request, db: Session = 
           ip=request.client.host if request.client else None)
     db.commit()
     return RedirectResponse(url=f"/incidentes/{incident_id}?msg=ti_adjusted", status_code=303)
+
+
+# ─── TheHive export (N4) ──────────────────────────────────────────────────────
+
+@router.post("/incident/{incident_id}/export-thehive")
+async def export_to_thehive(
+    incident_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    user: dict = Depends(require_auth),
+):
+    """Exporta el incidente como Case en TheHive v5."""
+    from app.services.thehive import export_incident_to_thehive, is_configured
+    if not is_configured():
+        raise HTTPException(400, "TheHive no configurado. Ve a Admin → TheHive.")
+
+    incident = db.query(Incident).filter(Incident.id == incident_id).first()
+    if not incident:
+        raise HTTPException(404, "Incidente no encontrado")
+
+    try:
+        result = await export_incident_to_thehive(incident, user.get("username", "SOC Assist"))
+    except ValueError as e:
+        raise HTTPException(502, str(e))
+
+    audit(db, user["username"], "thehive_export",
+          target=f"incident/{incident_id}",
+          details=f"case_number={result['case_number']} case_id={result['case_id']}")
+    db.commit()
+
+    return JSONResponse({
+        "success":     True,
+        "case_number": result["case_number"],
+        "case_id":     result["case_id"],
+        "url":         result["url"],
+    })

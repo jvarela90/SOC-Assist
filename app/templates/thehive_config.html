@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}TheHive — Configuración{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center mb-3 gap-2">
+  <h4 class="mb-0"><i class="bi bi-hive me-2 text-warning"></i>Integración TheHive</h4>
+  <small class="text-muted">Exportar incidentes como Cases en TheHive v5</small>
+</div>
+
+{% if saved %}
+<div class="alert alert-success mb-3"><i class="bi bi-check-circle me-1"></i>Configuración guardada.</div>
+{% endif %}
+
+<div class="card border-secondary mb-4">
+  <div class="card-header">Conexión TheHive v5</div>
+  <div class="card-body">
+    <form method="post" action="/admin/thehive">
+      <div class="mb-3">
+        <label class="form-label">URL de TheHive</label>
+        <input type="url" name="thehive_url" class="form-control bg-dark text-light border-secondary"
+               value="{{ cfg.thehive_url }}" placeholder="https://thehive.corp.local:9000">
+        <div class="form-text text-muted">URL base sin barra final. Ejemplo: https://thehive.empresa.com:9000</div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">API Key</label>
+        <input type="password" name="api_key" class="form-control bg-dark text-light border-secondary"
+               value="{{ cfg.api_key }}" placeholder="••••••••••••••••">
+        <div class="form-text text-muted">Genera la API key en TheHive: Cuenta → API Key</div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Organización (opcional)</label>
+        <input type="text" name="default_org" class="form-control bg-dark text-light border-secondary"
+               value="{{ cfg.default_org }}" placeholder="ej: MiEmpresa">
+      </div>
+      <div class="form-check mb-3">
+        <input class="form-check-input" type="checkbox" name="verify_ssl" id="verify_ssl"
+               {% if cfg.verify_ssl %}checked{% endif %}>
+        <label class="form-check-label" for="verify_ssl">Verificar certificado SSL</label>
+        <div class="form-text text-muted">Desactiva solo si usas certificado autofirmado en desarrollo.</div>
+      </div>
+      <button type="submit" class="btn btn-warning">
+        <i class="bi bi-save me-1"></i>Guardar configuración
+      </button>
+    </form>
+  </div>
+</div>
+
+<div class="card border-secondary">
+  <div class="card-header"><i class="bi bi-info-circle me-1"></i>Uso</div>
+  <div class="card-body small text-muted">
+    <p>Una vez configurado, aparecerá el botón <strong>"Exportar a TheHive"</strong> en el detalle de cada incidente.</p>
+    <p class="mb-1">Al exportar se crea automáticamente:</p>
+    <ul>
+      <li>Un <strong>Case</strong> con título, descripción, severidad y TLP según la clasificación del incidente</li>
+      <li><strong>Observables</strong>: IPs, URLs y MACs del contexto de red</li>
+      <li>Tags: <code>soc-assist</code>, nivel de clasificación, score</li>
+    </ul>
+    <p class="mb-0 text-warning">El archivo <code>thehive_config.json</code> contiene la API key — no lo incluyas en commits.</p>
+  </div>
+</div>
+{% endblock %}

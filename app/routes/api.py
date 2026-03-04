@@ -21,10 +21,12 @@ from sqlalchemy.orm import Session
 
 from app.core.auth import verify_password
 from app.core.engine import engine_instance
-from app.models.database import get_db, Incident, User
+from app.models.database import get_db, Incident, User, APIToken
 
 router = APIRouter(prefix="/api/v1", tags=["API v1"])
 _security = HTTPBasic(auto_error=False)
+import bcrypt as _bcrypt
+from datetime import datetime as _dt
 
 
 # ── API authentication dependency ────────────────────────────────────────────
@@ -34,13 +36,34 @@ async def api_auth(
     credentials: Optional[HTTPBasicCredentials] = Depends(_security),
     db: Session = Depends(get_db),
 ) -> dict:
-    """Allow access via session cookie OR HTTP Basic credentials."""
+    """Allow access via session cookie, HTTP Basic credentials, or Bearer token."""
     # 1) Browser session
     user = request.session.get("user")
     if user:
         return user
 
-    # 2) HTTP Basic Auth (SIEM / scripts)
+    # 2) Bearer token (Authorization: Bearer soc_xxxx...)
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.startswith("Bearer "):
+        raw_token = auth_header[7:].strip()
+        prefix = raw_token[:8]
+        candidates = db.query(APIToken).filter(
+            APIToken.token_prefix == prefix,
+            APIToken.is_active == True,
+        ).all()
+        for tok in candidates:
+            if (tok.expires_at is None or tok.expires_at > _dt.utcnow()) and \
+               _bcrypt.checkpw(raw_token.encode(), tok.token_hash.encode()):
+                db.query(APIToken).filter(APIToken.id == tok.id).update(
+                    {"last_used_at": _dt.utcnow()}, synchronize_session=False
+                )
+                db.commit()
+                db_user = db.query(User).filter(User.id == tok.user_id, User.is_active == True).first()
+                if db_user:
+                    return {"id": db_user.id, "username": db_user.username,
+                            "role": db_user.role, "org_id": db_user.organization_id}
+
+    # 3) HTTP Basic Auth (SIEM / scripts)
     if credentials:
         db_user = (
             db.query(User)
@@ -48,12 +71,13 @@ async def api_auth(
             .first()
         )
         if db_user and verify_password(credentials.password, db_user.password_hash):
-            return {"id": db_user.id, "username": db_user.username, "role": db_user.role}
+            return {"id": db_user.id, "username": db_user.username, "role": db_user.role,
+                    "org_id": db_user.organization_id}
 
     raise HTTPException(
         status_code=401,
-        detail="Credenciales requeridas",
-        headers={"WWW-Authenticate": "Basic realm='SOC Assist API'"},
+        detail="Credenciales requeridas. Usa session cookie, Bearer token, o HTTP Basic.",
+        headers={"WWW-Authenticate": "Bearer, Basic realm='SOC Assist API'"},
     )
 
 

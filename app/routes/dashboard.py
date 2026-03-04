@@ -241,14 +241,20 @@ async def dashboard(request: Request, db: Session = Depends(get_db), _user: dict
     })
 
 
+_PER_PAGE = 50
+
 @router.get("/incidentes", response_class=HTMLResponse)
 async def incidents_list(request: Request, db: Session = Depends(get_db), _user: dict = Depends(require_auth)):
-    q         = request.query_params.get("q", "").strip()
-    level     = request.query_params.get("level", "")
-    from_date = request.query_params.get("from_date", "")
-    to_date   = request.query_params.get("to_date", "")
+    q          = request.query_params.get("q", "").strip()
+    level      = request.query_params.get("level", "")
+    from_date  = request.query_params.get("from_date", "")
+    to_date    = request.query_params.get("to_date", "")
     resolution = request.query_params.get("resolution", "")
     tag_filter = request.query_params.get("tag", "").strip()
+    try:
+        page = max(1, int(request.query_params.get("page", 1)))
+    except ValueError:
+        page = 1
 
     total_all = db.query(Incident).count()
     query = db.query(Incident)
@@ -278,21 +284,30 @@ async def incidents_list(request: Request, db: Session = Depends(get_db), _user:
             )
         )
 
-    incidents = query.order_by(Incident.timestamp.desc()).all()
+    query = query.order_by(Incident.timestamp.desc())
 
-    # Tag filter — applied in Python since tags is JSON in SQLite
+    # Tag filter needs Python-level filtering (JSON in SQLite)
     if tag_filter:
+        all_matching = query.all()
         incidents = [
-            i for i in incidents
+            i for i in all_matching
             if i.tags and tag_filter.lower() in [t.lower() for t in json.loads(i.tags or "[]")]
         ]
+        total_filtered = len(incidents)
+        incidents = incidents[(_PER_PAGE * (page - 1)):(_PER_PAGE * page)]
+    else:
+        total_filtered = query.count()
+        incidents = query.offset(_PER_PAGE * (page - 1)).limit(_PER_PAGE).all()
+
+    total_pages = max(1, (total_filtered + _PER_PAGE - 1) // _PER_PAGE)
+    page = min(page, total_pages)
 
     return templates.TemplateResponse("incidents.html", {
         "request": request,
         "incidents": incidents,
         "thresholds": engine_instance.thresholds,
         "total": total_all,
-        "filtered": len(incidents),
+        "filtered": total_filtered,
         "active_filters": bool(q or level or from_date or to_date or resolution or tag_filter),
         "filters": {
             "q": q, "level": level,
@@ -300,6 +315,9 @@ async def incidents_list(request: Request, db: Session = Depends(get_db), _user:
             "resolution": resolution,
             "tag": tag_filter,
         },
+        "page": page,
+        "total_pages": total_pages,
+        "per_page": _PER_PAGE,
     })
 
 

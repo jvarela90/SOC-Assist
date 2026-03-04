@@ -14,10 +14,11 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Stre
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import func
 from sqlalchemy.orm import Session
-from app.models.database import get_db, CalibrationLog, WeightHistory, User, AuditLog, Incident, audit
+from app.models.database import get_db, CalibrationLog, WeightHistory, User, AuditLog, Incident, APIToken, audit
 from app.core.engine import engine_instance
 from app.core.calibration import run_calibration
 from app.core.auth import require_admin, hash_password
+import bcrypt as _bcrypt
 from app.services.threat_intel import load_ti_config, save_ti_config
 from app.services.mailer import load_smtp_config, save_smtp_config, test_smtp_connection
 from app.services.config_loader import load_json_file
@@ -636,3 +637,125 @@ async def view_audit_log(
         "per_page": per_page,
         "pages": max(1, (total + per_page - 1) // per_page),
     })
+
+
+# ─── TheHive Config (N4) ─────────────────────────────────────────────────────
+
+@router.get("/thehive", response_class=HTMLResponse)
+async def thehive_config_page(
+    request: Request,
+    db: Session = Depends(get_db),
+    _user: dict = Depends(require_admin),
+):
+    from app.services.thehive import load_thehive_config
+    cfg = load_thehive_config()
+    return templates.TemplateResponse("thehive_config.html", {
+        "request": request,
+        "cfg": cfg,
+        "user": _user,
+        "saved": request.query_params.get("saved"),
+    })
+
+
+@router.post("/thehive")
+async def save_thehive_config_route(
+    request: Request,
+    db: Session = Depends(get_db),
+    _user: dict = Depends(require_admin),
+):
+    from app.services.thehive import save_thehive_config, load_thehive_config
+    form = await request.form()
+    cfg = load_thehive_config()
+    cfg["thehive_url"] = str(form.get("thehive_url", "")).strip().rstrip("/")
+    cfg["api_key"]     = str(form.get("api_key", "")).strip()
+    cfg["default_org"] = str(form.get("default_org", "")).strip()
+    cfg["verify_ssl"]  = form.get("verify_ssl") == "on"
+    save_thehive_config(cfg)
+    audit(db, _user["username"], "thehive_config_updated", target="thehive_config")
+    db.commit()
+    return RedirectResponse("/admin/thehive?saved=1", status_code=303)
+
+
+# ─── API Token Management (N5) ───────────────────────────────────────────────
+
+@router.get("/api-tokens", response_class=HTMLResponse)
+async def api_tokens_page(
+    request: Request,
+    db: Session = Depends(get_db),
+    _user: dict = Depends(require_admin),
+):
+    """Lista de tokens API del usuario actual."""
+    tokens = (
+        db.query(APIToken)
+        .filter(APIToken.user_id == _user["id"])
+        .order_by(APIToken.created_at.desc())
+        .all()
+    )
+    return templates.TemplateResponse("api_tokens.html", {
+        "request": request,
+        "tokens": tokens,
+        "user": _user,
+    })
+
+
+@router.post("/api-tokens/create")
+async def create_api_token(
+    request: Request,
+    db: Session = Depends(get_db),
+    _user: dict = Depends(require_admin),
+):
+    form = await request.form()
+    name = str(form.get("name", "")).strip()[:100]
+    if not name:
+        raise HTTPException(400, "El nombre es requerido")
+
+    # Generate a secure random token: prefix "soc_" + 40 random chars
+    raw_token = "soc_" + secrets.token_urlsafe(30)
+    prefix    = raw_token[:8]
+    token_hash = _bcrypt.hashpw(raw_token.encode(), _bcrypt.gensalt()).decode()
+
+    tok = APIToken(
+        name=name,
+        token_hash=token_hash,
+        token_prefix=prefix,
+        user_id=_user["id"],
+        organization_id=_user.get("org_id"),
+    )
+    db.add(tok)
+    db.commit()
+    db.refresh(tok)
+
+    audit(db, _user["username"], "api_token_created",
+          target=f"api_token/{tok.id}", details=f"name={name}")
+    db.commit()
+
+    # Return the raw token once — never stored again
+    return templates.TemplateResponse("api_tokens.html", {
+        "request": request,
+        "tokens": db.query(APIToken).filter(APIToken.user_id == _user["id"])
+                    .order_by(APIToken.created_at.desc()).all(),
+        "user": _user,
+        "new_token": raw_token,
+        "new_token_name": name,
+    })
+
+
+@router.post("/api-tokens/{token_id}/revoke")
+async def revoke_api_token(
+    token_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    _user: dict = Depends(require_admin),
+):
+    tok = db.query(APIToken).filter(
+        APIToken.id == token_id,
+        APIToken.user_id == _user["id"],
+    ).first()
+    if not tok:
+        raise HTTPException(404, "Token no encontrado")
+    tok.is_active = False
+    audit(db, _user["username"], "api_token_revoked",
+          target=f"api_token/{tok.id}", details=f"name={tok.name}")
+    db.commit()
+    return RedirectResponse("/admin/api-tokens", status_code=303)
+

@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}API Tokens{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center mb-3 gap-2">
+  <h4 class="mb-0"><i class="bi bi-key me-2 text-warning"></i>Tokens de API</h4>
+  <small class="text-muted">Bearer tokens para REST API / SOAR sin contraseña</small>
+</div>
+
+{% if new_token %}
+<div class="alert alert-success border-success mb-4">
+  <h6 class="mb-2"><i class="bi bi-check-circle-fill me-1"></i>Token generado: <strong>{{ new_token_name }}</strong></h6>
+  <p class="small mb-2 text-warning"><strong>Copia este token ahora — no se mostrará de nuevo.</strong></p>
+  <div class="input-group">
+    <input type="text" class="form-control form-control-sm bg-dark text-success border-success font-monospace"
+           id="rawToken" value="{{ new_token }}" readonly>
+    <button class="btn btn-outline-success btn-sm" onclick="navigator.clipboard.writeText(document.getElementById('rawToken').value).then(()=>this.textContent='✓ Copiado')">
+      Copiar
+    </button>
+  </div>
+  <p class="small text-muted mt-2 mb-0">
+    Úsalo en el header HTTP: <code>Authorization: Bearer {{ new_token }}</code>
+  </p>
+</div>
+{% endif %}
+
+<!-- Crear nuevo token -->
+<div class="card border-secondary mb-4">
+  <div class="card-header"><i class="bi bi-plus-circle me-1 text-info"></i>Nuevo Token</div>
+  <div class="card-body">
+    <form method="post" action="/admin/api-tokens/create" class="row g-3 align-items-end">
+      <div class="col-md-6">
+        <label class="form-label small text-muted">Nombre descriptivo</label>
+        <input type="text" name="name" class="form-control bg-dark text-light border-secondary"
+               placeholder="ej: SIEM-Splunk, Cortex-XSOAR" required maxlength="100">
+      </div>
+      <div class="col-md-3">
+        <button type="submit" class="btn btn-warning w-100">
+          <i class="bi bi-key-fill me-1"></i>Generar Token
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Lista de tokens -->
+{% if tokens %}
+<div class="card border-secondary">
+  <div class="card-header">Tokens existentes ({{ tokens | length }})</div>
+  <div class="table-responsive">
+    <table class="table table-dark table-hover align-middle mb-0">
+      <thead class="table-secondary">
+        <tr>
+          <th>Nombre</th>
+          <th>Prefijo</th>
+          <th>Estado</th>
+          <th>Creado</th>
+          <th>Último uso</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for tok in tokens %}
+        <tr>
+          <td>{{ tok.name }}</td>
+          <td><code class="text-info">{{ tok.token_prefix }}…</code></td>
+          <td>
+            {% if tok.is_active %}
+              <span class="badge bg-success">Activo</span>
+            {% else %}
+              <span class="badge bg-secondary">Revocado</span>
+            {% endif %}
+          </td>
+          <td class="text-muted small">{{ tok.created_at.strftime('%d/%m/%Y %H:%M') if tok.created_at else '—' }}</td>
+          <td class="text-muted small">{{ tok.last_used_at.strftime('%d/%m/%Y %H:%M') if tok.last_used_at else 'Nunca' }}</td>
+          <td>
+            {% if tok.is_active %}
+            <form method="post" action="/admin/api-tokens/{{ tok.id }}/revoke"
+                  onsubmit="return confirm('¿Revocar token {{ tok.name }}?')">
+              <button type="submit" class="btn btn-outline-danger btn-sm py-0">
+                <i class="bi bi-x-circle me-1"></i>Revocar
+              </button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}
+<div class="text-center py-5 text-muted">
+  <i class="bi bi-key fs-1 d-block mb-3"></i>
+  <h6>No hay tokens generados</h6>
+  <p class="small">Crea un token para usar la REST API sin contraseña.</p>
+</div>
+{% endif %}
+
+<div class="mt-4 p-3 border border-secondary rounded small text-muted">
+  <strong>Uso:</strong>
+  <pre class="mb-1 text-success" style="font-size:0.78rem">curl -H "Authorization: Bearer soc_xxxx..." {{ request.base_url }}api/v1/incidents</pre>
+  Los tokens tienen acceso equivalente al rol del usuario que los genera.
+  Revoca los tokens cuando ya no los necesites.
+</div>
+{% endblock %}

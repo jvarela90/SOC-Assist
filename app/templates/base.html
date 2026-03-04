@@ -130,6 +130,9 @@
           {% if _u.role == "super_admin" %}<span class="badge bg-info ms-1 text-dark" style="font-size:0.65rem;">Super Admin</span>
           {% elif _u.role == "admin" %}<span class="badge bg-danger ms-1" style="font-size:0.65rem;">Admin</span>{% endif %}
         </span>
+        <a href="/cuenta/2fa" class="btn btn-sm btn-outline-secondary" title="Autenticación en dos pasos">
+          <i class="bi bi-shield-lock{% if _u.get('totp_enabled') %}-fill text-warning{% endif %}"></i>
+        </a>
         <a href="/logout" class="btn btn-sm btn-outline-secondary" title="Cerrar sesión">
           <i class="bi bi-box-arrow-right"></i>
         </a>

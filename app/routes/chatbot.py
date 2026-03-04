@@ -128,6 +128,65 @@ async def chatbot_page(request: Request, _user: dict = Depends(require_auth)):
     })
 
 
+# ─── Print / PDF de sesión (N1) ──────────────────────────────────────────────
+
+@router.get("/session/{session_uuid}/print", response_class=HTMLResponse)
+async def print_session(
+    session_uuid: str,
+    request: Request,
+    db: Session = Depends(get_db),
+    _user: dict = Depends(require_auth),
+):
+    """Página imprimible/PDF del resultado de una sesión completada."""
+    s = _load_session(session_uuid, db)
+    if s.phase != "complete" and not s.final_classification:
+        raise HTTPException(400, "La sesión no está finalizada")
+
+    mode     = s.mode or "soc"
+    category = s.inferred_category or "unknown"
+    all_answers = _jloads(s.answers, {})
+    threat_cls  = _jloads(s.threat_classification, {})
+    ti_results  = _jloads(s.ti_results, [])
+    iocs        = _jloads(s.iocs, {})
+    answered    = _jloads(s.answered_questions, [])
+
+    # Build answered question list for display
+    from app.services.chatbot_engine import build_question_data
+    from app.services.citizen_engine import build_citizen_question, CITIZEN_CATEGORY_LABELS
+    is_citizen = mode == "ciudadano"
+
+    qa_list = []
+    for qid in answered:
+        val = all_answers.get(qid)
+        if val is None:
+            continue
+        if is_citizen:
+            q_data = build_citizen_question(qid, 1, 1)
+        else:
+            q_data = build_question_data(qid)
+        if q_data:
+            # Find option label
+            label = next((o["label"] for o in q_data.get("options", []) if o["value"] == val), val)
+            qa_list.append({"question": q_data["text"], "answer": label, "module": q_data.get("module", "")})
+
+    MODE_LABELS = {"soc": "SOC Analista", "experto": "Experto+", "ciudadano": "Ciudadano", "unificado": "Unificado"}
+
+    return templates.TemplateResponse("chatbot_print.html", {
+        "request":         request,
+        "user":            _user,
+        "session":         s,
+        "mode":            mode,
+        "mode_label":      MODE_LABELS.get(mode, mode),
+        "category":        category,
+        "category_label":  (CITIZEN_CATEGORY_LABELS if is_citizen else CATEGORY_LABELS).get(category, ""),
+        "threat_cls":      threat_cls,
+        "iocs":            iocs,
+        "qa_list":         qa_list,
+        "ti_results":      ti_results,
+        "generated_at":    datetime.utcnow().strftime("%d/%m/%Y %H:%M UTC"),
+    })
+
+
 # ─── Historial de sesiones (P2) ──────────────────────────────────────────────
 
 @router.get("/sessions")

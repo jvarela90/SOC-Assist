@@ -35,3 +35,6 @@ build/
 # ti_config.json
 # Uncomment the line above to exclude from git.
 # The file is tracked to provide a template — keys should be empty in commits.
+
+# TheHive API key (NEVER commit)
+thehive_config.json

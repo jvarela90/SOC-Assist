@@ -217,6 +217,9 @@
             <button class="btn btn-success" id="btnSave" onclick="saveIncident()">
               <i class="bi bi-save me-1"></i>Crear Incidente
             </button>
+            <a id="btnPrint" class="btn btn-outline-info d-none" target="_blank">
+              <i class="bi bi-printer me-1"></i>PDF / Imprimir
+            </a>
             <button class="btn btn-outline-secondary" onclick="newSession()">
               <i class="bi bi-plus-circle me-1"></i>Nuevo análisis
             </button>
@@ -572,6 +575,9 @@ async function completeSession() {
     });
     const data = await res.json();
     showResult(data);
+    // Habilitar botón de impresión/PDF en cuanto hay resultado
+    const btnP = document.getElementById('btnPrint');
+    if (btnP && SESSION_ID) { btnP.href = `/chatbot/session/${SESSION_ID}/print`; btnP.classList.remove('d-none'); }
   } catch(e) {
     document.getElementById('answerArea').innerHTML =
       '<div class="alert alert-danger small">Error al calcular resultado.</div>';
@@ -674,6 +680,9 @@ async function saveIncident() {
     });
     const data = await res.json();
     if (data.incident_id) {
+      // Show print button with session UUID, then redirect
+      const btnP = document.getElementById('btnPrint');
+      if (btnP && SESSION_ID) { btnP.href = `/chatbot/session/${SESSION_ID}/print`; btnP.classList.remove('d-none'); }
       window.location.href = `/incidentes/${data.incident_id}`;
     }
   } catch(e) {

@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SOC Assist — Reporte Chatbot</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 12px; color: #1a1a2e; background: #fff; padding: 20px; }
+    h1 { font-size: 18px; color: #0a3d62; border-bottom: 2px solid #0a3d62; padding-bottom: 6px; margin-bottom: 12px; }
+    h2 { font-size: 14px; color: #0a3d62; margin: 16px 0 8px; border-left: 4px solid #0a3d62; padding-left: 8px; }
+    .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
+    .header-meta { font-size: 11px; color: #555; text-align: right; }
+    .kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
+    .kpi { border: 1px solid #ccc; border-radius: 6px; padding: 10px; text-align: center; }
+    .kpi .val { font-size: 20px; font-weight: bold; }
+    .kpi .lbl { font-size: 10px; color: #666; margin-top: 2px; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+    .badge-danger  { background: #dc3545; color: #fff; }
+    .badge-warning { background: #ffc107; color: #000; }
+    .badge-info    { background: #0dcaf0; color: #000; }
+    .badge-success { background: #198754; color: #fff; }
+    .badge-secondary { background: #6c757d; color: #fff; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 11px; }
+    th { background: #0a3d62; color: #fff; padding: 5px 8px; text-align: left; }
+    td { padding: 4px 8px; border-bottom: 1px solid #e0e0e0; vertical-align: top; }
+    tr:nth-child(even) td { background: #f5f7fa; }
+    .ioc-row { display: flex; flex-wrap: wrap; gap: 12px; font-size: 11px; margin-bottom: 12px; }
+    .ioc-item { background: #f0f4ff; border: 1px solid #c5d3ff; border-radius: 4px; padding: 4px 10px; }
+    .ioc-item span { font-weight: bold; color: #0a3d62; }
+    .footer { margin-top: 20px; padding-top: 8px; border-top: 1px solid #ccc; font-size: 10px; color: #888; text-align: center; }
+    .no-print { margin-bottom: 16px; }
+    @media print {
+      .no-print { display: none !important; }
+      body { padding: 0; font-size: 11px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="no-print">
+  <button onclick="window.print()" style="padding:6px 18px;background:#0a3d62;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:13px;">
+    🖨️ Imprimir / Guardar PDF
+  </button>
+  <a href="/chatbot" style="margin-left:12px;font-size:12px;color:#0a3d62;">← Volver al Chat</a>
+  {% if session.incident_id %}
+  <a href="/incidentes/{{ session.incident_id }}" style="margin-left:12px;font-size:12px;color:#0a3d62;">Ver Incidente #{{ session.incident_id }}</a>
+  {% endif %}
+</div>
+
+<div class="header">
+  <div>
+    <h1>🛡️ SOC Assist — Reporte de Análisis de Seguridad</h1>
+    <div style="font-size:11px;color:#555;">
+      Modo: <strong>{{ mode_label }}</strong> &nbsp;|&nbsp;
+      Analista: <strong>{{ user.username }}</strong> &nbsp;|&nbsp;
+      Sesión: <code>{{ session.session_uuid[:8] }}…</code>
+      {% if session.incident_id %}&nbsp;|&nbsp; Incidente: <strong>#{{ session.incident_id }}</strong>{% endif %}
+    </div>
+  </div>
+  <div class="header-meta">
+    Generado: {{ generated_at }}<br>
+    Preguntas respondidas: {{ qa_list | length }}
+  </div>
+</div>
+
+<!-- KPIs -->
+<div class="kpi-grid">
+  <div class="kpi">
+    {% if threat_cls.level %}
+      {% set cls = threat_cls.level | lower %}
+      {% if cls in ['p1','critico','brecha'] %}<div class="val" style="color:#dc3545;">{{ threat_cls.label or threat_cls.level }}</div>
+      {% elif cls in ['p2','incidente'] %}<div class="val" style="color:#fd7e14;">{{ threat_cls.label or threat_cls.level }}</div>
+      {% elif cls in ['p3','sospechoso'] %}<div class="val" style="color:#ffc107;">{{ threat_cls.label or threat_cls.level }}</div>
+      {% else %}<div class="val" style="color:#198754;">{{ threat_cls.label or threat_cls.level }}</div>{% endif %}
+    {% elif session.final_classification %}
+      <div class="val">{{ session.final_classification | upper }}</div>
+    {% else %}
+      <div class="val">—</div>
+    {% endif %}
+    <div class="lbl">Clasificación</div>
+  </div>
+  <div class="kpi">
+    <div class="val">{% if session.final_score %}{{ session.final_score | round(1) }}{% else %}—{% endif %}</div>
+    <div class="lbl">Score Final</div>
+  </div>
+  <div class="kpi">
+    <div class="val">{{ category_label or category }}</div>
+    <div class="lbl">Categoría de amenaza</div>
+  </div>
+</div>
+
+<!-- IoCs -->
+{% if iocs and (iocs.ip_src or iocs.ip_dst or iocs.url or iocs.mac) %}
+<h2>Indicadores de Compromiso (IoCs)</h2>
+<div class="ioc-row">
+  {% if iocs.ip_src %}<div class="ioc-item"><span>IP Origen:</span> {{ iocs.ip_src }}</div>{% endif %}
+  {% if iocs.ip_dst %}<div class="ioc-item"><span>IP Destino:</span> {{ iocs.ip_dst }}</div>{% endif %}
+  {% if iocs.url %}<div class="ioc-item"><span>URL:</span> {{ iocs.url }}</div>{% endif %}
+  {% if iocs.mac %}<div class="ioc-item"><span>MAC:</span> {{ iocs.mac }}</div>{% endif %}
+  {% if iocs.ti_summary %}<div class="ioc-item"><span>Veredicto TI:</span> {{ iocs.ti_summary }}</div>{% endif %}
+</div>
+{% endif %}
+
+<!-- Recomendación -->
+{% if threat_cls.recommendation %}
+<h2>Recomendación</h2>
+<p style="background:#f0f8ff;border-left:4px solid #0a3d62;padding:8px 12px;border-radius:4px;margin-bottom:12px;">
+  {{ threat_cls.recommendation }}
+</p>
+{% endif %}
+
+<!-- Preguntas y respuestas -->
+{% if qa_list %}
+<h2>Preguntas Respondidas ({{ qa_list | length }})</h2>
+<table>
+  <thead>
+    <tr><th style="width:50%">Pregunta</th><th style="width:35%">Respuesta</th><th style="width:15%">Módulo</th></tr>
+  </thead>
+  <tbody>
+    {% for item in qa_list %}
+    <tr>
+      <td>{{ item.question }}</td>
+      <td>{{ item.answer }}</td>
+      <td style="color:#555;">{{ item.module }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+<!-- TI Results summary -->
+{% if ti_results %}
+<h2>Inteligencia de Amenazas</h2>
+<table>
+  <thead><tr><th>Indicador</th><th>Fuente</th><th>Veredicto</th><th>Detalle</th></tr></thead>
+  <tbody>
+    {% for r in ti_results %}
+    <tr>
+      <td><code>{{ r.indicator or '—' }}</code></td>
+      <td>{{ r.source or '—' }}</td>
+      <td>
+        {% set v = r.summary_verdict or 'LIMPIO' %}
+        {% if v == 'MALICIOSO' %}<span class="badge badge-danger">MALICIOSO</span>
+        {% elif v == 'SOSPECHOSO' %}<span class="badge badge-warning">SOSPECHOSO</span>
+        {% else %}<span class="badge badge-success">LIMPIO</span>{% endif %}
+      </td>
+      <td>{{ r.summary or '' }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+<div class="footer">
+  SOC Assist v1.11 &nbsp;·&nbsp; Reporte generado automáticamente &nbsp;·&nbsp; Uso interno confidencial
+</div>
+</body>
+</html>

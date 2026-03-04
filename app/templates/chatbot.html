@@ -29,15 +29,14 @@
           🤖 Analista SOC <span class="badge bg-dark ms-1">66 preg.</span>
         </button>
         <button class="btn btn-sm btn-outline-secondary mode-btn" data-mode="ciudadano" onclick="selectMode('ciudadano', this)">
-          👤 Ciudadano <span class="badge bg-secondary ms-1">200</span>&nbsp;<span class="badge bg-warning text-dark" style="font-size:.62rem">BETA</span>
+          👤 Ciudadano <span class="badge bg-secondary ms-1">200</span>
         </button>
         <button class="btn btn-sm btn-outline-secondary mode-btn" data-mode="experto" onclick="selectMode('experto', this)">
-          🔬 Experto+ <span class="badge bg-secondary ms-1">66</span>&nbsp;<span class="badge bg-warning text-dark" style="font-size:.62rem">BETA</span>
+          🔬 Experto+ <span class="badge bg-secondary ms-1">66</span>
         </button>
         <button class="btn btn-sm btn-outline-secondary mode-btn" data-mode="unificado" onclick="selectMode('unificado', this)">
-          🌐 Unificado <span class="badge bg-secondary ms-1">266</span>&nbsp;<span class="badge bg-warning text-dark" style="font-size:.62rem">BETA</span>
+          🌐 Unificado <span class="badge bg-secondary ms-1">266</span>
         </button>
-        <span class="ms-auto text-muted small"><i class="bi bi-shuffle me-1"></i>opciones en orden aleatorio</span>
       </div>
     </div>
   </div>
@@ -159,9 +158,15 @@
 
           <!-- Área de respuesta -->
           <div id="answerArea">
-            <button class="btn btn-info w-100" id="btnStart" onclick="startSession()">
-              <i class="bi bi-play-circle-fill me-2"></i>Comenzar análisis
-            </button>
+            <div class="d-flex gap-2 align-items-center mb-2">
+              <button class="btn btn-info flex-grow-1" id="btnStart" onclick="startSession()">
+                <i class="bi bi-play-circle-fill me-2"></i>Comenzar análisis
+              </button>
+              <div class="form-check form-switch mb-0 ms-1" title="Modo simulacro: no crea incidente real">
+                <input class="form-check-input" type="checkbox" id="toggleTestMode" style="cursor:pointer">
+                <label class="form-check-label small text-muted" for="toggleTestMode">Simulacro</label>
+              </div>
+            </div>
           </div>
 
           <!-- Navegación -->
@@ -181,6 +186,9 @@
         <div class="card-header bg-success bg-opacity-25 d-flex align-items-center gap-2">
           <span id="resultEmoji" style="font-size:1.5rem"></span>
           <span class="fw-bold" id="resultLabel"></span>
+          <span id="testModeBadge" class="badge bg-warning text-dark d-none ms-1">
+            <i class="bi bi-cone-striped me-1"></i>Simulacro
+          </span>
           <span class="ms-auto badge" id="resultBadge"></span>
         </div>
         <div class="card-body">
@@ -220,6 +228,12 @@
             <a id="btnPrint" class="btn btn-outline-info d-none" target="_blank">
               <i class="bi bi-printer me-1"></i>PDF / Imprimir
             </a>
+            <a id="btnExportJSON" class="btn btn-outline-secondary d-none" target="_blank">
+              <i class="bi bi-filetype-json me-1"></i>JSON
+            </a>
+            <a id="btnExportCSV" class="btn btn-outline-secondary d-none" target="_blank">
+              <i class="bi bi-filetype-csv me-1"></i>CSV
+            </a>
             <button class="btn btn-outline-secondary" onclick="newSession()">
               <i class="bi bi-plus-circle me-1"></i>Nuevo análisis
             </button>
@@ -257,8 +271,7 @@ const MODE_CONFIG = {
     blocks: 'GW · A · B · C · D · E · F · G · H · I · J · K · L',
     description: 'Preguntas N001–N200 en lenguaje coloquial para ciudadanos, víctimas y denunciantes. Incluye nodos de desambiguación (DISC_*) y profundización (DEPTH_*). Clasifica en P1 Urgente / P2 Prioritario / P3 Importante / P4 Orientación.',
     welcome: `<p class="mb-2">¡Hola! Soy el <strong>Asistente Ciudadano</strong>.</p>
-              <p class="mb-2 small">Estoy aquí para ayudarte a reportar un problema con tu computadora o dispositivo, incluso si no eres experto en tecnología.</p>
-              <p class="mb-0 small text-warning"><i class="bi bi-tools me-1"></i>Modo en desarrollo · referencia: <code>chatbot_flow2.mermaid</code></p>`
+              <p class="mb-0 small">Estoy aquí para ayudarte a reportar un problema con tu computadora o dispositivo, incluso si no eres experto en tecnología.</p>`
   },
   experto: {
     title: 'Chat Experto No-Lineal',
@@ -270,8 +283,7 @@ const MODE_CONFIG = {
     blocks: 'GATEWAY · DISC_RA · DISC_IC · DISC_PC · DISC_IA · DEPTH_* · IOC · ASSET · TEMPORAL · IMPACT',
     description: 'Las 66 preguntas SOC (q_001–q_066) en árbol no-lineal. 8 preguntas disparadoras de máximo poder discriminativo abren rutas a RANSOMWARE, APT, PHISHING, DDoS, INSIDER o CRED THEFT sin recorrer el árbol completo.',
     welcome: `<p class="mb-2">¡Hola! Soy el <strong>Asistente Experto+</strong>.</p>
-              <p class="mb-2 small">Flujo no-lineal con preguntas disparadoras de alto poder discriminativo para clasificación por probabilidad.</p>
-              <p class="mb-0 small text-warning"><i class="bi bi-tools me-1"></i>Modo en desarrollo · referencia: <code>chatbot_flow3.mermaid</code></p>`
+              <p class="mb-0 small">Flujo no-lineal con preguntas disparadoras de alto poder discriminativo para clasificación por probabilidad.</p>`
   },
   unificado: {
     title: 'Chat Unificado Dual-Fase',
@@ -283,8 +295,7 @@ const MODE_CONFIG = {
     blocks: 'Fase 1 (N001–N200) → BRIDGE → Fase 2 (q_001–q_066)',
     description: 'Sistema de dos fases: Fase 1 para ciudadanos (N001–N200 → P1–P4), BRIDGE de escalado que mapea categoría ciudadana al punto de entrada SOC correcto, Fase 2 para analista (q_001–q_066 → informativo/brecha). No re-pregunta lo ya respondido.',
     welcome: `<p class="mb-2">¡Hola! Soy el <strong>Asistente Unificado</strong>.</p>
-              <p class="mb-2 small">Sistema de dos fases: primero el ciudadano responde, luego el analista SOC profundiza sin repetir preguntas.</p>
-              <p class="mb-0 small text-warning"><i class="bi bi-tools me-1"></i>Modo en desarrollo · referencia: <code>chatbot_flow4.mermaid</code></p>`
+              <p class="mb-0 small">Sistema de dos fases: primero el ciudadano responde, luego el analista SOC profundiza sin repetir preguntas.</p>`
   }
 };
 
@@ -379,13 +390,25 @@ async function startSession() {
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Iniciando...';
 
+  const testMode = document.getElementById('toggleTestMode')?.checked || false;
+
   try {
     const res = await fetch('/chatbot/session/start', {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({mode: CHAT_MODE})
+      body: JSON.stringify({mode: CHAT_MODE, test_mode: testMode})
     });
     const data = await res.json();
     SESSION_ID = data.session_id;
+
+    // Marcar modo simulacro visualmente
+    if (data.test_mode) {
+      document.getElementById('testModeBadge')?.classList.remove('d-none');
+      const btnSave = document.getElementById('btnSave');
+      if (btnSave) {
+        btnSave.innerHTML = '<i class="bi bi-cone-striped me-1"></i>Finalizar simulacro';
+        btnSave.classList.replace('btn-success', 'btn-warning');
+      }
+    }
 
     // Mostrar header de sesión
     document.getElementById('sessionHeader').style.removeProperty('display');
@@ -575,9 +598,8 @@ async function completeSession() {
     });
     const data = await res.json();
     showResult(data);
-    // Habilitar botón de impresión/PDF en cuanto hay resultado
-    const btnP = document.getElementById('btnPrint');
-    if (btnP && SESSION_ID) { btnP.href = `/chatbot/session/${SESSION_ID}/print`; btnP.classList.remove('d-none'); }
+    // Habilitar botones de export en cuanto hay resultado
+    _enableExportButtons(SESSION_ID);
   } catch(e) {
     document.getElementById('answerArea').innerHTML =
       '<div class="alert alert-danger small">Error al calcular resultado.</div>';
@@ -679,10 +701,20 @@ async function saveIncident() {
       body: JSON.stringify({session_id: SESSION_ID})
     });
     const data = await res.json();
-    if (data.incident_id) {
-      // Show print button with session UUID, then redirect
-      const btnP = document.getElementById('btnPrint');
-      if (btnP && SESSION_ID) { btnP.href = `/chatbot/session/${SESSION_ID}/print`; btnP.classList.remove('d-none'); }
+    if (data.test_mode) {
+      // Modo simulacro: no redirigir, mostrar mensaje
+      btn.innerHTML = '<i class="bi bi-check-circle me-1"></i>Simulacro completado';
+      btn.classList.add('disabled');
+      _enableExportButtons(SESSION_ID);
+      const card = document.getElementById('resultCard');
+      if (card) {
+        const msg = document.createElement('div');
+        msg.className = 'alert alert-warning mt-2 small mb-0';
+        msg.innerHTML = '<i class="bi bi-cone-striped me-1"></i>Sesión de simulacro finalizada. No se creó ningún incidente real.';
+        card.querySelector('.card-body').appendChild(msg);
+      }
+    } else if (data.incident_id) {
+      _enableExportButtons(SESSION_ID);
       window.location.href = `/incidentes/${data.incident_id}`;
     }
   } catch(e) {
@@ -690,6 +722,17 @@ async function saveIncident() {
     btn.innerHTML = '<i class="bi bi-save me-1"></i>Crear Incidente';
     alert('Error al guardar el incidente.');
   }
+}
+
+// ─── Helper: habilitar botones de exportación ─────────────────────────────────
+function _enableExportButtons(sessionId) {
+  if (!sessionId) return;
+  const btnP = document.getElementById('btnPrint');
+  if (btnP) { btnP.href = `/chatbot/session/${sessionId}/print`; btnP.classList.remove('d-none'); }
+  const btnJ = document.getElementById('btnExportJSON');
+  if (btnJ) { btnJ.href = `/chatbot/session/${sessionId}/export?format=json`; btnJ.classList.remove('d-none'); }
+  const btnC = document.getElementById('btnExportCSV');
+  if (btnC) { btnC.href = `/chatbot/session/${sessionId}/export?format=csv`; btnC.classList.remove('d-none'); }
 }
 
 // ─── Nuevo análisis ───────────────────────────────────────────────────────────
@@ -706,7 +749,7 @@ function newSession() {
       </div>
     </div>`;
   document.getElementById('answerArea').innerHTML =
-    '<button class="btn btn-info w-100" id="btnStart" onclick="startSession()"><i class="bi bi-play-circle-fill me-2"></i>Comenzar análisis</button>';
+    '<div class="d-flex gap-2 align-items-center"><button class="btn btn-info flex-grow-1" id="btnStart" onclick="startSession()"><i class="bi bi-play-circle-fill me-2"></i>Comenzar análisis</button><div class="form-check form-switch mb-0 ms-1" title="Modo simulacro: no crea incidente real"><input class="form-check-input" type="checkbox" id="toggleTestMode" style="cursor:pointer"><label class="form-check-label small text-muted" for="toggleTestMode">Simulacro</label></div></div>';
   document.getElementById('navControls').classList.add('d-none');
   document.getElementById('resultCard').classList.add('d-none');
   document.getElementById('classificationCard').classList.add('d-none');

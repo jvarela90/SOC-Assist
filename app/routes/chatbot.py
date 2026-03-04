@@ -9,8 +9,11 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 
+import csv
+import io
+
 from fastapi import APIRouter, Request, Depends, HTTPException
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
@@ -245,6 +248,7 @@ async def session_start(
     mode = body.get("mode", "soc")
     if mode not in ("soc", "experto", "ciudadano", "unificado"):
         mode = "soc"
+    test_mode = bool(body.get("test_mode", False))
 
     # Seleccionar gateway según modo
     is_citizen = mode in ("ciudadano", "unificado")
@@ -256,6 +260,7 @@ async def session_start(
         organization_id=_user.get("org_id"),
         question_queue=json.dumps(gw),
         mode=mode,
+        test_mode=test_mode,
     )
     db.add(s)
     db.commit()
@@ -275,6 +280,7 @@ async def session_start(
         "question":   first_q,
         "phase":      "gateway",
         "mode":       mode,
+        "test_mode":  test_mode,
         "category":   None,
         "confidence": 0.0,
         "done":       False,
@@ -593,7 +599,24 @@ async def session_save(
     s = _load_session(body.get("session_id", ""), db)
 
     if s.status == "completed" and s.incident_id:
-        return JSONResponse({"incident_id": s.incident_id})
+        return JSONResponse({"incident_id": s.incident_id, "test_mode": s.test_mode})
+
+    # ── Modo simulacro (P1): no crear Incident real ───────────────────────────
+    if s.test_mode:
+        all_answers = _jloads(s.answers, {})
+        result = engine_instance.evaluate(all_answers)
+        _save_session(s, db,
+            status="completed",
+            final_score=result["final_score"],
+            final_classification=result["classification"],
+        )
+        return JSONResponse({
+            "incident_id": None,
+            "test_mode":   True,
+            "classification": result["classification"],
+            "final_score":    result["final_score"],
+            "message": "Sesión de simulacro completada. No se creó ningún incidente.",
+        })
 
     all_answers = _jloads(s.answers, {})
     ti_results  = _jloads(s.ti_results, [])
@@ -697,3 +720,120 @@ async def session_save(
     ))
 
     return JSONResponse({"incident_id": incident.id})
+
+
+# ─── Exportación JSON / CSV (N2) ──────────────────────────────────────────────
+
+@router.get("/session/{session_uuid}/export")
+async def export_session(
+    session_uuid: str,
+    request: Request,
+    db: Session = Depends(get_db),
+    _user: dict = Depends(require_auth),
+    format: str = "json",
+):
+    """
+    Exporta la sesión completada como JSON o CSV.
+    GET /chatbot/session/{uuid}/export?format=json|csv
+    """
+    s = _load_session(session_uuid, db)
+    if s.phase != "complete" and not s.final_classification:
+        raise HTTPException(400, "La sesión no está finalizada")
+
+    mode        = s.mode or "soc"
+    all_answers = _jloads(s.answers, {})
+    answered    = _jloads(s.answered_questions, [])
+    iocs        = _jloads(s.iocs, {})
+    ti_results  = _jloads(s.ti_results, [])
+    threat_cls  = _jloads(s.threat_classification, {})
+
+    from app.services.citizen_engine import build_citizen_question, CITIZEN_CATEGORY_LABELS
+    is_citizen = mode == "ciudadano"
+
+    # Construir lista Q&A
+    qa_list = []
+    for qid in answered:
+        val = all_answers.get(qid)
+        if val is None:
+            continue
+        if is_citizen:
+            q_data = build_citizen_question(qid, 1, 1)
+        else:
+            q_data = build_question_data(qid)
+        if q_data:
+            label = next((o["label"] for o in q_data.get("options", []) if o["value"] == val), val)
+            qa_list.append({
+                "question_id": qid,
+                "module":      q_data.get("module", ""),
+                "question":    q_data["text"],
+                "answer_value": val,
+                "answer_label": label,
+            })
+
+    ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+
+    # ── JSON ──────────────────────────────────────────────────────────────────
+    if format == "json":
+        export_data = {
+            "export_generated_at": datetime.utcnow().isoformat() + "Z",
+            "session_uuid":        s.session_uuid,
+            "mode":                mode,
+            "test_mode":           bool(s.test_mode),
+            "analyst":             _user.get("username"),
+            "created_at":          s.created_at.isoformat() if s.created_at else None,
+            "classification":      s.final_classification,
+            "final_score":         s.final_score,
+            "inferred_category":   s.inferred_category,
+            "category_confidence": round(s.category_confidence, 3),
+            "incident_id":         s.incident_id,
+            "iocs":                iocs,
+            "ti_results":          ti_results,
+            "threat_classification": threat_cls,
+            "answers":             all_answers,
+            "qa_list":             qa_list,
+        }
+        content = json.dumps(export_data, ensure_ascii=False, indent=2, default=str)
+        filename = f"soc_assist_session_{ts}.json"
+        return StreamingResponse(
+            io.BytesIO(content.encode("utf-8")),
+            media_type="application/json",
+            headers={"Content-Disposition": f"attachment; filename={filename}"},
+        )
+
+    # ── CSV ───────────────────────────────────────────────────────────────────
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+
+    # Cabecera del informe
+    writer.writerow(["SOC Assist — Exportación de sesión"])
+    writer.writerow(["session_uuid", s.session_uuid])
+    writer.writerow(["modo", mode])
+    writer.writerow(["simulacro", "Sí" if s.test_mode else "No"])
+    writer.writerow(["analista", _user.get("username", "")])
+    writer.writerow(["fecha", s.created_at.strftime("%d/%m/%Y %H:%M UTC") if s.created_at else ""])
+    writer.writerow(["clasificación", s.final_classification or ""])
+    writer.writerow(["score_final", s.final_score or ""])
+    writer.writerow(["categoría", s.inferred_category or ""])
+    writer.writerow(["incidente_id", s.incident_id or ""])
+    writer.writerow([])
+
+    # IoCs
+    writer.writerow(["── IoCs ──"])
+    for k, v in iocs.items():
+        if v:
+            writer.writerow([k, v])
+    writer.writerow([])
+
+    # Q&A
+    writer.writerow(["── Preguntas y respuestas ──"])
+    writer.writerow(["ID", "Módulo", "Pregunta", "Respuesta"])
+    for item in qa_list:
+        writer.writerow([item["question_id"], item["module"], item["question"], item["answer_label"]])
+
+    content = buf.getvalue()
+    filename = f"soc_assist_session_{ts}.csv"
+    return StreamingResponse(
+        io.BytesIO(content.encode("utf-8-sig")),   # BOM para Excel
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )

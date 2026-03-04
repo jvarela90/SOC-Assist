@@ -292,6 +292,7 @@ class ChatSession(Base):
     status                = Column(String(20), default="active")   # active|completed|abandoned
     phase                 = Column(String(20), default="gateway")  # gateway|targeted|bridge|complete
     mode                  = Column(String(20), default="soc")      # soc|experto|ciudadano|unificado
+    test_mode             = Column(Boolean, default=False)          # P1: simulacro — no crea Incident
     # IoCs y TI
     iocs                  = Column(Text, default="{}")   # JSON {ip_src,ip_dst,url,hash,domain}
     ti_results            = Column(Text, default="[]")   # JSON raw TI results
@@ -445,6 +446,8 @@ def _run_migrations():
         # N3 — 2FA TOTP
         ("users", "totp_secret",                   "VARCHAR(64)"),
         ("users", "totp_enabled",                  "BOOLEAN DEFAULT 0"),
+        # P1 — Modo simulacro
+        ("chat_sessions", "test_mode",             "BOOLEAN DEFAULT 0"),
     ]
     with engine.connect() as conn:
         for table, col, ddl in _new_cols:

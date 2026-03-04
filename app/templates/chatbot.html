@@ -20,6 +20,28 @@
     </div>
   </div>
 
+  <!-- ── Selector de modo del chatbot ──────────────────────────────────── -->
+  <div class="card border-secondary mb-3">
+    <div class="card-body py-2 px-3">
+      <div class="d-flex align-items-center gap-2 flex-wrap">
+        <small class="text-muted fw-bold me-1"><i class="bi bi-grid-fill me-1"></i>Modo:</small>
+        <button class="btn btn-sm btn-info mode-btn" data-mode="soc" onclick="selectMode('soc', this)">
+          🤖 Analista SOC <span class="badge bg-dark ms-1">66 preg.</span>
+        </button>
+        <button class="btn btn-sm btn-outline-secondary mode-btn" data-mode="ciudadano" onclick="selectMode('ciudadano', this)">
+          👤 Ciudadano <span class="badge bg-secondary ms-1">200</span>&nbsp;<span class="badge bg-warning text-dark" style="font-size:.62rem">BETA</span>
+        </button>
+        <button class="btn btn-sm btn-outline-secondary mode-btn" data-mode="experto" onclick="selectMode('experto', this)">
+          🔬 Experto+ <span class="badge bg-secondary ms-1">66</span>&nbsp;<span class="badge bg-warning text-dark" style="font-size:.62rem">BETA</span>
+        </button>
+        <button class="btn btn-sm btn-outline-secondary mode-btn" data-mode="unificado" onclick="selectMode('unificado', this)">
+          🌐 Unificado <span class="badge bg-secondary ms-1">266</span>&nbsp;<span class="badge bg-warning text-dark" style="font-size:.62rem">BETA</span>
+        </button>
+        <span class="ms-auto text-muted small"><i class="bi bi-shuffle me-1"></i>opciones en orden aleatorio</span>
+      </div>
+    </div>
+  </div>
+
   <div class="row g-3">
 
     <!-- Panel izquierdo: IoCs -->
@@ -192,6 +214,58 @@
 // ─── Estado global ────────────────────────────────────────────────────────────
 let SESSION_ID = null;
 let CURRENT_Q_ID = null;
+let CHAT_MODE = 'soc';
+
+const MODE_CONFIG = {
+  soc: {
+    title: 'Chat Analista',
+    subtitle: 'Clasificación inteligente de incidentes · hasta 80% menos preguntas',
+    icon: '🤖',
+    stub: false,
+    welcome: `<p class="mb-2">¡Hola! Soy el <strong>Asistente SOC</strong>.</p>
+              <p class="mb-2 small text-muted">Te voy a hacer entre 13 y 24 preguntas para clasificar este evento — mucho menos que el formulario completo.</p>
+              <p class="mb-0 small">Si tienes IPs, URLs o hashes del evento, ingresalos en el panel izquierdo antes de comenzar para que pueda pre-clasificar automáticamente.</p>`
+  },
+  ciudadano: {
+    title: 'Asistente Ciudadano',
+    subtitle: 'Guía para víctimas de ciberdelitos · lenguaje simple · N001–N200',
+    icon: '👤',
+    stub: true,
+    flowFile: 'chatbot_flow2.mermaid',
+    questions: 200,
+    blocks: 'GW · A · B · C · D · E · F · G · H · I · J · K · L',
+    description: 'Preguntas N001–N200 en lenguaje coloquial para ciudadanos, víctimas y denunciantes. Incluye nodos de desambiguación (DISC_*) y profundización (DEPTH_*). Clasifica en P1 Urgente / P2 Prioritario / P3 Importante / P4 Orientación.',
+    welcome: `<p class="mb-2">¡Hola! Soy el <strong>Asistente Ciudadano</strong>.</p>
+              <p class="mb-2 small">Estoy aquí para ayudarte a reportar un problema con tu computadora o dispositivo, incluso si no eres experto en tecnología.</p>
+              <p class="mb-0 small text-warning"><i class="bi bi-tools me-1"></i>Modo en desarrollo · referencia: <code>chatbot_flow2.mermaid</code></p>`
+  },
+  experto: {
+    title: 'Chat Experto No-Lineal',
+    subtitle: 'Preguntas disparadoras + árbol adaptativo · q_001–q_066',
+    icon: '🔬',
+    stub: true,
+    flowFile: 'chatbot_flow3.mermaid',
+    questions: 66,
+    blocks: 'GATEWAY · DISC_RA · DISC_IC · DISC_PC · DISC_IA · DEPTH_* · IOC · ASSET · TEMPORAL · IMPACT',
+    description: 'Las 66 preguntas SOC (q_001–q_066) en árbol no-lineal. 8 preguntas disparadoras de máximo poder discriminativo abren rutas a RANSOMWARE, APT, PHISHING, DDoS, INSIDER o CRED THEFT sin recorrer el árbol completo.',
+    welcome: `<p class="mb-2">¡Hola! Soy el <strong>Asistente Experto+</strong>.</p>
+              <p class="mb-2 small">Flujo no-lineal con preguntas disparadoras de alto poder discriminativo para clasificación por probabilidad.</p>
+              <p class="mb-0 small text-warning"><i class="bi bi-tools me-1"></i>Modo en desarrollo · referencia: <code>chatbot_flow3.mermaid</code></p>`
+  },
+  unificado: {
+    title: 'Chat Unificado Dual-Fase',
+    subtitle: 'Ciudadano + Analista SOC · 266 preguntas · BRIDGE de escalado',
+    icon: '🌐',
+    stub: true,
+    flowFile: 'chatbot_flow4.mermaid',
+    questions: 266,
+    blocks: 'Fase 1 (N001–N200) → BRIDGE → Fase 2 (q_001–q_066)',
+    description: 'Sistema de dos fases: Fase 1 para ciudadanos (N001–N200 → P1–P4), BRIDGE de escalado que mapea categoría ciudadana al punto de entrada SOC correcto, Fase 2 para analista (q_001–q_066 → informativo/brecha). No re-pregunta lo ya respondido.',
+    welcome: `<p class="mb-2">¡Hola! Soy el <strong>Asistente Unificado</strong>.</p>
+              <p class="mb-2 small">Sistema de dos fases: primero el ciudadano responde, luego el analista SOC profundiza sin repetir preguntas.</p>
+              <p class="mb-0 small text-warning"><i class="bi bi-tools me-1"></i>Modo en desarrollo · referencia: <code>chatbot_flow4.mermaid</code></p>`
+  }
+};
 
 // ─── TI Lookup rápido individual ──────────────────────────────────────────────
 async function lookupSingle(inputId, resultId) {
@@ -280,6 +354,11 @@ async function analyzeIoCs() {
 
 // ─── Iniciar sesión ───────────────────────────────────────────────────────────
 async function startSession() {
+  // Modos BETA: mostrar stub descriptivo en lugar de llamar al API
+  if (CHAT_MODE !== 'soc') {
+    showModeStub();
+    return;
+  }
   const btn = document.getElementById('btnStart');
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Iniciando...';
@@ -311,6 +390,16 @@ async function startSession() {
   }
 }
 
+// ─── Aleatorizar orden de opciones (anti-anchoring) ──────────────────────────
+function shuffleArray(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
 // ─── Renderizar pregunta ──────────────────────────────────────────────────────
 function renderQuestion(q, state) {
   if (!q) {
@@ -336,8 +425,8 @@ function renderQuestion(q, state) {
     </div>`;
   appendToChat(questionHtml);
 
-  // Botones de opciones
-  const optButtons = q.options.map(opt =>
+  // Botones de opciones — orden aleatorio (anti-anchoring)
+  const optButtons = shuffleArray(q.options).map(opt =>
     `<button class="btn btn-outline-light btn-sm" onclick="sendAnswer('${escHtml(opt.value)}')">${escHtml(opt.label)}</button>`
   ).join('');
 
@@ -541,13 +630,13 @@ async function saveIncident() {
 function newSession() {
   SESSION_ID = null;
   CURRENT_Q_ID = null;
+  const cfg = MODE_CONFIG[CHAT_MODE] || MODE_CONFIG['soc'];
   document.getElementById('chatMessages').innerHTML = `
     <div class="d-flex gap-2 mb-3" id="welcomeMsg">
       <div class="rounded-circle bg-info d-flex align-items-center justify-content-center flex-shrink-0"
-           style="width:36px;height:36px;font-size:1.1rem">🤖</div>
+           style="width:36px;height:36px;font-size:1.1rem">${cfg.icon}</div>
       <div class="bg-dark border border-secondary rounded-3 p-3 flex-grow-1">
-        <p class="mb-2">¡Hola! Soy el <strong>Asistente SOC</strong>.</p>
-        <p class="mb-0 small text-muted">Haz clic en "Comenzar análisis" para iniciar.</p>
+        ${cfg.welcome}
       </div>
     </div>`;
   document.getElementById('answerArea').innerHTML =
@@ -608,6 +697,86 @@ function updatePreviewBadge(preview) {
   const badge = document.getElementById('previewBadge');
   badge.className = `badge fs-6 bg-${col}`;
   badge.textContent = preview.label || preview.classification;
+}
+
+// ─── Selección de modo del chatbot ────────────────────────────────────────────
+function selectMode(mode, btn) {
+  if (CHAT_MODE === mode) return;
+  CHAT_MODE = mode;
+
+  // Actualizar estilo de botones del selector
+  document.querySelectorAll('.mode-btn').forEach(b => {
+    b.classList.remove('btn-info');
+    b.classList.add('btn-outline-secondary');
+  });
+  btn.classList.remove('btn-outline-secondary');
+  btn.classList.add('btn-info');
+
+  // Actualizar header (título y subtítulo)
+  const cfg = MODE_CONFIG[mode];
+  document.querySelector('h4.mb-0').innerHTML =
+    `<i class="bi bi-chat-dots-fill text-info me-2"></i>${cfg.title}`;
+  document.querySelector('.d-flex.align-items-center.gap-3.mb-3 small.text-muted').textContent = cfg.subtitle;
+
+  // Resetear la sesión con el mensaje de bienvenida del nuevo modo
+  SESSION_ID = null;
+  CURRENT_Q_ID = null;
+  document.getElementById('chatMessages').innerHTML = `
+    <div class="d-flex gap-2 mb-3" id="welcomeMsg">
+      <div class="rounded-circle bg-info d-flex align-items-center justify-content-center flex-shrink-0"
+           style="width:36px;height:36px;font-size:1.1rem">${cfg.icon}</div>
+      <div class="bg-dark border border-secondary rounded-3 p-3 flex-grow-1">
+        ${cfg.welcome}
+      </div>
+    </div>`;
+  document.getElementById('answerArea').innerHTML =
+    `<button class="btn btn-info w-100" id="btnStart" onclick="startSession()"><i class="bi bi-play-circle-fill me-2"></i>Comenzar análisis</button>`;
+  document.getElementById('navControls').classList.add('d-none');
+  document.getElementById('resultCard').classList.add('d-none');
+  document.getElementById('classificationCard').classList.add('d-none');
+  document.getElementById('sessionHeader').style.display = 'none';
+  document.getElementById('autoAnsweredPanel').classList.add('d-none');
+  ['ioc_ip_src','ioc_ip_dst','ioc_url','ioc_hash'].forEach(id => document.getElementById(id).value = '');
+  ['tip_ip_src','tip_ip_dst','tip_url'].forEach(id => document.getElementById(id).innerHTML = '');
+}
+
+function selectModeById(mode) {
+  const btn = document.querySelector(`.mode-btn[data-mode="${mode}"]`);
+  if (btn) selectMode(mode, btn);
+}
+
+function showModeStub() {
+  const cfg = MODE_CONFIG[CHAT_MODE];
+  const btn = document.getElementById('btnStart');
+  if (btn) btn.classList.add('d-none');
+  document.getElementById('sessionHeader').style.removeProperty('display');
+  document.getElementById('navControls').classList.remove('d-none');
+
+  const stubHtml = `
+    <div class="d-flex gap-2 mb-3">
+      <div class="rounded-circle bg-warning d-flex align-items-center justify-content-center flex-shrink-0"
+           style="width:36px;height:36px;font-size:1.1rem">🔧</div>
+      <div class="bg-dark border border-warning rounded-3 p-3 flex-grow-1">
+        <p class="mb-2">
+          <strong>${cfg.icon} ${cfg.title}</strong>
+          <span class="badge bg-warning text-dark ms-2">EN DESARROLLO</span>
+        </p>
+        <p class="mb-2 small">${cfg.description}</p>
+        <div class="mb-2 d-flex flex-wrap gap-1 align-items-center">
+          <span class="badge bg-secondary">${cfg.questions} preguntas</span>
+          <small class="text-muted">${cfg.blocks}</small>
+        </div>
+        <p class="mb-0 small text-muted">
+          Diagrama de referencia: <code>${cfg.flowFile}</code>
+        </p>
+      </div>
+    </div>`;
+  appendToChat(stubHtml);
+
+  document.getElementById('answerArea').innerHTML = `
+    <button class="btn btn-outline-secondary w-100" onclick="selectModeById('soc')">
+      <i class="bi bi-arrow-left me-1"></i>Volver al modo Analista SOC
+    </button>`;
 }
 </script>
 {% endblock %}

@@ -11,14 +11,12 @@ from typing import Optional
 
 from fastapi import APIRouter, Request, Depends, HTTPException
 from fastapi.responses import JSONResponse
-from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.models.database import get_db, ChatSession, User, APIToken, get_visible_org_ids
-from app.core.auth import verify_password
-import bcrypt as _bcrypt
-from datetime import datetime as _dt
+from app.models.database import get_db, ChatSession, get_visible_org_ids
+from app.core.auth import api_auth
+from app.services.chatbot_utils import jloads as _jloads, load_session as _load_session_util, save_session as _save_util
 from app.services.chatbot_engine import (
     GATEWAY_QUESTIONS, CATEGORY_LABELS,
     build_question_data, infer_category, ti_to_auto_answers,
@@ -27,50 +25,6 @@ from app.services.chatbot_engine import (
 from app.core.engine import engine_instance
 
 router = APIRouter(prefix="/api/v1/chat", tags=["Chat API v1"])
-_security = HTTPBasic(auto_error=False)
-
-
-# ─── Auth (igual que api.py) ──────────────────────────────────────────────────
-
-async def _api_auth(
-    request: Request,
-    credentials: Optional[HTTPBasicCredentials] = Depends(_security),
-    db: Session = Depends(get_db),
-) -> dict:
-    user = request.session.get("user")
-    if user:
-        return user
-    # Bearer token
-    auth_header = request.headers.get("Authorization", "")
-    if auth_header.startswith("Bearer "):
-        raw_token = auth_header[7:].strip()
-        prefix = raw_token[:8]
-        candidates = db.query(APIToken).filter(
-            APIToken.token_prefix == prefix, APIToken.is_active == True
-        ).all()
-        for tok in candidates:
-            if (tok.expires_at is None or tok.expires_at > _dt.utcnow()) and \
-               _bcrypt.checkpw(raw_token.encode(), tok.token_hash.encode()):
-                db.query(APIToken).filter(APIToken.id == tok.id).update(
-                    {"last_used_at": _dt.utcnow()}, synchronize_session=False
-                )
-                db.commit()
-                db_user = db.query(User).filter(User.id == tok.user_id, User.is_active == True).first()
-                if db_user:
-                    return {"id": db_user.id, "username": db_user.username,
-                            "role": db_user.role, "org_id": db_user.organization_id}
-    if credentials:
-        db_user = db.query(User).filter(
-            User.username == credentials.username, User.is_active == True,
-        ).first()
-        if db_user and verify_password(credentials.password, db_user.password_hash):
-            return {"id": db_user.id, "username": db_user.username,
-                    "role": db_user.role, "org_id": db_user.organization_id}
-    raise HTTPException(
-        status_code=401,
-        detail="Credenciales inválidas",
-        headers={"WWW-Authenticate": "Bearer, Basic"},
-    )
 
 
 # ─── Pydantic schemas ─────────────────────────────────────────────────────────
@@ -148,27 +102,16 @@ class ChatResultOut(BaseModel):
 
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
-
-def _jloads(text: str, default):
-    try:
-        return json.loads(text or "")
-    except Exception:
-        return default
-
+# _jloads, _load_session, _save → delegados a app/services/chatbot_utils.py
 
 def _load_session(session_uuid: str, db: Session) -> ChatSession:
-    s = db.query(ChatSession).filter(ChatSession.session_uuid == session_uuid).first()
-    if not s:
-        raise HTTPException(404, "Sesión no encontrada")
-    return s
+    """Wrapper local que delega a chatbot_utils.load_session."""
+    return _load_session_util(session_uuid, db)
 
 
 def _save(s: ChatSession, db: Session, **fields):
-    for k, v in fields.items():
-        setattr(s, k, v)
-    s.updated_at = datetime.utcnow()
-    db.commit()
-    db.refresh(s)
+    """Wrapper local que delega a chatbot_utils.save_session."""
+    _save_util(s, db, **fields)
 
 
 def _next_question_payload(s: ChatSession) -> dict | None:
@@ -189,7 +132,7 @@ def _next_question_payload(s: ChatSession) -> dict | None:
 async def create_session(
     body: SessionCreateIn,
     db: Session = Depends(get_db),
-    _user: dict = Depends(_api_auth),
+    _user: dict = Depends(api_auth),
 ):
     """
     Inicia una nueva sesión de chatbot.
@@ -232,7 +175,7 @@ async def create_session(
 async def get_session(
     session_uuid: str,
     db: Session = Depends(get_db),
-    _user: dict = Depends(_api_auth),
+    _user: dict = Depends(api_auth),
 ):
     """Retorna el estado actual de una sesión de chatbot."""
     s = _load_session(session_uuid, db)
@@ -262,7 +205,7 @@ async def session_iocs(
     body: IoCsIn,
     request: Request,
     db: Session = Depends(get_db),
-    _user: dict = Depends(_api_auth),
+    _user: dict = Depends(api_auth),
 ):
     """
     Ejecuta TI lookup sobre los IoCs proporcionados.
@@ -326,7 +269,7 @@ async def session_answer(
     session_uuid: str,
     body: AnswerIn,
     db: Session = Depends(get_db),
-    _user: dict = Depends(_api_auth),
+    _user: dict = Depends(api_auth),
 ):
     """
     Registra la respuesta del analista y retorna la siguiente pregunta.
@@ -387,7 +330,7 @@ async def session_skip(
     session_uuid: str,
     body: SkipIn,
     db: Session = Depends(get_db),
-    _user: dict = Depends(_api_auth),
+    _user: dict = Depends(api_auth),
 ):
     """Omite la pregunta actual y avanza a la siguiente."""
     s = _load_session(session_uuid, db)
@@ -415,7 +358,7 @@ async def session_skip(
 async def session_back(
     session_uuid: str,
     db: Session = Depends(get_db),
-    _user: dict = Depends(_api_auth),
+    _user: dict = Depends(api_auth),
 ):
     """Deshace la última respuesta y regresa a esa pregunta."""
     s = _load_session(session_uuid, db)
@@ -448,7 +391,7 @@ async def session_complete(
     body: CompleteIn,
     request: Request,
     db: Session = Depends(get_db),
-    _user: dict = Depends(_api_auth),
+    _user: dict = Depends(api_auth),
 ):
     """
     Calcula el score final y la clasificación multidimensional.
@@ -565,7 +508,7 @@ async def session_complete(
 async def get_result(
     session_uuid: str,
     db: Session = Depends(get_db),
-    _user: dict = Depends(_api_auth),
+    _user: dict = Depends(api_auth),
 ):
     """Retorna el resultado final de una sesión completada."""
     s = _load_session(session_uuid, db)

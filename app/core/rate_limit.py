@@ -1,14 +1,12 @@
 """
 SOC Assist — In-memory rate limiter (#56)
 No external dependencies. Limits POST /evaluar to prevent abuse.
+Límites configurables en app/core/constants.py (RATE_LIMIT_WINDOW_SECONDS, RATE_LIMIT_MAX_REQUESTS).
 """
 import time
 from collections import defaultdict
 from fastapi import Request, HTTPException
-
-# Window configuration
-_WINDOW_SECONDS: int = 60
-_MAX_REQUESTS: int = 20  # per IP per window
+from app.core.constants import RATE_LIMIT_WINDOW_SECONDS as _WINDOW_SECONDS, RATE_LIMIT_MAX_REQUESTS as _MAX_REQUESTS
 
 _buckets: dict[str, list[float]] = defaultdict(list)
 

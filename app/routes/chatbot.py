@@ -20,6 +20,10 @@ from sqlalchemy.orm import Session
 from app.models.database import (
     get_db, ChatSession, Incident, IncidentAnswer, audit, get_visible_org_ids,
 )
+from app.services.chatbot_utils import (
+    jloads as _jloads_util, load_session as _load_session_util,
+    save_session as _save_session_util, run_ti_lookups as _run_ti_lookups_util,
+)
 from app.core.engine import engine_instance
 from app.core.auth import require_auth
 from app.core.rate_limit import rate_limit_evaluar as _rate_limit
@@ -45,38 +49,26 @@ _BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 
 # ─── Helpers internos ────────────────────────────────────────────────────────
+# Delegados a app/services/chatbot_utils para evitar duplicación con chatbot_api.py
 
 def _load_session(session_uuid: str, db: Session) -> ChatSession:
-    s = db.query(ChatSession).filter(ChatSession.session_uuid == session_uuid).first()
-    if not s:
-        raise HTTPException(status_code=404, detail="Sesión no encontrada")
-    return s
+    """Carga ChatSession por UUID o lanza HTTP 404."""
+    return _load_session_util(session_uuid, db)
 
 
 def _jloads(text: str, default):
-    try:
-        return json.loads(text or "")
-    except Exception:
-        return default
+    """Deserializa JSON con valor por defecto seguro."""
+    return _jloads_util(text, default)
 
 
 def _save_session(s: ChatSession, db: Session, **fields):
-    for k, v in fields.items():
-        setattr(s, k, v)
-    s.updated_at = datetime.utcnow()
-    db.commit()
-    db.refresh(s)
+    """Persiste campos en ChatSession y hace commit."""
+    _save_session_util(s, db, **fields)
 
 
 async def _run_ti_lookups(indicators: list[str]) -> list[dict]:
-    if not indicators:
-        return []
-    tasks = [ti_lookup(ind) for ind in indicators]
-    try:
-        results = await asyncio.wait_for(asyncio.gather(*tasks, return_exceptions=True), timeout=8)
-        return [r for r in results if isinstance(r, dict)]
-    except Exception:
-        return []
+    """Lookups TI en paralelo con timeout — delega a chatbot_utils."""
+    return await _run_ti_lookups_util(indicators)
 
 
 def _build_next_response(s: ChatSession, done: bool = False) -> dict:

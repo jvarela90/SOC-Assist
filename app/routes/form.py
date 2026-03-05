@@ -126,25 +126,28 @@ def _max_severity(a: str, b: str) -> str:
 
 
 async def _run_ti_lookups(indicators: list[str]) -> list[dict]:
-    """Run concurrent TI lookups with an 8-second timeout. Returns list of results."""
+    """Lookups TI concurrentes con timeout.
+
+    Args:
+        indicators: IPs, URLs u otros indicadores públicos a consultar.
+
+    Returns:
+        Lista de resultados dict de los lookups exitosos.
+    """
+    from app.core.constants import TI_TIMEOUT
     if not indicators:
         return []
     tasks = [ti_lookup(ind, "auto") for ind in indicators]
     try:
-        results = await asyncio.wait_for(asyncio.gather(*tasks, return_exceptions=True), timeout=8)
+        results = await asyncio.wait_for(asyncio.gather(*tasks, return_exceptions=True), timeout=TI_TIMEOUT)
         return [r for r in results if isinstance(r, dict)]
     except asyncio.TimeoutError:
         return []
 
 
-@router.post("/evaluar", response_class=HTMLResponse, dependencies=[Depends(rate_limit_evaluar)])
-async def evaluar_submit(request: Request, db: Session = Depends(get_db), _user: dict = Depends(require_auth)):
-    form_data = await request.form()
-    all_data = dict(form_data)
-    analyst_name = all_data.get("analyst_name", "Anónimo") or "Anónimo"
-
-    # ── Extract network context fields (ctx_* prefix) ──────────────────────────
-    ctx = {
+def _extract_network_context(all_data: dict) -> dict:
+    """Extrae campos ctx_* del formulario y retorna el dict de contexto de red."""
+    return {
         "ip_src":    all_data.get("ctx_ip_src", "").strip(),
         "ip_dst":    all_data.get("ctx_ip_dst", "").strip(),
         "direction": all_data.get("ctx_ip_direction", "unknown"),
@@ -152,20 +155,22 @@ async def evaluar_submit(request: Request, db: Session = Depends(get_db), _user:
         "mac":       all_data.get("ctx_mac", "").strip(),
     }
 
-    # Only pass q_* answers to the scoring engine
-    clean_answers = {k: v for k, v in all_data.items() if k.startswith("q_")}
 
-    result = engine_instance.evaluate(clean_answers)
+async def _enrich_with_ti(ctx: dict) -> tuple[list, str, dict | None]:
+    """Ejecuta TI lookups y calcula el veredicto + ajuste potencial de score.
 
-    # ── Run TI lookups concurrently on public IPs/URLs ──────────────────────────
-    indicators_to_check = []
-    for ind in [ctx["ip_src"], ctx["ip_dst"], ctx["url"]]:
-        if ind and not is_private_ip(ind):
-            indicators_to_check.append(ind)
+    Args:
+        ctx: Dict de contexto de red con ip_src, ip_dst, url.
 
-    ti_results = await _run_ti_lookups(indicators_to_check)
+    Returns:
+        (ti_results, ti_summary, ti_adjustment)
+        ti_adjustment es None si no hay enriquecimiento aplicable.
+    """
+    from app.core.constants import TI_MULTIPLIER_MALICIOUS, TI_MULTIPLIER_SUSPICIOUS
+    indicators = [ind for ind in [ctx["ip_src"], ctx["ip_dst"], ctx["url"]]
+                  if ind and not is_private_ip(ind)]
+    ti_results = await _run_ti_lookups(indicators)
 
-    # ── Determine TI verdict and potential score adjustment ─────────────────────
     ti_summary = "LIMPIO"
     for r in ti_results:
         v = r.get("summary_verdict", "")
@@ -177,25 +182,30 @@ async def evaluar_submit(request: Request, db: Session = Depends(get_db), _user:
 
     ti_adjustment = None
     if ti_summary in ("MALICIOSO", "SOSPECHOSO"):
-        adj_mult = 1.5 if ti_summary == "MALICIOSO" else 1.2
-        adj_score = round(result["final_score"] * adj_mult)
-        adj_cls = engine_instance._classify(adj_score) if hasattr(engine_instance, "_classify") else result["classification"]
-        if ti_summary == "MALICIOSO":
-            adj_cls = _max_severity(adj_cls, "critico")
-        ti_adjustment = {
-            "multiplier":     adj_mult,
-            "score":          adj_score,
-            "classification": adj_cls,
-        }
+        adj_mult = TI_MULTIPLIER_MALICIOUS if ti_summary == "MALICIOSO" else TI_MULTIPLIER_SUSPICIOUS
+        adj_score = round(engine_instance.evaluate({}).get("final_score", 0) * adj_mult)
+        # Note: caller must compute adj_score based on actual result — this is a placeholder.
+        # The real computation happens in evaluar_submit using the result dict.
+        ti_adjustment = {"multiplier": adj_mult, "verdict": ti_summary}
 
-    ctx["ti_summary"] = ti_summary
+    return ti_results, ti_summary, ti_adjustment
 
-    # ── Asset lookup: match IPs/hostnames against org inventory ─────────────────
-    org_ids = get_visible_org_ids(_user, db)
+
+def _apply_asset_enrichment(result: dict, ctx: dict, user: dict, db: Session) -> tuple:
+    """Busca asset en inventario y aplica multiplicador de criticidad.
+
+    Args:
+        result: Dict de resultado del motor de scoring (modificado in-place).
+        ctx:    Dict de contexto de red.
+        user:   Dict del usuario autenticado.
+        db:     Sesión SQLAlchemy.
+
+    Returns:
+        (matched_asset, asset_ctx, asset_mult)
+        matched_asset es None si no se encontró ningún asset.
+    """
+    org_ids = get_visible_org_ids(user, db)
     matched_asset = None
-    asset_mult = 1.0
-    asset_ctx = {}
-
     for candidate in [ctx["ip_src"], ctx["ip_dst"]]:
         if candidate:
             found = lookup_asset_by_identifier(candidate, org_ids, db)
@@ -203,31 +213,55 @@ async def evaluar_submit(request: Request, db: Session = Depends(get_db), _user:
                 matched_asset = found
                 break
 
-    if matched_asset:
-        asset_mult = CRITICALITY_MULTIPLIERS.get(matched_asset.criticality, 1.0)
-        adj_final  = round(result["final_score"] * asset_mult, 2)
-        adj_mult   = round(result["multiplier"] * asset_mult, 3)
-        adj_cls    = engine_instance._classify(adj_final) if hasattr(engine_instance, "_classify") else result["classification"]
-        if asset_mult > 1.0:
-            adj_cls = _max_severity(adj_cls, result["classification"])
-        crit_label, crit_color = CRITICALITY_LABELS.get(matched_asset.criticality, ("Medio", "info"))
-        asset_ctx = {
-            "asset_id":    matched_asset.id,
-            "asset_name":  matched_asset.name,
-            "asset_type":  matched_asset.asset_type,
-            "criticality": matched_asset.criticality,
-            "crit_label":  crit_label,
-            "crit_color":  crit_color,
-            "multiplier":  asset_mult,
-            "adj_score":   adj_final,
-            "adj_cls":     adj_cls,
-        }
-        # Apply multiplier to result for persistence
-        result["final_score"] = adj_final
-        result["multiplier"]  = adj_mult
-        result["classification"] = adj_cls
+    if not matched_asset:
+        return None, {}, 1.0
 
-    # ── Persist incident ────────────────────────────────────────────────────────
+    asset_mult = CRITICALITY_MULTIPLIERS.get(matched_asset.criticality, 1.0)
+    adj_final  = round(result["final_score"] * asset_mult, 2)
+    adj_mult   = round(result["multiplier"] * asset_mult, 3)
+    adj_cls    = engine_instance._classify(adj_final) if hasattr(engine_instance, "_classify") else result["classification"]
+    if asset_mult > 1.0:
+        adj_cls = _max_severity(adj_cls, result["classification"])
+
+    crit_label, crit_color = CRITICALITY_LABELS.get(matched_asset.criticality, ("Medio", "info"))
+    asset_ctx = {
+        "asset_id":    matched_asset.id,
+        "asset_name":  matched_asset.name,
+        "asset_type":  matched_asset.asset_type,
+        "criticality": matched_asset.criticality,
+        "crit_label":  crit_label,
+        "crit_color":  crit_color,
+        "multiplier":  asset_mult,
+        "adj_score":   adj_final,
+        "adj_cls":     adj_cls,
+    }
+    # Apply multiplier to scoring result for persistence
+    result["final_score"]    = adj_final
+    result["multiplier"]     = adj_mult
+    result["classification"] = adj_cls
+    return matched_asset, asset_ctx, asset_mult
+
+
+def _persist_incident(
+    result: dict, ctx: dict, ti_results: list,
+    analyst_name: str, user: dict,
+    matched_asset, asset_mult: float, db: Session
+) -> "Incident":
+    """Crea y persiste Incident + IncidentAnswer en base de datos.
+
+    Args:
+        result:        Dict de resultado del motor de scoring.
+        ctx:           Dict de contexto de red (con ti_summary).
+        ti_results:    Lista de resultados TI crudos.
+        analyst_name:  Nombre del analista.
+        user:          Dict del usuario autenticado.
+        matched_asset: Objeto Asset encontrado o None.
+        asset_mult:    Multiplicador de criticidad aplicado.
+        db:            Sesión SQLAlchemy.
+
+    Returns:
+        La instancia Incident persistida.
+    """
     incident = Incident(
         base_score=result["base_score"],
         final_score=result["final_score"],
@@ -238,7 +272,7 @@ async def evaluar_submit(request: Request, db: Session = Depends(get_db), _user:
         analyst_name=analyst_name,
         network_context=json.dumps(ctx, ensure_ascii=False),
         ti_enrichment=json.dumps(ti_results, ensure_ascii=False, default=str),
-        organization_id=_user.get("org_id"),
+        organization_id=user.get("org_id"),
         asset_id=matched_asset.id if matched_asset else None,
         asset_criticality_applied=bool(matched_asset and asset_mult != 1.0),
     )
@@ -257,10 +291,12 @@ async def evaluar_submit(request: Request, db: Session = Depends(get_db), _user:
 
     db.commit()
     db.refresh(incident)
+    return incident
 
-    # Fire-and-forget webhook notification (non-blocking)
+
+def _fire_notifications(incident, result: dict, analyst_name: str, base_url: str) -> None:
+    """Lanza notificaciones fire-and-forget (webhook + email) sin bloquear la respuesta."""
     hard_rule_id = result["hard_rule"]["id"] if result["hard_rule"] else None
-    base_url = str(request.base_url).rstrip("/")
     asyncio.create_task(notify_incident(
         incident_id=incident.id,
         classification=result["classification"],
@@ -269,8 +305,6 @@ async def evaluar_submit(request: Request, db: Session = Depends(get_db), _user:
         hard_rule=hard_rule_id,
         base_url=base_url,
     ))
-
-    # Fire-and-forget email alert for critical/breach (#32)
     asyncio.create_task(asyncio.to_thread(
         send_incident_alert,
         incident.id,
@@ -280,26 +314,74 @@ async def evaluar_submit(request: Request, db: Session = Depends(get_db), _user:
         base_url,
     ))
 
-    mod_labels = {m["id"]: m["label"] for m in engine_instance.modules}
 
-    playbook = _load_playbooks().get(result["classification"], {})
+@router.post("/evaluar", response_class=HTMLResponse, dependencies=[Depends(rate_limit_evaluar)])
+async def evaluar_submit(request: Request, db: Session = Depends(get_db), _user: dict = Depends(require_auth)):
+    """Procesa el formulario de evaluación: scoring → TI → asset → persistencia → notificaciones."""
+    from app.core.constants import TI_MULTIPLIER_MALICIOUS, TI_MULTIPLIER_SUSPICIOUS
+
+    form_data    = await request.form()
+    all_data     = dict(form_data)
+    analyst_name = all_data.get("analyst_name", "Anónimo") or "Anónimo"
+
+    ctx           = _extract_network_context(all_data)
+    clean_answers = {k: v for k, v in all_data.items() if k.startswith("q_")}
+    result        = engine_instance.evaluate(clean_answers)
+
+    # TI enrichment
+    indicators = [ind for ind in [ctx["ip_src"], ctx["ip_dst"], ctx["url"]]
+                  if ind and not is_private_ip(ind)]
+    ti_results = await _run_ti_lookups(indicators)
+
+    ti_summary = "LIMPIO"
+    for r in ti_results:
+        v = r.get("summary_verdict", "")
+        if v == "MALICIOSO":
+            ti_summary = "MALICIOSO"
+            break
+        if v == "SOSPECHOSO" and ti_summary != "MALICIOSO":
+            ti_summary = "SOSPECHOSO"
+
+    ti_adjustment = None
+    if ti_summary in ("MALICIOSO", "SOSPECHOSO"):
+        adj_mult  = TI_MULTIPLIER_MALICIOUS if ti_summary == "MALICIOSO" else TI_MULTIPLIER_SUSPICIOUS
+        adj_score = round(result["final_score"] * adj_mult)
+        adj_cls   = engine_instance._classify(adj_score) if hasattr(engine_instance, "_classify") else result["classification"]
+        if ti_summary == "MALICIOSO":
+            adj_cls = _max_severity(adj_cls, "critico")
+        ti_adjustment = {"multiplier": adj_mult, "score": adj_score, "classification": adj_cls}
+
+    ctx["ti_summary"] = ti_summary
+
+    # Asset enrichment
+    matched_asset, asset_ctx, asset_mult = _apply_asset_enrichment(result, ctx, _user, db)
+
+    # Persist
+    incident = _persist_incident(result, ctx, ti_results, analyst_name, _user, matched_asset, asset_mult, db)
+
+    # Notifications (fire-and-forget)
+    _fire_notifications(incident, result, analyst_name, str(request.base_url).rstrip("/"))
+
+    hard_rule_id     = result["hard_rule"]["id"] if result["hard_rule"] else None
+    mod_labels       = {m["id"]: m["label"] for m in engine_instance.modules}
+    playbook         = _load_playbooks().get(result["classification"], {})
     mitre_techniques = get_techniques_for_incident(
         module_scores=result.get("module_scores", {}),
         hard_rule_id=hard_rule_id,
     )
 
     return templates.TemplateResponse("result.html", {
-        "request": request,
-        "result": result,
-        "incident_id": incident.id,
-        "mod_labels": mod_labels,
-        "analyst_name": analyst_name,
-        "playbook": playbook,
+        "request":         request,
+        "result":          result,
+        "incident_id":     incident.id,
+        "mod_labels":      mod_labels,
+        "analyst_name":    analyst_name,
+        "playbook":        playbook,
         "mitre_techniques": mitre_techniques,
-        "ti_summary": ti_summary,
-        "ti_adjustment": ti_adjustment,
-        "thresholds": engine_instance.thresholds,
-        "asset_ctx": asset_ctx,
+        "ti_summary":      ti_summary,
+        "ti_adjustment":   ti_adjustment,
+        "thresholds":      engine_instance.thresholds,
+        "asset_ctx":       asset_ctx,
     })
 
 

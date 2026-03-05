@@ -9,6 +9,7 @@ from fastapi.responses import FileResponse, RedirectResponse
 from sqlalchemy.orm import Session
 from app.models.database import get_db, Incident, IncidentAttachment, audit
 from app.core.auth import require_auth, require_admin
+from app.core.constants import MAX_UPLOAD_SIZE_BYTES
 
 router = APIRouter()
 
@@ -27,7 +28,7 @@ ALLOWED_EXTENSIONS = {
     ".html", ".md",
 }
 
-MAX_SIZE = 10 * 1024 * 1024  # 10 MB
+MAX_SIZE = MAX_UPLOAD_SIZE_BYTES  # configurable en app/core/constants.py
 
 ICON_MAP = {
     ".pdf":    "bi-file-earmark-pdf text-danger",

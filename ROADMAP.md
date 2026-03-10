@@ -1,6 +1,6 @@
 # SOC Assist — Guía de Desarrollo y Roadmap
 
-> **Estado actual:** v1.12 — Robustez + API Tokens + TheHive + 2FA + Exportación + Simulacro
+> **Estado actual:** v1.13 — Refactorización completa: constantes, auth centralizado, admin modular, helpers compartidos
 > **Repositorio:** https://github.com/jvarela90/SOC-Assist
 > **Última actualización:** 2026-03
 
@@ -22,6 +22,7 @@
 | 10 | SLA Tracking + Etiquetas de Incidentes | ✅ Completado |
 | 11 | Chatbot Multimodal (SOC · Ciudadano · Experto+ · Unificado) | ✅ Completado |
 | 12 | Robustez + Seguridad + Integraciones + Exportación | ✅ Completado |
+| 13 | Refactorización — afinidad, constantes, modularización, documentación | ✅ Completado |
 
 ---
 
@@ -235,6 +236,19 @@ Con IoCs y TI hits: se auto-responden hasta 4 preguntas adicionales → reducci�
 
 ---
 
+## Fase 13 — Refactorización + Calidad de Código (Completado ✅)
+
+| # | Feature | Estado |
+|---|---------|--------|
+| 116 | `app/core/constants.py` — centraliza TI_TIMEOUT, TI_MULTIPLIER_*, PAGINATION_SIZE, MAX_UPLOAD_SIZE_BYTES, RATE_LIMIT_* | ✅ |
+| 117 | `api_auth` consolidada en `auth.py` — elimina 110+ líneas duplicadas entre api.py y chatbot_api.py | ✅ |
+| 118 | `app/services/chatbot_utils.py` — jloads, load_session, save_session, run_ti_lookups compartidos | ✅ |
+| 119 | `evaluar_submit()` descompuesta en helpers privados (_extract_network_context, _apply_asset_enrichment, _persist_incident, _fire_notifications) | ✅ |
+| 120 | `admin.py` (761L, 7 dominios) → paquete `app/routes/admin/` con config.py, integrations.py, users.py, security.py | ✅ |
+| 121 | Docstrings completos en todos los módulos nuevos y modificados | ✅ |
+
+---
+
 ## Fase 12 — Robustez + Seguridad + Integraciones (Completado ✅)
 
 | # | Feature | Estado |
@@ -290,15 +304,16 @@ SOC-Assist/
     ├── core/
     │   ├── engine.py         # Motor de scoring ponderado
     │   ├── calibration.py    # Auto-calibración basada en TP/FP
-    │   ├── auth.py           # Hashing bcrypt + dependencias require_auth / require_admin
-    │   └── rate_limit.py     # Rate limiter in-memory (20 req/min/IP)
+    │   ├── auth.py           # bcrypt + require_auth/require_admin + api_auth (Bearer/Basic/session)
+    │   ├── constants.py      # Constantes globales: TI_TIMEOUT, PAGINATION_SIZE, RATE_LIMIT_*, etc.
+    │   └── rate_limit.py     # Rate limiter in-memory (usa constants.py)
     ├── models/
     │   └── database.py       # SQLAlchemy + SQLite/PostgreSQL
     ├── routes/
     │   ├── auth.py           # Login / logout / recuperación / 2FA TOTP (/verify-2fa, /cuenta/2fa)
     │   ├── form.py           # Formulario wizard + TI enrichment + resolución + export TheHive
     │   ├── dashboard.py      # Dashboard + historial + SLA + tags + CSV
-    │   ├── admin.py          # Panel admin + SMTP + usuarios + audit log + backup
+    │   ├── admin/            # Paquete: config.py, integrations.py, users.py, security.py
     │   ├── api.py            # REST API v1 (/api/v1/...)
     │   ├── ti.py             # /api/ti/lookup + /api/mac/lookup
     │   ├── orgs.py           # CRUD organizaciones (/admin/orgs)
@@ -316,6 +331,7 @@ SOC-Assist/
     │   ├── similarity.py     # Cosine similarity entre incidentes
     │   ├── mac_oui.py        # Lookup fabricante por prefijo MAC (OUI local)
     │   ├── chatbot_engine.py # Gateway questions, routing SOC, inferencia de categoría
+    │   ├── chatbot_utils.py  # Helpers compartidos: jloads, load_session, save_session, run_ti_lookups
     │   └── citizen_engine.py # 68 preguntas ciudadano, clasificación P1-P4, BRIDGE_MAP
     ├── templates/            # Jinja2 + Bootstrap 5 (tema oscuro)
     │   ├── base.html
